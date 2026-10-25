@@ -1,0 +1,40 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build and distribution artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+
+# Test and coverage output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Virtual environments and local tool installs
+.venv/
+venv/
+env/
+.tools/
+.piptmp/
+.tmp/
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# GDB history written by interactive sessions
+.gdb_history
