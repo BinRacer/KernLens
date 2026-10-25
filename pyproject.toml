@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kernlens"
+version = "0.2.0"
+description = "KernLens: pure-Python Linux kernel introspection for GDB, including x86_64 page-table math, SLUB inspection, symbol/KASLR helpers, and ANSI diagnostics."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [
+  { name = "BinRacer", email = "native.lab@outlook.com" },
+]
+keywords = [
+  "kernel",
+  "debugging",
+  "introspection",
+  "gdb",
+  "slub",
+  "page-table",
+  "x86-64",
+  "exploit-development",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Debuggers",
+  "Topic :: System :: Operating System Kernels :: Linux",
+  "Typing :: Typed",
+]
+dependencies = [
+  "typing-extensions>=4.6; python_version < '3.12'",
+]
+
+[project.urls]
+Homepage = "https://github.com/BinRacer/KernLens"
+Repository = "https://github.com/BinRacer/KernLens"
+Issues = "https://github.com/BinRacer/KernLens/issues"
+
+[dependency-groups]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "ruff>=0.6",
+]
+
+[tool.uv]
+package = true
+default-groups = ["dev"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+kernlens = ["py.typed"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["kernlens"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+src = ["src", "tests"]
+extend-exclude = [".tools", ".piptmp"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
