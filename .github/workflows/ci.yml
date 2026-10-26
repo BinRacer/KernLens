@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync environment from lockfile
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run --frozen ruff check .
+
+      - name: Test
+        run: uv run --frozen pytest --cov=kernlens --cov-report=term-missing
+
+      - name: Verify the layout generator probes a real kernel
+        run: |
+          set -eu
+          if ! command -v bpftool >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq bpftool || true
+          fi
+          if [ ! -r /sys/kernel/btf/vmlinux ] || ! command -v bpftool >/dev/null; then
+            echo "no BTF / bpftool on this runner; skipping"
+            exit 0
+          fi
+          # The runner kernel differs from the verified one, so only the
+          # probe's coverage is asserted here -- that it resolved every
+          # struct the registry declares (a parse regression would give 0).
+          uv run --frozen python tools/gen_layouts.py \
+            --btf /sys/kernel/btf/vmlinux --json > /tmp/layouts.json
+          uv run --frozen python - <<'PY'
+          import json, sys
+          sys.path.insert(0, "tools")
+          import gen_layouts
+          report = json.load(open("/tmp/layouts.json"))
+          expected = set(gen_layouts.build_spec())
+          missing = expected - set(report)
+          print(f"probed {len(report)}/{len(expected)} structs")
+          if missing:
+              sys.exit(f"probe resolved nothing for: {sorted(missing)}")
+          PY
+
+      - name: Build distributions
+        run: uv build
