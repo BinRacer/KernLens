@@ -1,0 +1,40 @@
+# ~/.gdbinit — load KernLens in every GDB session.
+#
+# Typical checkout:
+#   source /home/bogon/workSpaces/kernlens/gdbinit.py
+#
+# Replace the path below with the actual checkout (or an installed
+# gdbinit.py).  Load other GDB extensions first if desired;
+# KernLens uses the `kernlens-` command prefix and does not install
+# breakpoints at load time.
+#
+# Commands are available as both `kernlens-*` and `kl-*`, for example:
+#   kl-help                 # list every command, grouped by category
+#   kl-help <command>       # usage, options, and examples for one
+#   kl-status
+#   kl-slab <list|info|contains|details> [arg]
+#   kl-page <address>
+#   kl-pte <page-table-entry> [virtual-address]
+#   kl-sym <address>
+#   kl-bt [depth]
+#   kl-chain [depth]
+#   kl-read <address> [count]
+#   kl-kvar <symbol>
+#   kl-addr <address> [tag-mask]
+#   kl-pt <virtual-address>
+#   kl-walk <virtual-address> [4|5]
+#   kl-bits <value> [bit-index]
+#   kl-int <value> [width]
+#   kl-cpu [cpu]
+#   kl-percpu <symbol> [cpu]
+#   kl-base
+#   kl-kbase [--rebase] [--verbose]
+# The startup file also installs the public Python API into GDB's
+# __main__ namespace.  A script sourced later can use KAddr,
+# KPageTable, IntFmt, kdbg, read_kvar, walk, byte_swap64, ... without
+# imports.  Class-qualified forms such as BitOps.byte_swap64 and
+# BitOps_byte_swap64 avoid collisions; logger, styler, reader, and
+# other stateful components are default kdbg instances:
+#   (gdb) source /path/to/KernLens/examples/trace.py
+# `trace.py` is an example; replace it with your own tracer.
+source /path/to/KernLens/gdbinit.py
