@@ -72,6 +72,10 @@ class FakeGdb(types.ModuleType):
 
     error = FakeGdbError
 
+    #: The one type-code constant the adapters compare against
+    #: (``gdb.TYPE_CODE_ENUM``).
+    TYPE_CODE_ENUM = 3
+
     def __init__(self) -> None:
         super().__init__("gdb")
         self.values: dict[str, object] = {}
@@ -200,6 +204,46 @@ class KernelInspectorTests(FacadeTestBase):
     def setUp(self) -> None:
         super().setUp()
         self.inspector = facade.KernelInspector(self.reader)
+        # The debug-info enum surface is stubbed by default so the page
+        # type decoder has a definite encoding to work with.  ``None``
+        # means "this build has no such type", which is what the real
+        # GDB reports for an absent type; a test that needs a different
+        # encoding overrides ``_enum_types`` and clears the cache.
+        self._enum_types: dict[str, dict[str, int]] = {
+            "pageflags": {"PG_locked": 0, "PG_slab": 9, "PG_head": 16},
+        }
+        self._install_type_lookup()
+
+    def _install_type_lookup(self) -> None:
+        """Wire the fake ``gdb.lookup_type`` to :attr:`_enum_types`."""
+        def lookup_type(name: str):
+            bare = name.removeprefix("enum ").strip()
+            members = self._enum_types.get(bare)
+            if members is None:
+                raise FakeGdbError(f"No type named {name}.")
+
+            def fields():
+                return [
+                    SimpleNamespace(name=member, enumval=value)
+                    for member, value in members.items()
+                ]
+
+            return SimpleNamespace(code=fake_gdb.TYPE_CODE_ENUM, name=bare,
+                                   fields=fields)
+
+        fake_gdb.lookup_type = lookup_type
+
+    def _use_enum_encoding(self) -> None:
+        """Switch the fixture to the 6.12+ ``enum pagetype`` encoding."""
+        self._enum_types = {
+            "pageflags": {"PG_locked": 0, "PG_head": 6},
+            "pagetype": {
+                "PGTY_buddy": 0xF0, "PGTY_slab": 0xF5,
+                "PGTY_mapcount_underflow": 0xFF,
+            },
+        }
+        self._install_type_lookup()
+        self.inspector.reset()
 
     def _put_string(self, addr: int, text: str) -> None:
         for index, byte in enumerate(text.encode("ascii") + b"\x00"):
@@ -301,13 +345,49 @@ class KernelInspectorTests(FacadeTestBase):
         fake_gdb.values["*(unsigned int *)0x10030"] = 2
         self.assertEqual(self.inspector.page_type(0x10000), "mapcount: 2")
 
-    def test_page_type_slab(self) -> None:
-        # slab is index 5 -> (5 + 0xF0) << 24.
-        fake_gdb.values["*(unsigned int *)0x10030"] = (5 + 0xF0) << 24
+    def test_page_type_free_page_is_buddy(self) -> None:
+        # Real value from the 6.1.134 VM: an empty page on a free list.
+        # ``PG_buddy`` (0x80) is *cleared* out of the all-ones word.
+        fake_gdb.values["*(unsigned int *)0x10030"] = 0xFFFFFF7F
+        self.assertEqual(self.inspector.page_type(0x10000), "buddy")
+        self.assertIs(self.inspector.page_is_buddy(0x10000), True)
+
+    def test_page_type_bit_encoding_reports_the_other_types(self) -> None:
+        # ``PG_offline`` (0x100) cleared; the 6.1 free-list walk found
+        # nothing else, but the encoding must name it if it appears.
+        for word, name in (
+            (0xFFFFFEFF, "offline"),
+            (0xFFFFFDFF, "table"),
+            (0xFFFFFBFF, "guard"),
+        ):
+            fake_gdb.values["*(unsigned int *)0x10030"] = word
+            self.assertEqual(
+                self.inspector.page_type(0x10000), name,
+                f"word {word:#x}",
+            )
+
+    def test_page_type_slab_comes_from_flags_before_6_10(self) -> None:
+        # A slab page keeps ``PG_slab`` (flags bit 9) and has its type
+        # word cleared, so ``page_type`` must consult flags.  The word
+        # is the one measured on a real 6.1 slab page.
+        fake_gdb.values["*(unsigned int *)0x10030"] = 0xFFFFFFFF
+        self._put_u64(0x10000, 0xFFFFFC00000200)
         self.assertEqual(self.inspector.page_type(0x10000), "slab")
+        self.assertIs(self.inspector.page_is_slab(0x10000), True)
+
+    def test_page_type_enum_encoding_names_the_ordinal(self) -> None:
+        self._use_enum_encoding()
+        # ``PGTY_slab`` (0xf5) in the high byte.
+        fake_gdb.values["*(unsigned int *)0x10030"] = 0xF5000000
+        self.assertEqual(self.inspector.page_type(0x10000), "slab")
+        self.assertIs(self.inspector.page_is_slab(0x10000), True)
+        fake_gdb.values["*(unsigned int *)0x10030"] = 0xF0000000
+        self.assertEqual(self.inspector.page_type(0x10000), "buddy")
+        self.assertIs(self.inspector.page_is_buddy(0x10000), True)
 
     def test_page_type_unknown(self) -> None:
-        fake_gdb.values["*(unsigned int *)0x10030"] = (0xFF) << 24
+        # 0xfe is reserved for mapcount overflow, never a page type.
+        fake_gdb.values["*(unsigned int *)0x10030"] = 0xFEFFFFFF
         self.assertEqual(self.inspector.page_type(0x10000), "unknown")
 
     def test_page_type_unreadable(self) -> None:
@@ -318,6 +398,24 @@ class KernelInspectorTests(FacadeTestBase):
         self.assertEqual(self.inspector.page_refcount(0x10000), 7)
         fake_gdb.values["*(unsigned int *)0x10034"] = 0xFFFFFFFF
         self.assertEqual(self.inspector.page_refcount(0x10000), -1)
+
+    def test_buddy_order_reads_private_after_the_buddy_check(self) -> None:
+        # Real layout: ``private`` at 0x28, the type word at 0x30.
+        fake_gdb.values["*(unsigned int *)0x10030"] = 0xFFFFFF7F
+        self._put_u64(0x10028, 8)
+        self.assertEqual(self.inspector.buddy_order(0x10000), 8)
+
+    def test_buddy_order_is_none_on_a_page_that_is_not_free(self) -> None:
+        # An active slab page keeps a freelist pointer in ``private``;
+        # it must not be reported as an order.
+        self._put_u64(0x10000, 0xFFFFFC00000200)
+        self._put_u64(0x10028, 0xFFFFF14040131040)
+        self.assertIsNone(self.inspector.buddy_order(0x10000))
+
+    def test_buddy_order_rejects_an_implausible_value(self) -> None:
+        fake_gdb.values["*(unsigned int *)0x10030"] = 0xFFFFFF7F
+        self._put_u64(0x10028, 0x1F)
+        self.assertIsNone(self.inspector.buddy_order(0x10000))
 
     def test_release_parses_tuple(self) -> None:
         self.link_global("linux_banner", 0x1000)
