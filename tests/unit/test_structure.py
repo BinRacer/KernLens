@@ -351,6 +351,81 @@ class ToolsLayoutTests(unittest.TestCase):
         return " ".join(pieces)
 
 
+class BannerTests(unittest.TestCase):
+    """``images/banner.svg`` must stay a valid, self-contained SVG.
+
+    It is the only image in the repository, so a broken one breaks the
+    front page of both READMEs at once -- and it fails silently, because
+    GitHub renders a malformed SVG as nothing rather than as an error.
+
+    The failure that prompted these tests was a raw ``<`` inside a CSS
+    comment in ``<style>``.  ``<style>`` content is XML *text*, so the
+    character started a tag and the file stopped parsing at that line.
+    """
+
+    PATH = ROOT / "images" / "banner.svg"
+
+    def _root(self):
+        """The parsed root element.
+
+        Un-annotated on purpose: importing ``xml.etree`` at module scope
+        for a type name would make the module depend on it for one
+        signature, and the test is about the file rather than the tree.
+        """
+        import xml.etree.ElementTree as ET
+
+        return ET.parse(self.PATH).getroot()
+
+    def test_parses_as_xml(self) -> None:
+        """A malformed SVG renders as nothing, with no error anywhere.
+
+        This is the exact failure that shipped once: a raw ``<`` inside a
+        CSS comment made the file stop parsing at that line, and both
+        READMEs silently lost their only image.
+        """
+        import xml.etree.ElementTree as ET
+
+        ET.parse(self.PATH)  # raises ParseError on a malformed file
+
+    def test_is_accessible_and_scalable(self) -> None:
+        root = self._root()
+        self.assertEqual(root.get("role"), "img")
+        # Both ids referenced by `aria-labelledby` must exist, or screen
+        # readers get an image with no name.
+        ids = root.get("aria-labelledby", "").split()
+        self.assertEqual(len(ids), 2, root.get("aria-labelledby"))
+        present = {element.get("id") for element in root.iter()}
+        for name in ids:
+            self.assertIn(name, present)
+        # A viewBox is what lets the same file render at README width and
+        # in a 200px preview without a second asset.
+        self.assertIsNotNone(root.get("viewBox"))
+
+    def test_carries_the_surface_count(self) -> None:
+        """The banner states the command count; a test keeps it true.
+
+        The count is auto-checked against the command registry rather than
+        the string, so a wrong number in the banner is a failure here.
+        """
+        from contract_spec import CANONICAL_COMMANDS
+
+        text = "".join(
+            (element.text or "") for element in self._root().iter()
+        )
+        self.assertIn(f"{len(CANONICAL_COMMANDS)} kl-* commands", text)
+
+    def test_has_no_external_assets(self) -> None:
+        """One file, no network, no rasters.
+
+        A hosted font or a linked bitmap would make the banner depend on
+        something the repository does not control, and GitHub's image
+        proxy does not always fetch them.
+        """
+        raw = self.PATH.read_text(encoding="utf-8")
+        for banned in ("<image", "xlink:href", ".png", ".jpg", ".woff"):
+            self.assertNotIn(banned, raw)
+
+
 class DocumentationTrackingTests(unittest.TestCase):
     """The repository tree in the docs must describe the real tree.
 
