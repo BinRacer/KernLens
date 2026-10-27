@@ -772,6 +772,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`SECURITY.md` claimed the tool was read-only; one command writes.**
+  ``kl-msr --write`` runs ``gdb.execute("set $reg = ...")``, which changes
+  the target.  The claim was load-bearing -- it was the sentence defining
+  what counts as unsafe behaviour against the target -- so a reader
+  deciding whether to trust the tool with a live kernel was reading
+  something false.
+  The policy now names the exception and says it is opt-in, never taken
+  as a side effect of a read.  Both READMEs say the same where they
+  describe command behaviour.  ``WriteAccessClaimTests`` (3) keep the
+  code and the prose from disagreeing again: the tool must still have a
+  write path, the policy must name it, and neither README may drop it.
 - `docs/architecture.md` listed `api/trace.py`, which the rename in the
   previous commit had removed, and its tree block had lost its column
   alignment.  The tree also omitted `docs/example-coverage-plan.md`,

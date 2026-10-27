@@ -34,10 +34,14 @@ address.  These are the most serious class: the tool exists to be
 trusted about memory, and a plausible wrong number is worse than an
 error, because a researcher will build on it.
 
-**Unsafe behaviour against the target.**  KernLens is read-only by
-design and installs no breakpoints at load time.  Anything that writes
-target memory, corrupts a target structure, or stops a debuggee the user
-did not ask to stop is a security bug, not a feature request.
+**Unsafe behaviour against the target.**  KernLens installs no
+breakpoint at load time, and every command but one only reads: it walks
+tables, decodes structures, resolves symbols, and returns.  The
+exception is `kl-msr --write`, which sets an MSR through GDB's register
+interface, and it is the only path in the tool that changes the target.
+Anything else that writes target memory, corrupts a target structure, or
+stops a debuggee the user did not ask to stop is a security bug, not a
+feature request.
 
 **Crash or hang of GDB.**  An unhandled exception escaping a command
 turns a debugging session into a lost session, which on a live target
