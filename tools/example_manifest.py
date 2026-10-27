@@ -97,6 +97,34 @@ class Example:
     commands: tuple[str, ...] = ()
     #: The README that must link to this file.
     readme: str = ""
+    #: Where the file can be executed, and therefore where it can be
+    #: *tested* rather than merely inspected.
+    #:
+    #: ``"host"`` -- runs from a plain interpreter, so a test can call it
+    #: and assert on its output.  ``"gdb"`` -- needs a live target, so the
+    #: only check available in CI is ``tools/run_examples_gdb.py``.
+    #:
+    #: The default is deliberately the weaker claim.  Declaring ``host``
+    #: is a promise that a test enforces: ``tests/integration/
+    #: test_examples_pure.py`` runs every such file and fails if it
+    #: exits non-zero.  A file that quietly stops being portable would
+    #: otherwise keep its ``host`` claim and never be executed again --
+    #: which is the failure mode this field exists to prevent.
+    runs_on: str = "gdb"
+    #: Arguments passed when the file is executed on the host.  Only
+    #: meaningful with ``runs_on="host"``.
+    argv: tuple[str, ...] = ()
+    #: The command line ``tools/run_examples_gdb.py`` should type at the
+    #: prompt to exercise this example, when one invocation with no
+    #: arguments is not enough.
+    #:
+    #: It defaults to the example's own registered command, which is right
+    #: for the tours.  It has to be spelled out for the files that need
+    #: an argument -- ``kbp-object`` raises ``GdbError`` without an
+    #: address, and ``kernlens-tracer-slab`` with it -- and for the two
+    #: monitoring commands, whose no-argument form installs a breakpoint
+    #: that only a later kernel event would reveal.
+    probe: str = ""
 
 
 def _example(root: str, name: str, **kwargs: object) -> Example:
@@ -114,6 +142,7 @@ EXAMPLES: tuple[Example, ...] = (
         "api", "hello.py",
         purpose="the smallest script: installed names, the outside-GDB "
                 "fallback, and four pure-Python calls",
+        runs_on="host",
         surface=(
             "BitOps.byte_swap64",
             "BitOps.popcount",
@@ -142,6 +171,7 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "api", "slab_snapshot.py",
         purpose="a full slab report with no debugger at all",
+        runs_on="host",
         surface=(
             "IntFmt.addr",
             "IntFmt.hex64",
@@ -253,6 +283,7 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "api", "intcodec_tour.py",
         purpose="round-trip every integer width, in both byte orders",
+        runs_on="host",
         surface=(
             "IntCodec.is_in_range",
             "IntCodec.pack",
@@ -281,6 +312,7 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "api", "intfmt_tour.py",
         purpose="format the values a kernel reader actually produces",
+        runs_on="host",
         surface=(
             "IntFmt.addr",
             "IntFmt.bits",
@@ -314,6 +346,7 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "api", "bitops_tour.py",
         purpose="decode the bitfields a kernel struct is actually made of",
+        runs_on="host",
         surface=(
             "BitOps.align_down",
             "BitOps.align_up",
@@ -367,6 +400,13 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "tracing", "gdb_tracer.py",
         purpose="a kfree breakpoint plus two prefixed commands",
+        # `kernlens-tracer-slab` raises GdbError without an expression, and
+        # `kernlens-tracer-color` with an argument.  Neither is the point
+        # of the file; the point is that both register under a prefix so
+        # they coexist with pwndbg.  Driving the colour command is the
+        # invocation that touches the most code without needing a target
+        # to have been stopped somewhere specific.
+        probe="kernlens-tracer-color",
         surface=(
             "kdbg.addr",
             "kdbg.bp_spec",
@@ -379,6 +419,12 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "tracing", "cve_2025_38616_trace.py",
         purpose="a CVE-2025-38616 KTLS use-after-free tracer",
+        # `trace-start` installs breakpoints and then waits for the kernel
+        # to hit them, so in a batch run it blocks rather than returning.
+        # The harness still sources the file -- which is what catches a
+        # tracer that no longer loads -- and stops there.  The kaslr
+        # wrappers it forwards to are exercised by `kaslr_retarget.py`.
+        probe="-",
         # `commands` lists only what the tracer *executes*.  It names
         # `kl-kaslr` and `kl-kaslr-offset` in its banner and forwards to
         # them through `_delegate_kaslr()`, which builds the command name
@@ -416,6 +462,11 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "breakpoints", "conditional.py",
         purpose="stop only when the freed object is the one being watched",
+        # `kbp-object` takes exactly one address and raises GdbError
+        # otherwise.  `init_task` is a real symbol whose address is a
+        # valid pointer, so the probe reaches the code that resolves and
+        # uses it rather than stopping at the argument check.
+        probe="kbp-object &init_task",
         surface=(
             "kdbg.bp_spec",
             "kdbg.info",
@@ -427,11 +478,22 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "breakpoints", "watchfield.py",
         purpose="report only the write that reaches a chosen value",
+        # `kwatch-field` installs a *hardware* watchpoint, and the QEMU
+        # gdbstub behind the test VM rejects those ("this target may not
+        # support them").  The harness therefore sources the file -- which
+        # proves the command registers and the module imports -- and stops
+        # there.  Driving it needs a target that implements watchpoints,
+        # which is a property of the debuggee rather than of this example.
+        probe="-",
         surface=("kdbg.warn",),
     ),
     _example(
         "breakpoints", "per_cpu.py",
         purpose="read the right CPU's copy of a per-CPU variable",
+        # The bare command installs a breakpoint and waits, so it would
+        # look like a pass while proving nothing.  `--off` exercises the
+        # removal path the file has to get right.
+        probe="pbreak --off",
         surface=("kdbg.nr_cpus", "kdbg.percpu_off"),
         commands=(
             "kernlens-base",

@@ -106,17 +106,34 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── examples/
 │   ├── api/                          # scripting the API
 │   │   ├── hello.py                  # minimal script: names + fallback
-│   │   ├── trace.py                  # script sourced after gdbinit.py
 │   │   ├── slab_snapshot.py          # pure-Python report
+│   │   ├── trace.py                  # script sourced after gdbinit.py
+│   │   ├── kernel_facts.py           # `kfacts`  -- establish the target
+│   │   ├── address_tour.py           # `atour`   -- nine page-table views
+│   │   ├── slab_tour.py              # `stour`   -- cache down to one object
+│   │   ├── symbols_tour.py           # `ytour`   -- resolve, read, decode
+│   │   ├── freelist_walk.py          # `flwalk`  -- decode the freelist
+│   │   ├── intcodec_tour.py          # `icodec`  -- every width, both orders
+│   │   ├── intfmt_tour.py            # `ifmt`    -- format by value kind
+│   │   ├── bitops_tour.py            # `btour`   -- decode real bitfields
 │   │   └── gdbinit.example           # sample ~/.gdbinit
 │   ├── tracing/                      # breakpoints that log and continue
 │   │   ├── gdb_tracer.py             # GDB breakpoint / command example
-│   │   └── cve_2025_38616_trace.py   # CVE-specific KTLS tracer
+│   │   ├── cve_2025_38616_trace.py   # CVE-specific KTLS tracer
+│   │   └── kaslr_retarget.py         # `retarget` -- fix the base, then go
 │   └── breakpoints/                  # breakpoints whose purpose is to stop
 │       ├── conditional.py            # break only on one object
-│       └── watchfield.py             # watch a field reach a value
+│       ├── watchfield.py             # watch a field reach a value
+│       └── per_cpu.py                # `pbreak`   -- the right CPU's copy
 ├── images/banner.svg
 ├── pyproject.toml
+├── tools/                            # generators and the example contract
+│   ├── example_manifest.py           # what each example must exercise
+│   ├── check_examples.py             # static check; --check runs in CI
+│   ├── run_examples_gdb.py           # replays the GDB-only examples
+│   ├── check_example_capture.py      # checks that record against the tree
+│   ├── gen_examples_readme.py        # renders the README coverage block
+│   └── ...                           # tutorial, layouts, ABI generation
 ├── uv.lock
 └── CHANGELOG.md
 ```

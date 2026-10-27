@@ -93,6 +93,57 @@ jobs:
           # The report is printed for the log, so a reviewer can see the
           # coverage a green build actually corresponds to.
           uv run --frozen python tools/check_examples.py --report
+          # The numbers in examples/README.md are rendered from that same
+          # measurement.  They used to be typed by hand and had gone
+          # stale; --check fails when the file and the measurement drift.
+          uv run --frozen python tools/gen_examples_readme.py --check
+
+      - name: Run the examples that need no debugger
+        run: |
+          set -eu
+          # The test suite already covers these through
+          # tests/integration/test_examples_pure.py, but running them here
+          # as *scripts* is a different claim: the suite imports nothing
+          # and would not notice a broken `if __name__ == "__main__"`
+          # guard.  This is the check that says "a reader can copy the
+          # command from the README and it works".
+          #
+          # Only rows declaring runs_on="host" are listed, and the list is
+          # derived from the manifest by the Python one-liner, so it cannot
+          # fall out of step with it.
+          uv run --frozen python - <<'PY'
+          import pathlib, subprocess, sys
+          sys.path.insert(0, "tools")
+          import example_manifest
+          root = pathlib.Path(".").resolve()
+          failed = []
+          for example in example_manifest.EXAMPLES:
+              if example.runs_on != "host":
+                  continue
+              result = subprocess.run(
+                  [sys.executable, example.path, *example.argv],
+                  cwd=root, capture_output=True, text=True,
+              )
+              status = "ok" if result.returncode == 0 else "FAILED"
+              print(f"{status:6} {example.path}")
+              if result.returncode != 0:
+                  failed.append(example.path)
+                  print(result.stderr[-2000:])
+          sys.exit(1 if failed else 0)
+          PY
+
+      - name: Verify the examples match their GDB capture
+        run: |
+          set -eu
+          # Most examples need a live kernel, so they cannot be executed
+          # here.  What *can* be checked without a debuggee is that the
+          # recorded shape of a real run -- the sections each example
+          # printed, and whether it survived -- still matches the tree.
+          # tools/run_examples_gdb.py writes that record from inside GDB;
+          # this re-derives the expected shape from the record and fails
+          # when a heading the record lists no longer exists in the
+          # source, which is what a renamed or deleted section looks like.
+          uv run --frozen python tools/check_example_capture.py
 
       - name: Verify the layout generator probes a real kernel
         run: |
