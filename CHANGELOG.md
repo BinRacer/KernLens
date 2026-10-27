@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `examples/` tree is now grouped by intent: `examples/api/` for
+  scripts written against the API, `examples/tracing/` for breakpoints
+  that log and keep running, and `examples/breakpoints/` for breakpoints
+  whose whole purpose is to stop.  The existing scripts moved unchanged
+  apart from their self-references (`slab_snapshot.py`, `trace.py`, and
+  `gdbinit.example` into `api/`; `gdb_tracer.py` and
+  `cve_2025_38616_trace.py` into `tracing/`), and every path that named
+  them -- `gdbinit.py`, `MANIFEST.in`, the CI workflow, both READMEs,
+  and `docs/architecture.md` -- follows.  Each directory carries a
+  README that starts from the question the reader actually has, and
+  `examples/README.md` routes between them.
+  - New `examples/api/hello.py` is the smallest useful script: it shows
+    where the installed names come from, how to fall back to importing
+    `src/` when run outside GDB, and four pure-Python calls.  It prints
+    the same eight lines in both contexts.
+  - New `examples/breakpoints/conditional.py` installs
+    `kbp-object <address>`, a `kfree` breakpoint that stops only for one
+    object.  It compares the slab object start rather than the raw
+    argument, because `kfree` legitimately receives interior pointers.
+  - New `examples/breakpoints/watchfield.py` installs
+    `kwatch-field <type> <field> <address> --expect N`, which reports
+    only the transition into a chosen value.  QEMU's gdbstub implements
+    no hardware watchpoints, so the command catches `gdb.error` and
+    names that limitation instead of surfacing the bare rsp error.
+
 - `kl-help` now requires a namespaced argument.  `kl-help kl-walk` (and
   `kl-help kernlens-walk`) work; a bare `kl-help walk` is rejected with a
   hint naming the `kl-` spelling.  KernLens registers `kl-*` and

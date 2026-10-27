@@ -3,11 +3,11 @@
 
 Run from an installed environment::
 
-    python examples/slab_snapshot.py
+    python examples/api/slab_snapshot.py
 
 or from a checkout::
 
-    PYTHONPATH=src python examples/slab_snapshot.py
+    PYTHONPATH=src python examples/api/slab_snapshot.py
 
 This example is deliberately self-contained: it works on a slab head and
 a page-table entry that need no live target.  The defaults are the
@@ -25,7 +25,7 @@ move on every boot.  The direct-map head and its PTE below were read
 from one real boot; override ``--page-offset-base`` / ``--vmemmap-base``
 (or ``--head``) to match your own kernel.
 
-``examples/gdb_tracer.py`` shows the same table assembled from live
+``examples/tracing/gdb_tracer.py`` shows the same table assembled from live
 memory inside GDB.
 """
 

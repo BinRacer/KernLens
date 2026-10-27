@@ -14,7 +14,7 @@
 an explicit ``from kernlens import ...``::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/trace.py
+    (gdb) source /path/to/KernLens/examples/api/trace.py
 
 The fallback below only exists so this file remains inspectable from a
 normal Python process; in GDB the names are already present.

@@ -39,7 +39,7 @@ Stateful components such as ``logger``, ``styler``, ``reader``, and
 ``slub`` are installed as the default instances owned by ``kdbg``::
 
     source /path/to/KernLens/gdbinit.py
-    source /path/to/KernLens/examples/trace.py
+    source /path/to/KernLens/examples/api/trace.py
 
 ``KERNLENS_API`` is the complete installed mapping; ``KERNLENS_QUALIFIED``
 and ``KERNLENS_PREFIXED`` hold the class-qualified aliases.

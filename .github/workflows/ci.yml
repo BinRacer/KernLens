@@ -15,7 +15,7 @@ on:
       - "LICENSE"
       - "docs/**"
       - "images/**"
-      - "examples/gdbinit.example"
+      - "examples/api/gdbinit.example"
   pull_request:
   # Lets a run be started (or re-run) by hand from the Actions tab.
   workflow_dispatch:
