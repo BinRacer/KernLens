@@ -1497,6 +1497,18 @@ class MemoryTests(GdbinitTestBase):
         out = self.invoke("kl-slab", "details 0x1000")
         self.assertIn("freelist", out)
 
+    def test_kl_slab_details_reports_the_slab_occupancy(self) -> None:
+        # `objects`/`inuse`/`frozen` come from one packed word, so they
+        # must be unpacked rather than read as separate fields.
+        fake_kdbg.fields[(0x1000, "__head_to_page__", "page")] = 0x2000
+        fake_kdbg.fields[(0x2000, "struct slab", "slab_cache")] = 0x3000
+        fake_kdbg.fields[(0x2000, "struct slab", "freelist")] = 0x0
+        out = self.invoke("kl-slab", "details 0x1000")
+        self.assertIn("objects: 16", out)
+        self.assertIn("inuse=3", out)
+        self.assertIn("frozen=0", out)
+        self.assertIn("state: partial", out)
+
     def test_kl_slab_details_focuses_one_cpu(self) -> None:
         fake_kdbg.fields[(0x1000, "__head_to_page__", "page")] = 0x2000
         fake_kdbg.fields[(0x2000, "struct slab", "slab_cache")] = 0x3000
@@ -1528,8 +1540,23 @@ class MemoryTests(GdbinitTestBase):
         cache = fake_kdbg.slab_cache("kmalloc-1k")
         fake_kdbg.partial[(cache.address, 0)] = (3, 0x3000, 0x4000, 0x5000)
         out = self.invoke("kl-slab", "info kmalloc-1k")
-        self.assertIn("nr_partial=3", out)
+        # pwndbg shows the count against the cache's watermark, and both
+        # are hex (indent.aux_hex), so `nr_partial=0x3`.
+        self.assertIn("nr_partial=0x3", out)
+        self.assertIn("min_partial=", out)
         self.assertIn("0x4000", out)
+
+    def test_kl_slab_info_shows_the_min_partial_watermark(self) -> None:
+        # `min_partial` lives on struct kmem_cache; reading it from the
+        # node would land on a different field.  The 6.1 VM reports 5.
+        cache = fake_kdbg.slab_cache("kmalloc-1k")
+        fake_kdbg.partial[(cache.address, 0)] = (3, 0x3000, 0x4000, 0x5000)
+        fake_kdbg.words[
+            "(unsigned long)&((struct kmem_cache *)0)->min_partial"
+        ] = 0x10
+        fake_kdbg.words[f"*(unsigned long *)({cache.address + 0x10:#x})"] = 5
+        out = self.invoke("kl-slab", "info kmalloc-1k")
+        self.assertIn("min_partial=0x5", out)
 
     def test_kl_slab_info_partial_skips_the_cpu_caches(self) -> None:
         out = self.invoke("kl-slab", "info kmalloc-1k -p")
