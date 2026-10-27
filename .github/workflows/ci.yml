@@ -65,6 +65,20 @@ jobs:
       - name: Test
         run: uv run --frozen pytest --cov=kernlens --cov-report=term-missing
 
+      - name: Verify the tutorial matches its capture
+        run: |
+          set -eu
+          # The tutorial shows real command output, so it is generated
+          # from a recorded capture rather than written by hand.  --check
+          # re-renders and fails when a page and the capture disagree,
+          # which is the only way this can be verified without a debuggee.
+          uv run --frozen python tools/gen_tutorial.py \
+            --capture tools/tutorial_capture.json \
+            --meta tools/tutorial_meta.json --check
+          uv run --frozen python tools/gen_tutorial_index.py \
+            --capture tools/tutorial_capture.json \
+            --meta tools/tutorial_meta.json --check
+
       - name: Verify the layout generator probes a real kernel
         run: |
           set -eu

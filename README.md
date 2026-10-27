@@ -47,7 +47,8 @@ kernlens/                          # repository root
 ├── gdbinit.py                    # optional ~/.gdbinit entry point
 ├── docs/
 │   ├── architecture.md           # layout, API map, and design notes
-│   └── naming.md                 # command and Python naming rules
+│   ├── naming.md                 # command and Python naming rules
+│   └── tutorial/                 # one generated page per command, real output
 ├── images/banner.svg
 ├── pyproject.toml
 ├── uv.lock
@@ -769,7 +770,9 @@ bare `pytest` run works from a checkout.
 See [`docs/architecture.md`](docs/architecture.md) for the public API
 map, module responsibilities, the SLUB inspection model, and GDB
 loading details.  [`docs/naming.md`](docs/naming.md) defines the
-command and Python naming rules.  Release history lives in
+command and Python naming rules.  For a guided tour with real output
+from a live kernel, start at [`docs/tutorial/`](docs/tutorial/README.md) --
+one page per command.  Release history lives in
 [`CHANGELOG.md`](CHANGELOG.md).
 
 ### Struct layouts: DWARF, then BTF, then a verified fallback

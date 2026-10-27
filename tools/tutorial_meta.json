@@ -1,0 +1,1933 @@
+[
+ {
+  "name": "kernlens-help",
+  "aliases": [
+   "kl-help"
+  ],
+  "category": "help",
+  "summary": "Lists every KernLens command, or explains one in detail.",
+  "usage": "kernlens-help [-h] [COMMAND]",
+  "examples": "kl-help\n  list every command\nkl-help kl-slab\n  explain kl-slab",
+  "notes": "The argument must be namespaced: ``kl-help kl-slab`` or ``kl-help kernlens-slab``.  A bare ``kl-help slab`` is rejected, because KernLens commands live in their own namespace and a bare name would read like a query about a GDB command.",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "command",
+    "help": "kernlens-* name or kl-* alias to describe (default: list all)",
+    "metavar": "COMMAND",
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-buddy",
+  "aliases": [
+   "kl-buddy"
+  ],
+  "category": "memory & symbols",
+  "summary": "Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.",
+  "usage": "kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]\n                      [--limit LIMIT]\n                      [command ...]",
+  "examples": "kl-buddy list -o 10\nkl-buddy info 0xffff8880032a1000\nkl-buddy info pfn:0x7400 -v\nkl-buddy freelist -o 10 -m Movable -v",
+  "notes": "`inf`o` accepts a virtual address, a physical address, a `struct page` address, or a `pfn:`/`phys:`/`page:`/`virt:` prefixed value.  The order comes from the block head's `private` field, which the kernel only maintains while a block is free; an allocated page reports `Order: -`.",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "command",
+    "help": "list [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] | info <addr> | freelist -o ORDER [-m MTYPE] | <addr>",
+    "metavar": "command",
+    "nargs": "*",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-z",
+     "--zone"
+    ],
+    "dest": "zone",
+    "help": "restrict to one zone (e.g. Normal).",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-o",
+     "--order"
+    ],
+    "dest": "order",
+    "help": "restrict to one buddy order (decimal).",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-m",
+     "--mtype"
+    ],
+    "dest": "mtype",
+    "help": "restrict to one migratetype (e.g. Movable).",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-n",
+     "--node"
+    ],
+    "dest": "node",
+    "help": "restrict to one NUMA node.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-v",
+     "--verbose"
+    ],
+    "dest": "verbose",
+    "help": "expand (freelist) or add detail (info).",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "--limit"
+    ],
+    "dest": "limit",
+    "help": "max blocks to expand with freelist -v (default 64).",
+    "metavar": null,
+    "nargs": "None",
+    "default": "64",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-base",
+  "aliases": [
+   "kl-base"
+  ],
+  "category": "kernel base & KASLR",
+  "summary": "Selects the runtime kernel text base and KASLR slide.",
+  "usage": "kernlens-base [-h]",
+  "examples": "kl-base\n  auto-detect and apply the runtime text base",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kbase",
+  "aliases": [
+   "kl-kbase"
+  ],
+  "category": "kernel base & KASLR",
+  "summary": "Finds the kernel virtual base address.",
+  "usage": "kernlens-kbase [-h] [-r] [-v]",
+  "examples": "kl-kbase\nkl-kbase --verbose\nkl-kbase --rebase",
+  "notes": "KernLens extras (hidden from --help): ``-s/--set`` applies the derived KASLR slide to the session, ``-i/--idt [count]`` dumps the interrupt descriptor table, and ``--text <addr>`` / ``--offset <slide>`` set the slide here (the equivalents of ``kl-kaslr`` and ``kl-kaslr-offset``), which is convenient because the report above already prints ``kaslr=+0x...``.",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-r",
+     "--rebase"
+    ],
+    "dest": "rebase",
+    "help": "rebase loaded symbol file",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-v",
+     "--verbose"
+    ],
+    "dest": "verbose",
+    "help": "also print the physical address of the text base",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-p",
+     "--phys"
+    ],
+    "dest": "phys",
+    "help": "==SUPPRESS==",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-s",
+     "--set"
+    ],
+    "dest": "set_offset",
+    "help": "==SUPPRESS==",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-i",
+     "--idt"
+    ],
+    "dest": "idt",
+    "help": "==SUPPRESS==",
+    "metavar": "COUNT",
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "--text"
+    ],
+    "dest": "text",
+    "help": "==SUPPRESS==",
+    "metavar": "ADDR",
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "--offset"
+    ],
+    "dest": "offset",
+    "help": "==SUPPRESS==",
+    "metavar": "SLIDE",
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kaslr",
+  "aliases": [
+   "kl-kaslr"
+  ],
+  "category": "kernel base & KASLR",
+  "summary": "Sets the KASLR slide from a runtime _text address.",
+  "usage": "kernlens-kaslr [-h] runtime_text",
+  "examples": "kl-kaslr 0xffffffff83000000",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "runtime_text",
+    "help": "runtime address of the _text symbol",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kaslr-offset",
+  "aliases": [
+   "kl-kaslr-offset"
+  ],
+  "category": "kernel base & KASLR",
+  "summary": "Sets the KASLR slide directly.",
+  "usage": "kernlens-kaslr-offset [-h] offset",
+  "examples": "kl-kaslr-offset 0x18e00000\nkl-kaslr-offset 0",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "offset",
+    "help": "KASLR slide (e.g. 0x18e00000)",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-cpu",
+  "aliases": [
+   "kl-cpu"
+  ],
+  "category": "CPU topology",
+  "summary": "Displays CPU topology, the online mask, and per-CPU offsets.",
+  "usage": "kernlens-cpu [-h] [cpu]",
+  "examples": "kl-cpu\nkl-cpu 3",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "cpu",
+    "help": "CPU id to describe (default: current CPU)",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-percpu",
+  "aliases": [
+   "kl-percpu"
+  ],
+  "category": "CPU topology",
+  "summary": "Resolves a per-CPU symbol to its runtime address for a CPU.",
+  "usage": "kernlens-percpu [-h] symbol [cpu]",
+  "examples": "kl-percpu current_task\nkl-percpu current_task 2",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "symbol",
+    "help": "a per-CPU symbol (e.g. current_task)",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "cpu",
+    "help": "CPU id (default: current CPU)",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-msr",
+  "aliases": [
+   "kl-msr"
+  ],
+  "category": "CPU topology",
+  "summary": "Reads or writes x86_64 model-specific registers (via GDB).",
+  "usage": "kernlens-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]",
+  "examples": "kl-msr --list\nkl-msr MSR_LSTAR\nkl-msr 0xc0000082\nkl-msr MSR_TSC_AUX --write 0x1\nkl-msr --range 0xc0000080-0xc0000103",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "msr",
+    "help": "MSR value or name",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-w",
+     "--write"
+    ],
+    "dest": "write",
+    "help": "value to write in MSR",
+    "metavar": "write_value",
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-l",
+     "--list"
+    ],
+    "dest": "list_msr",
+    "help": "list common MSRs for the current arch",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-r",
+     "--range"
+    ],
+    "dest": "msr_range",
+    "help": "dash separated range of MSRs to read",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-color",
+  "aliases": [
+   "kl-color"
+  ],
+  "category": "output",
+  "summary": "Enable, disable, or toggle ANSI color output.",
+  "usage": "kernlens-color [-h] [{on,off,toggle}]",
+  "examples": "kl-color on\nkl-color off\nkl-color toggle",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "state",
+    "help": "explicit state; no argument prints the current state",
+    "metavar": null,
+    "nargs": "?",
+    "default": "",
+    "choices": [
+     "on",
+     "off",
+     "toggle"
+    ]
+   }
+  ]
+ },
+ {
+  "name": "kernlens-slab",
+  "aliases": [
+   "kl-slab",
+   "kl-slabs"
+  ],
+  "category": "memory & symbols",
+  "summary": "Prints information about the linux kernel's slab allocator SLUB.",
+  "usage": "kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r]\n                     [--reclaim] [--ctor]\n                     [command ...]",
+  "examples": "kl-slab list\nkl-slab list kmalloc\nkl-slab info kmalloc-1k -v\nkl-slab contains 0xffff8880032a1c40\nkl-slab details 0xffff8880032a1c40 -c 0\nkl-slab 0xffff8880032a1c40            # legacy bare-address form",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "args",
+    "help": "list [filter] | info <name>... | contains <addr>... | details <addr>... | <addr>",
+    "metavar": "command",
+    "nargs": "*",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-v",
+     "--verbose"
+    ],
+    "dest": "verbose",
+    "help": "display more detailed information (with `info`)",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-c",
+     "--cpu"
+    ],
+    "dest": "cpu",
+    "help": "CPU to display",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-n",
+     "--node"
+    ],
+    "dest": "node",
+    "help": "",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-p",
+     "--partial"
+    ],
+    "dest": "partial",
+    "help": "displays partial lists",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-a",
+     "--active"
+    ],
+    "dest": "active",
+    "help": "displays the active list",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-i",
+     "--inuse"
+    ],
+    "dest": "inuse",
+    "help": "also show the object stride including metadata (with `info`)",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-r",
+     "--random"
+    ],
+    "dest": "random",
+    "help": "also show the freelist randomisation key (with `info`)",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "--reclaim"
+    ],
+    "dest": "reclaim",
+    "help": "also show whether SLAB_RECLAIM_ACCOUNT is set (with `info`)",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "--ctor"
+    ],
+    "dest": "ctor",
+    "help": "also show the cache's constructor symbol (with `info`)",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-d",
+     "--detail"
+    ],
+    "dest": "detail",
+    "help": "==SUPPRESS==",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-sym",
+  "aliases": [
+   "kl-sym"
+  ],
+  "category": "memory & symbols",
+  "summary": "Resolves an address to a symbol and source location.",
+  "usage": "kernlens-sym [-h] address",
+  "examples": "kl-sym $pc\nkl-sym 0xffffffff81000000",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "address",
+    "help": "address to resolve",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-bt",
+  "aliases": [
+   "kl-bt"
+  ],
+  "category": "memory & symbols",
+  "summary": "Prints a formatted kernel backtrace.",
+  "usage": "kernlens-bt [-h] [--chain] [depth]",
+  "examples": "kl-bt\nkl-bt 24\nkl-bt 24 --chain",
+  "notes": "``--chain`` selects the ``kl-chain`` presentation, so the compact view is reachable from the backtrace command itself.",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "depth",
+    "help": "maximum frames, 1-128 (default 8)",
+    "metavar": null,
+    "nargs": "?",
+    "default": "8",
+    "choices": null
+   },
+   {
+    "flags": [
+     "--chain"
+    ],
+    "dest": "chain",
+    "help": "print the compact caller <- callee chain instead of the frames",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-chain",
+  "aliases": [
+   "kl-chain"
+  ],
+  "category": "memory & symbols",
+  "summary": "Prints a compact caller <- callee call chain.",
+  "usage": "kernlens-chain [-h] [depth]",
+  "examples": "kl-chain\nkl-chain 12",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "depth",
+    "help": "maximum frames, 1-128 (default 8)",
+    "metavar": null,
+    "nargs": "?",
+    "default": "8",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-read",
+  "aliases": [
+   "kl-read"
+  ],
+  "category": "memory & symbols",
+  "summary": "Dumps kernel memory as 64-bit words with symbol annotations.",
+  "usage": "kernlens-read [-h] [-m {ascii}] address [count]",
+  "examples": "kl-read 0xffff8880032a1c40\nkl-read $rsp 16\nkl-read 0xffff8880032a1c40 64 --mode ascii",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "address",
+    "help": "address to read",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "count",
+    "help": "number of 8-byte words, 1-64 (default 8)",
+    "metavar": null,
+    "nargs": "?",
+    "default": "8",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-m",
+     "--mode"
+    ],
+    "dest": "mode",
+    "help": "dump raw bytes with an ASCII sidebar",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": [
+     "ascii"
+    ]
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kvar",
+  "aliases": [
+   "kl-kvar"
+  ],
+  "category": "memory & symbols",
+  "summary": "Reads a KASLR-aware kernel global variable.",
+  "usage": "kernlens-kvar [-h] symbol",
+  "examples": "kl-kvar jiffies\nkl-kvar &init_task",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "symbol",
+    "help": "kernel global name (e.g. jiffies), with optional leading &",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-read-field",
+  "aliases": [
+   "kl-read-field"
+  ],
+  "category": "memory & symbols",
+  "summary": "Reads a struct field (including nested paths) as an integer.",
+  "usage": "kernlens-read-field [-h] address type path",
+  "examples": "kl-read-field 0xffffea0000a1c000 'struct slab' slab_cache",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "address",
+    "help": "struct instance",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "type",
+    "help": "C type name (e.g. 'struct slab')",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "path",
+    "help": "field path (e.g. freelist or node[0])",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kbpf",
+  "aliases": [
+   "kl-kbpf"
+  ],
+  "category": "memory & symbols",
+  "summary": "Prints information about the linux kernel bpf progs and maps.",
+  "usage": "kernlens-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]",
+  "examples": "kl-kbpf\nkl-kbpf -p -v\nkl-kbpf -m --values\nkl-kbpf -b 0",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-v",
+     "--verbose"
+    ],
+    "dest": "verbose",
+    "help": "Increase the verbosity.",
+    "metavar": null,
+    "nargs": "0",
+    "default": "0",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-b",
+     "--break"
+    ],
+    "dest": "nth",
+    "help": "Break at the start of the nth JIT compiled ebpf prog.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-p",
+     "--progs"
+    ],
+    "dest": "progs",
+    "help": "Print progs",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-m",
+     "--maps"
+    ],
+    "dest": "maps",
+    "help": "Print maps",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "--values"
+    ],
+    "dest": "values",
+    "help": "dump array-map element values",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-buddydump",
+  "aliases": [
+   "kl-buddydump"
+  ],
+  "category": "memory & symbols",
+  "summary": "Displays metadata and freelists of the buddy allocator.",
+  "usage": "kernlens-buddydump [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-p] [-c CPU]\n                          [-n NODE] [-f FIND] [--MIGRATE_TYPES MIGRATE_TYPES]",
+  "examples": "kl-buddydump\nkl-buddydump -z Normal -o 0",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-z",
+     "--zone"
+    ],
+    "dest": "zone",
+    "help": "Displays/searches lists only in the specified zone.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-o",
+     "--order"
+    ],
+    "dest": "order",
+    "help": "Displays/searches lists only with the specified order.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-m",
+     "--mtype"
+    ],
+    "dest": "mtype",
+    "help": "Displays/searches lists only with the specified mtype.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-p",
+     "--pcp-only"
+    ],
+    "dest": "pcp_only",
+    "help": "Displays/searches only PCP lists.",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-c",
+     "--cpu"
+    ],
+    "dest": "cpu",
+    "help": "CPU nr for searching PCP.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-n",
+     "--node"
+    ],
+    "dest": "node",
+    "help": "",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-f",
+     "--find"
+    ],
+    "dest": "find",
+    "help": "The address to find in page free lists.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "--MIGRATE_TYPES"
+    ],
+    "dest": "MIGRATE_TYPES",
+    "help": "Use the specified MIGRATE_TYPES value",
+    "metavar": null,
+    "nargs": "None",
+    "default": "3",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kdmabuf",
+  "aliases": [
+   "kl-kdmabuf"
+  ],
+  "category": "memory & symbols",
+  "summary": "Prints DMA buf info.",
+  "usage": "kernlens-kdmabuf [-h]",
+  "examples": "kl-kdmabuf",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kcmdline",
+  "aliases": [
+   "kl-kcmdline"
+  ],
+  "category": "kernel metadata",
+  "summary": "Return the kernel command line (/proc/cmdline).",
+  "usage": "kernlens-kcmdline [-h]",
+  "examples": "kl-kcmdline\n  print the boot command line",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kversion",
+  "aliases": [
+   "kl-kversion"
+  ],
+  "category": "kernel metadata",
+  "summary": "Outputs the kernel version (/proc/version).",
+  "usage": "kernlens-kversion [-h]",
+  "examples": "kl-kversion\n  print the banner and the parsed release",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kconfig",
+  "aliases": [
+   "kl-kconfig"
+  ],
+  "category": "kernel metadata",
+  "summary": "Outputs the kernel config (/proc/config.gz).",
+  "usage": "kernlens-kconfig [-h] [-l FILE_PATH] [config_name]",
+  "examples": "kl-kconfig\n  dump every CONFIG_* option\nkl-kconfig RANDOMIZE_BASE\n  look up one option\nkl-kconfig --load /boot/config-$(uname -r)\n  merge a config file",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "config_name",
+    "help": "a config name to search for (e.g. RANDOMIZE_BASE)",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-l",
+     "--load"
+    ],
+    "dest": "file_path",
+    "help": "merge CONFIG_* lines from a kernel config file",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kchecksec",
+  "aliases": [
+   "kl-kchecksec"
+  ],
+  "category": "kernel metadata",
+  "summary": "Checks for kernel hardening configuration options.",
+  "usage": "kernlens-kchecksec [-h]",
+  "examples": "kl-kchecksec\n  audit the hardening CONFIG_* options",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kmod",
+  "aliases": [
+   "kl-kmod"
+  ],
+  "category": "kernel metadata",
+  "summary": "Displays the loaded Linux kernel modules.",
+  "usage": "kernlens-kmod [-h] [-l PATH] [module_name]",
+  "examples": "kl-kmod\n  list every module\nkl-kmod nf_tables\n  filter by name",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "module_name",
+    "help": "A module name to search for",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-l",
+     "--load"
+    ],
+    "dest": "path",
+    "help": "the path of the module to load",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-ksyscalls",
+  "aliases": [
+   "kl-ksyscalls"
+  ],
+  "category": "kernel metadata",
+  "summary": "Displays the Linux syscall table, including names and addresses of syscalls.",
+  "usage": "kernlens-ksyscalls [-h] [syscall_name]",
+  "examples": "kl-ksyscalls\n  list the whole table\nkl-ksyscalls open",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "syscall_name",
+    "help": "a syscall name to search for",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-kdmesg",
+  "aliases": [
+   "kl-kdmesg"
+  ],
+  "category": "kernel metadata",
+  "summary": "Displays the kernel ring buffer (dmesg) contents.",
+  "usage": "kernlens-kdmesg [-h] [-T]",
+  "examples": "kl-kdmesg\n  print the ring buffer\nkl-kdmesg --ctime",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-T",
+     "--ctime"
+    ],
+    "dest": "ctime",
+    "help": "print human-readable (wall-clock) timestamps",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-klookup",
+  "aliases": [
+   "kl-klookup",
+   "kl-kallsyms",
+   "kl-ks"
+  ],
+  "category": "kernel metadata",
+  "summary": "Lookup kernel symbols",
+  "usage": "kernlens-klookup [-h] [-a] [symbol]",
+  "examples": "kl-klookup commit_creds\nkl-klookup 0xffffffff81000000",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "symbol",
+    "help": "Address or symbol name to lookup",
+    "metavar": null,
+    "nargs": "?",
+    "default": "",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-a",
+     "--apply"
+    ],
+    "dest": "apply",
+    "help": "applies all the symbols that satisfy the filter",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-status",
+  "aliases": [
+   "kl-status"
+  ],
+  "category": "overview",
+  "summary": "Shows the KernLens version, color mode, KASLR slide, and layout.",
+  "usage": "kernlens-status [-h]",
+  "examples": "kl-status",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-addr",
+  "aliases": [
+   "kl-addr"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Prints a full KAddr analysis of an address.",
+  "usage": "kernlens-addr [-h] address [tag_mask]",
+  "examples": "kl-addr 0xffff888000001234\nkl-addr 0xffff888000001234 0xfff",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "address",
+    "help": "address or GDB expression to analyse",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "tag_mask",
+    "help": "mask used for pointer-tag analysis (e.g. 0xfff)",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-page",
+  "aliases": [
+   "kl-page"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Classifies an address and translates direct-map addresses.",
+  "usage": "kernlens-page [-h] [-v] address",
+  "examples": "kl-page 0xffff888000001000\nkl-page 0xffff888000001000 --verbose",
+  "notes": "``-v/--verbose`` delegates to the ``kl-addr`` analysis, so the full breakdown is available without knowing which of the two commands reports more.",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "address",
+    "help": "address or GDB expression to classify",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-v",
+     "--verbose"
+    ],
+    "dest": "verbose",
+    "help": "add the full KAddr analysis (canonicality, alignment, tags)",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-pte",
+  "aliases": [
+   "kl-pte"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Decodes page-table entry flags and leaf translations.",
+  "usage": "kernlens-pte [-h] entry [va]",
+  "examples": "kl-pte 0x8000000000123067\nkl-pte 0x8000000000123067 0xffff888000001234",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "entry",
+    "help": "raw page-table entry value",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "va",
+    "help": "address used for the leaf translations",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-pt",
+  "aliases": [
+   "kl-pt"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Shows 4-level/5-level page-table indices for an address.",
+  "usage": "kernlens-pt [-h] va",
+  "examples": "kl-pt 0xffff888000001234",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "va",
+    "help": "virtual address to split",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-walk",
+  "aliases": [
+   "kl-walk"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Walks the live page tables and decodes every level.",
+  "usage": "kernlens-walk [-h] [-p ROOT] va [{4,5}]",
+  "examples": "kl-walk 0xffff888000001234\nkl-walk 0xffff800000201234 5\nkl-walk 0xffff888000001234 --pgd 0x10000",
+  "notes": "``-p/--pgd`` walks a table other than the live CR3 -- a saved or foreign root, so a page table of another task can be followed without switching to it.",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "va",
+    "help": "virtual address to translate",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "mode",
+    "help": "force 4-level or 5-level paging (default: auto)",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": [
+     "4",
+     "5"
+    ]
+   },
+   {
+    "flags": [
+     "-p",
+     "--pgd"
+    ],
+    "dest": "root",
+    "help": "top-level table to start from (default: the live CR3)",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-pagewalk",
+  "aliases": [
+   "kl-pagewalk"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Walks the page tables in pwndbg's pagewalk format.",
+  "usage": "kernlens-pagewalk [-h] [-p ENTRY] vaddr",
+  "examples": "kl-pagewalk 0xffff888000001234\nkl-pagewalk 0xffff888000001234 --pgd 0x10000",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "vaddr",
+    "help": "virtual address to walk",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-p",
+     "--pgd"
+    ],
+    "dest": "entry",
+    "help": "Top-level table address",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-p2v",
+  "aliases": [
+   "kl-p2v"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Translates a physical address to virtual + struct page.",
+  "usage": "kernlens-p2v [-h] paddr",
+  "examples": "kl-p2v 0x1000",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "paddr",
+    "help": "physical address to translate",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-v2p",
+  "aliases": [
+   "kl-v2p"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Translates a virtual address (live page tables) to physical.",
+  "usage": "kernlens-v2p [-h] vaddr",
+  "examples": "kl-v2p 0xffff888000001234",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "vaddr",
+    "help": "virtual address to translate",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-pageinfo",
+  "aliases": [
+   "kl-pageinfo"
+  ],
+  "category": "addresses & page tables",
+  "summary": "Translates a struct page to virtual and physical addresses.",
+  "usage": "kernlens-pageinfo [-h] page",
+  "examples": "kl-pageinfo 0xffffea0000000040",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "page",
+    "help": "address of a struct page (head page)",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-bits",
+  "aliases": [
+   "kl-bits"
+  ],
+  "category": "bit & integer primitives",
+  "summary": "Inspects a 64-bit value; optionally test/set/clear a bit.",
+  "usage": "kernlens-bits [-h] value [bit]",
+  "examples": "kl-bits 0xff\nkl-bits 0xff 3",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "value",
+    "help": "value to inspect (0x hex, decimal, bare hex)",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "bit",
+    "help": "bit index 0-63 to test/set/clear/toggle",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-int",
+  "aliases": [
+   "kl-int"
+  ],
+  "category": "bit & integer primitives",
+  "summary": "Shows signed/unsigned and LE/BE integer views.",
+  "usage": "kernlens-int [-h] value [width]",
+  "examples": "kl-int 0x1234 16\nkl-int -1 32",
+  "notes": "",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "value",
+    "help": "integer to inspect",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "width",
+    "help": "width in bits: 8, 16, 32, or 64 (default 64)",
+    "metavar": null,
+    "nargs": "?",
+    "default": "64",
+    "choices": null
+   }
+  ]
+ }
+]

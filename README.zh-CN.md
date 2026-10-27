@@ -47,7 +47,8 @@ kernlens/                          # 仓库根
 ├── gdbinit.py                    # 可选的 ~/.gdbinit 入口
 ├── docs/
 │   ├── architecture.md           # 结构、API 地图与设计说明
-│   └── naming.md                 # 命令与 Python 命名规范
+│   ├── naming.md                 # 命令与 Python 命名规范
+│   └── tutorial/                 # 每个命令一页，均为真实内核输出
 ├── images/banner.svg
 ├── pyproject.toml
 ├── uv.lock
@@ -733,8 +734,9 @@ uv run python -m unittest discover -s tests/integration
 
 公共 API 地图、模块职责、SLUB 检查模型与 gdb 加载方式见
 [`docs/architecture.md`](docs/architecture.md)；命令与 Python 命名
-规范见 [`docs/naming.md`](docs/naming.md)；版本历史见
-[`CHANGELOG.md`](CHANGELOG.md)。
+规范见 [`docs/naming.md`](docs/naming.md)。想按命令逐个上手、并看到
+真实内核的输出，从 [`docs/tutorial/`](docs/tutorial/README.md) 开始
+——每个命令一页。版本历史见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ### 结构体布局：DWARF → BTF → 验证过的兜底表
 

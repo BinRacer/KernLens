@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import importlib
 import io
+import json
 import re
 import sys
 import types
@@ -2804,6 +2806,99 @@ class DocumentationTests(unittest.TestCase):
         from contract_spec import CANONICAL_COMMANDS as FROZEN
 
         self.assertEqual(self._documented("README.zh-CN.md"), set(FROZEN))
+
+
+class TutorialTests(unittest.TestCase):
+    """The generated tutorial must match the capture it was built from.
+
+    The tutorial shows real output, so it is generated rather than
+    written: ``tools/tutorial_capture.py`` records what the commands
+    printed on a live kernel, and ``tools/gen_tutorial.py`` renders one
+    page per command.  These tests re-render and compare, which is what
+    catches the two failures that matter -- a page drifting from the
+    capture, and a command that has no page at all.
+    """
+
+    TUTORIAL = GDBINIT_PATH.parent / "docs" / "tutorial"
+    CAPTURE = GDBINIT_PATH.parent / "tools" / "tutorial_capture.json"
+    META = GDBINIT_PATH.parent / "tools" / "tutorial_meta.json"
+
+    def _render(self, module: str, extra: tuple[str, ...] = ()) -> int:
+        """Run a generator's ``--check`` mode and return its exit code."""
+        sys.path.insert(0, str(GDBINIT_PATH.parent))
+        try:
+            generator = importlib.import_module(f"tools.{module}")
+            return generator.main([
+                "--capture", str(self.CAPTURE),
+                "--meta", str(self.META),
+                "--out", str(self.TUTORIAL),
+                "--check",
+                *extra,
+            ])
+        finally:
+            sys.path.pop(0)
+
+    def test_pages_match_the_capture(self) -> None:
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(self._render("gen_tutorial"), 0, out.getvalue())
+
+    def test_index_matches_the_capture(self) -> None:
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = self._render("gen_tutorial_index")
+        self.assertEqual(code, 0, out.getvalue())
+
+    def test_every_command_has_a_page(self) -> None:
+        from contract_spec import CANONICAL_COMMANDS as FROZEN
+
+        pages = {p.stem for p in self.TUTORIAL.glob("kl-*.md")}
+        expected = {
+            "kl-" + name.removeprefix("kernlens-") for name in FROZEN
+        }
+        self.assertEqual(pages, expected)
+
+    def test_every_page_is_linked_from_the_index(self) -> None:
+        index = (self.TUTORIAL / "README.md").read_text(encoding="utf-8")
+        linked = set(re.findall(r"\]\((kl-[a-z0-9-]+)\.md\)", index))
+        pages = {p.stem for p in self.TUTORIAL.glob("kl-*.md")}
+        self.assertEqual(linked, pages)
+
+    def test_no_capture_raised(self) -> None:
+        # A capture is a record of what really happened; an invocation
+        # that raised means the page would document a broken command.
+        capture = json.loads(self.CAPTURE.read_text(encoding="utf-8"))
+        failing = [
+            row["invocation"] for row in capture["cases"]
+            if row["output"].startswith("<EXCEPTION>")
+        ]
+        self.assertEqual(failing, [])
+
+    def test_pages_have_no_hidden_option_leak(self) -> None:
+        # KernLens-only flags are hidden with argparse.SUPPRESS; the
+        # tutorial renders the visible surface only, so the sentinel must
+        # never reach a page.
+        for page in self.TUTORIAL.glob("kl-*.md"):
+            with self.subTest(page=page.name):
+                self.assertNotIn(
+                    "SUPPRESS", page.read_text(encoding="utf-8"),
+                )
+
+    def test_tables_are_well_formed(self) -> None:
+        # A help string containing a literal pipe would otherwise split a
+        # row into extra columns.
+        for page in self.TUTORIAL.glob("*.md"):
+            columns = None
+            for number, line in enumerate(
+                page.read_text(encoding="utf-8").splitlines(), 1,
+            ):
+                if not line.startswith("|"):
+                    columns = None
+                    continue
+                count = len(re.findall(r"(?<!\\)\|", line))
+                if columns is None:
+                    columns = count
+                else:
+                    with self.subTest(page=page.name, line=number):
+                        self.assertEqual(count, columns, line)
 
 
 if __name__ == "__main__":
