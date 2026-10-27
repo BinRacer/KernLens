@@ -1,0 +1,47 @@
+---
+name: Wrong answer
+about: A command printed something that is not true about the kernel
+labels: ["correctness"]
+---
+
+<!--
+This is the report this project cares most about.  A plausible wrong
+number is worse than an error, because someone will build on it.
+-->
+
+## What did it print
+
+```
+paste the command and its output
+```
+
+## What is actually true
+
+How you know -- `crash`, a second tool, the kernel source, a hand
+calculation, or the hardware behaviour. The comparison is the useful
+part; "it looks wrong" is not yet actionable.
+
+```
+what the right answer is, if you have it
+```
+
+## Reproducing
+
+| Fact | Value |
+| --- | --- |
+| Kernel version | e.g. `6.1.134` |
+| Architecture | x86_64 |
+| Debug info | DWARF / BTF only / neither |
+| Paging levels | 4 / 5 |
+| KASLR | on / off |
+| `kl-base` run first? | yes / no |
+| KASLR slide reported | e.g. `0x10c00000` |
+
+If the command refused or printed a marker (`not present`, `unknown`,
+`-`), say so -- that is documented behaviour, and the interesting
+question becomes whether it refused when it should not have.
+
+## Anything else
+
+Config fragments (`CONFIG_SLUB_*`, `CONFIG_RANDOMIZE_BASE`), the cache
+name, the address range -- whatever narrowed it down for you.

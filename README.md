@@ -13,6 +13,7 @@
   </p>
 
   <p>
+    <a href="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml"><img src="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
@@ -254,6 +255,7 @@ registry by the test suite, so it cannot quietly become false.
 | [`examples/`](examples/README.md) | runnable scripts, grouped by intent |
 | [`docs/naming.md`](docs/naming.md) | command and filename conventions |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | setup, tests, the layout generator |
+| [`SECURITY.md`](SECURITY.md) | what counts as a vulnerability, and how to report one privately |
 | [`CHANGELOG.md`](CHANGELOG.md) | every change, newest first |
 
 ## Requirements and license

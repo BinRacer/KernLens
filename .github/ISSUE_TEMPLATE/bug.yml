@@ -1,0 +1,32 @@
+---
+name: Bug or crash
+about: An exception, a hang, or a command that will not run
+labels: ["bug"]
+---
+
+## What happened
+
+```
+the traceback, or the command and what it did instead of working
+```
+
+## Expected
+
+## Environment
+
+| Fact | Value |
+| --- | --- |
+| KernLens version or commit | e.g. `v0.2.0`, or `git rev-parse --short HEAD` |
+| Kernel version | e.g. `6.1.134` |
+| Architecture | x86_64 |
+| GDB version and its Python | `gdb --version`, `gdb -batch -ex "python import sys; print(sys.version)"` |
+| Installed or from a checkout | `source /path/to/gdbinit.py` / copied into `~/.gdbinit` |
+| Other GDB extensions loaded | pwndbg / gef / none |
+
+`gdb --version` and the Python version inside GDB matter more than they
+look: the tool is imported by GDB's interpreter, not by the shell's.
+
+```
+gdb --version | head -1
+gdb -batch -nx -ex "python import sys; print(sys.version)" 2>&1 | head -2
+```

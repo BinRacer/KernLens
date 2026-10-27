@@ -39,6 +39,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ceiling, it shows real captured output, and the material moved out of
   it is still reachable from it.  Growing the README back is the easy
   mistake -- appending one more table is always locally reasonable.
+- A CI status badge in both READMEs, pointing at the `CI` workflow
+  rather than at a hardcoded state, so it reports what actually
+  happened on the last run.
+- `SECURITY.md`, separating the failure modes this project cares about
+  from the ones it does not.  The first category is *confident wrong
+  answers* -- a page walk that reports a present mapping that is not
+  there, a SLUB decode that names the wrong cache.  A tool that is
+  trusted about memory makes a plausible wrong number worse than an
+  error.  The document also says what is explicitly *not* a
+  vulnerability (a value the command marked as unconfirmed, a
+  non-x86_64 kernel, a missing debuggee) so that reports can start at
+  the interesting end.
+- Issue templates: a wrong-answer template that asks for the comparison
+  that makes a report actionable, a bug template that asks for the GDB
+  Python version (the tool is imported by GDB's interpreter, not the
+  shell's), and a feature template that asks what the command must
+  *refuse*.  Plus a PR template whose checklist includes "the tutorial
+  was regenerated, not hand-edited".
 
 ### Added
 
