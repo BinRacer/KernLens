@@ -27,6 +27,40 @@ and used alone.
 | `stour [cache]` | [`slab_tour.py`](slab_tour.py) | `kl-slab` `kl-buddy` |
 | `ytour [symbol]` | [`symbols_tour.py`](symbols_tour.py) | `kl-klookup` `kl-sym` `kl-read` `kl-kvar` `kl-read-field` `kl-bt` `kl-chain` |
 
+## The one that decodes rather than describes
+
+[`freelist_walk.py`](freelist_walk.py) is the only example here with no
+command equivalent, and that is the point.  `kl-slab` reports what the
+allocator *says*; `flwalk` shows what the allocator actually *stored* and
+the arithmetic that turns it back into a pointer:
+
+```console
+cpu 0 first object : 0xffff88d6067d7c00
+  slot address   : 0xffff88d6067d7e00   (object + offset 512)
+  stored word    : 0xc694f535109ca9bc
+  decoded next   : 0xffff88d6067d6c00
+  the arithmetic : 0xffff88d6067d6c00 ^ 0x391500e5c0693a43 ^ swab(0xffff88d6067d7e00) = 0xc694f535109ca9bc
+  check          : 0xc694f535109ca9bc
+```
+
+Three things in there cannot be seen from a report.  The **stored word is
+not a pointer**: with `SLAB_FREELIST_HARDENED=y` it is the next free
+object XORed with a per-cache random and the slot's own address, so a
+stale read of a freed object looks like noise rather than like another
+object.  The **chain is not sequential**: `SLAB_FREELIST_RANDOM=y` means
+the indices jump (`15, 11, 3, 2, 13, ...`), which is why walking it needs
+the decode loop rather than a stride.  And the **object count lives on
+the compound head, not on the object's page**: a `kmalloc-1k` slab is
+order 2, so three of its four pages are tails whose `counters` word reads
+as zero -- reading it there is the bug that produced `object 3 of 0` in
+the first draft of this file, and the example now prints both readings
+side by side so the failure is visible rather than described.
+
+Run it after `kfacts`: if `SLAB_FREELIST_HARDENED=n` there is no decode to
+show, and if `INIT_ON_FREE_DEFAULT_ON=y` every freed slot is zeroed and
+every chain is one link long.  Neither makes the walk wrong; both make it
+short, and the example says so.
+
 ## The pure-Python tours
 
 Three scripts for the half of KernLens that needs no debugger at all.

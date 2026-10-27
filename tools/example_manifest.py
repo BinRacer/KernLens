@@ -65,8 +65,15 @@ REQUIRED_COMMAND_COVERAGE: int = 35
 #: reads as a decision rather than an oversight -- and so that whoever
 #: closes the gap knows what the gap is.
 UNCOVERED_COMMANDS: dict[str, str] = {
-    "kernlens-bits": "bit/integer primitives; a tour is planned for Phase 3",
-    "kernlens-int": "same as kernlens-bits",
+    "kernlens-bits": (
+        "the BitOps primitives are covered as Python API by bitops_tour.py, "
+        "but the command form has no example of its own"
+    ),
+    "kernlens-int": (
+        "the IntCodec/IntFmt primitives are covered as Python API by "
+        "intcodec_tour.py and intfmt_tour.py, but the command form has "
+        "no example of its own"
+    ),
     "kernlens-buddydump": "needs a workload that leaves free blocks at a known order",
     "kernlens-kbpf": "needs BPF programs loaded in the target",
     "kernlens-kdmabuf": "needs a DMA-buf exporter; nothing exports on an idle VM",
@@ -194,6 +201,39 @@ EXAMPLES: tuple[Example, ...] = (
         purpose="read allocator state from the cache down to one object",
         surface=("kdbg.cpu_freelist", "kdbg.slab_cache"),
         commands=("kernlens-base", "kernlens-slab", "kernlens-buddy"),
+    ),
+    _example(
+        "api", "freelist_walk.py",
+        purpose=(
+            "decode the SLUB freelist instead of describing it -- the "
+            "stored word, the arithmetic that turns it into a pointer, "
+            "and the page-versus-head distinction that makes the count "
+            "readable"
+        ),
+        surface=(
+            "kdbg.cache_name",
+            "kdbg.compound_head",
+            "kdbg.cpu_active_slab",
+            "kdbg.cpu_freelist",
+            "kdbg.cpu_slab_ptr",
+            "kdbg.decode_freeptr",
+            "kdbg.freelist_dist",
+            "kdbg.freeptr_offset",
+            "kdbg.freeptr_random",
+            "kdbg.head_to_page",
+            "kdbg.in_partial",
+            "kdbg.kconfig_get",
+            "kdbg.neighbour_objects",
+            "kdbg.nr_cpus",
+            "kdbg.object_index",
+            "kdbg.page_bytes",
+            "kdbg.partial_info",
+            "kdbg.print_slab",
+            "kdbg.slab_cache",
+            "kdbg.slab_counters",
+            "kdbg.slab_state",
+            "kdbg.u64",
+        ),
     ),
     _example(
         "api", "symbols_tour.py",

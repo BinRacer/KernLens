@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `examples/api/freelist_walk.py` (`flwalk`) — the SLUB freelist as an
+  *encoding* rather than a report.  It prints the hardening config first
+  (`SLAB_FREELIST_HARDENED`, `SLAB_FREELIST_RANDOM`, `INIT_ON_*`),
+  then decodes a live `kmalloc-1k` slot three ways: the stored word, the
+  decoded pointer, and the XOR arithmetic that relates them, so the
+  formula is checkable instead of quoted.  It follows each CPU's chain
+  with cycle detection, then shows the compound-head distinction that a
+  tail page hides.  This closes `slub` 3/18 -> **18/18**, the only
+  facade component of size that is now complete.
+- Two real defects were found by running it and are now part of the
+  output rather than edited away:
+  - Deriving the slab head from an object address by hand lands on a
+    tail page for any slab larger than one page, and that page's
+    `counters` word reads as zero -- so the object index was right and
+    the count was nonsense (`object 3 of 0`).  `cpu_active_slab()` was
+    the correct source; the example prints the tail-page reading, the
+    `compound_head()` reading and the `cpu_active_slab()` reading side
+    by side.
+  - `print_slab()` takes an *object* address and walks to the slab
+    internally; passing a `struct page` yields `<cannot translate head>`.
+- `docs/example-coverage-plan.md` records Phase 2 as done with the
+  measured numbers, and notes where execution diverged from the plan:
+  `slab_tour.py` was not extended, because splitting the ten extra
+  bindings across two files would have meant assembling one model from
+  two places.
+- `UNCOVERED_COMMANDS` reasons for `kernlens-bits` / `kernlens-int`
+  corrected.  They said "a tour is planned for Phase 3"; Phase 3
+  covered the *primitives* as Python API and the command forms are
+  still unexercised, which is what the strings now say.
 - Three pure-Python tours that close the core-class coverage completely.
   All three run on the host as well as inside GDB, so their *output* is
   asserted in tests rather than merely their existence:
