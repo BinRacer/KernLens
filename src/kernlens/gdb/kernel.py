@@ -99,8 +99,7 @@ class KernelInspector(
     def reset(self) -> None:
         """Drop cached derived state (call after an objfile reload)."""
         self._offsets = {}
-        self._fallbacks.clear()
-        self._btf = False
+        self.clear_layout_fallbacks()
         self._config = None
         self._module_name = False
         self._mem_layout = False

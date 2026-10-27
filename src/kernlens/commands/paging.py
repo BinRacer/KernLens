@@ -21,7 +21,12 @@ from .. import KERNEL_BASE, KAddr, KPageTable
 from ..gdb.facade import kdbg
 from ..output import message
 from ..output.tree import IndentContextManager
-from .formatting import page_offset_base, parse_int, vmemmap_base
+from .formatting import (
+    fmt_onoff,
+    page_offset_base,
+    parse_int,
+    vmemmap_base,
+)
 from .framework import Command, CommandCategory, parse_int_arg
 
 
@@ -31,11 +36,6 @@ def _runtime_text() -> int | None:
     if link is None:
         return None
     return (link + kdbg.kaslr_offset) & 0xFFFFFFFFFFFFFFFF
-
-
-def _onoff(value: bool) -> str:
-    """Paint a boolean as an on/off status."""
-    return message.on("True") if value else message.off("False")
 
 
 def _print_page_info(indent: IndentContextManager, phys: int, page: int) -> None:
@@ -85,18 +85,18 @@ def kernlens_addr(address: int, tag_mask: int | None = None) -> None:
     indent.print(indent.prefix("Address") + ": " + indent.addr_hex(address))
     indent.print(
         indent.prefix("Canonical")
-        + ": 48=" + _onoff(KAddr.is_canonical(address, 48))
-        + "  57=" + _onoff(KAddr.is_canonical(address, 57))
+        + ": 48=" + fmt_onoff(KAddr.is_canonical(address, 48))
+        + "  57=" + fmt_onoff(KAddr.is_canonical(address, 57))
     )
     indent.print(
         indent.prefix("Region")
-        + ": kernel=" + _onoff(KAddr.is_kernel(address))
-        + " user=" + _onoff(KAddr.is_user(address))
-        + " direct=" + _onoff(direct)
-        + " vmemmap=" + _onoff(KAddr.is_vmemmap(address, vmemmap))
-        + " vmalloc=" + _onoff(KAddr.is_vmalloc(address))
-        + " module=" + _onoff(KAddr.is_module(address))
-        + " text=" + _onoff(KAddr.is_text(address, text or KERNEL_BASE))
+        + ": kernel=" + fmt_onoff(KAddr.is_kernel(address))
+        + " user=" + fmt_onoff(KAddr.is_user(address))
+        + " direct=" + fmt_onoff(direct)
+        + " vmemmap=" + fmt_onoff(KAddr.is_vmemmap(address, vmemmap))
+        + " vmalloc=" + fmt_onoff(KAddr.is_vmalloc(address))
+        + " module=" + fmt_onoff(KAddr.is_module(address))
+        + " text=" + fmt_onoff(KAddr.is_text(address, text or KERNEL_BASE))
     )
     if KAddr.is_err(address):
         indent.print(
@@ -164,13 +164,13 @@ def kernlens_page(address: int, verbose: bool = False) -> None:
     indent.print(indent.prefix("Address") + ": " + indent.addr_hex(address))
     indent.print(
         indent.prefix("Class")
-        + ": kernel=" + _onoff(KAddr.is_kernel(address))
-        + " user=" + _onoff(KAddr.is_user(address))
-        + " direct=" + _onoff(direct)
-        + " vmemmap=" + _onoff(KAddr.is_vmemmap(address, vmemmap))
-        + " vmalloc=" + _onoff(KAddr.is_vmalloc(address))
-        + " module=" + _onoff(KAddr.is_module(address))
-        + " text=" + _onoff(KAddr.is_text(address, text or KERNEL_BASE))
+        + ": kernel=" + fmt_onoff(KAddr.is_kernel(address))
+        + " user=" + fmt_onoff(KAddr.is_user(address))
+        + " direct=" + fmt_onoff(direct)
+        + " vmemmap=" + fmt_onoff(KAddr.is_vmemmap(address, vmemmap))
+        + " vmalloc=" + fmt_onoff(KAddr.is_vmalloc(address))
+        + " module=" + fmt_onoff(KAddr.is_module(address))
+        + " text=" + fmt_onoff(KAddr.is_text(address, text or KERNEL_BASE))
     )
     if direct:
         phys = KAddr.virt_to_phys(address, page_offset)
@@ -216,7 +216,7 @@ def kernlens_pte(entry: int, va: int | None = None) -> None:
     indent = IndentContextManager()
     indent.print(
         indent.prefix("PTE") + ": " + indent.addr_hex(entry)
-        + " present=" + _onoff(KPageTable.pte_present(entry))
+        + " present=" + fmt_onoff(KPageTable.pte_present(entry))
         + " bit7=PS/PAT"
     )
     indent.print(
@@ -282,8 +282,8 @@ def kernlens_pt(va: int) -> None:
     )
     indent.print(
         indent.prefix("aligned")
-        + ": 2m=" + _onoff(KPageTable.is_2m_aligned(va))
-        + " 1g=" + _onoff(KPageTable.is_1g_aligned(va))
+        + ": 2m=" + fmt_onoff(KPageTable.is_2m_aligned(va))
+        + " 1g=" + fmt_onoff(KPageTable.is_1g_aligned(va))
         + " page_offset=" + indent.aux_hex(KPageTable.page_offset(va))
     )
     indent.print(

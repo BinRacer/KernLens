@@ -333,34 +333,6 @@ class BuddyInspector(InspectorBase):
             names.append(text)
         return tuple(names)
 
-    def _migratetype_from_enum(self) -> tuple[str, ...]:
-        """Build a name list from ``enum migratetype``'s members, or ``()``.
-
-        Not on the main path: the members are ``MIGRATE_*`` identifiers,
-        not the display names, and two of them (``MIGRATE_HIGHATOMIC``
-        and ``MIGRATE_PCPTYPES``) share a value, so deriving the labels
-        means guessing which alias names the list.  It is offered only as
-        a diagnostic for a kernel whose ``migratetype_names`` is missing.
-        """
-        members = self.enum_members("migratetype")
-        if not members:
-            return ()
-        names: list[str] = []
-        seen: set[int] = set()
-        for member, value in sorted(members.items(), key=lambda item: item[1]):
-            if not member.startswith("MIGRATE_") or member == "MIGRATE_TYPES":
-                continue
-            if value in seen:
-                continue
-            seen.add(value)
-            label = member.removeprefix("MIGRATE_").capitalize()
-            if label == "Pcptypes":
-                # The alias that shares ``MIGRATE_HIGHATOMIC``'s value;
-                # the other spelling is the one the allocator prints.
-                continue
-            names.append(label)
-        return tuple(names) if names else ()
-
     def _nzones(self) -> int:
         """Return how many ``node_zones[]`` entries a pgdat has.
 

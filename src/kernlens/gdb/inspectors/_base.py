@@ -124,34 +124,7 @@ class InspectorBase:
     #: Lazily loaded BTF database; ``False`` means "not looked up yet".
     _btf: "btf.BTF | None | bool"
 
-    # --- version hints ------------------------------------------
-
-    def has_type(self, type_name: str) -> bool:
-        """Whether the loaded debug info defines *type_name*.
-
-        DWARF is asked first (an objfile's type table is exact), then
-        BTF.  A type that is absent from both is simply unknown to this
-        session, which callers must handle rather than assume a layout.
-        """
-        try:
-            gdb.lookup_type(type_name)
-            return True
-        except (gdb.error, AttributeError, TypeError, ValueError):
-            pass
-        database = self._btf_database()
-        return bool(database and database.has(type_name))
-
-    def has_enum(self, enum_name: str) -> bool:
-        """Whether the loaded debug info defines *enum_name*.
-
-        An enum *name* is the weakest available signal -- the enum
-        behind ``PGTY_buddy`` is declared anonymously and only named
-        after the fact -- so prefer :meth:`has_constant` for ABI probes.
-        """
-        if self._lookup_enum(enum_name) is not None:
-            return True
-        database = self._btf_database()
-        return bool(database and database.has_enum(enum_name))
+    # --- enum / constant probes -----------------------------------------
 
     def enum_value(
         self, enum_or_member: str, member: str | None = None,
@@ -234,11 +207,6 @@ class InspectorBase:
         """
         database = self._btf_database()
         return database.enum_with_member(member) if database else None
-
-    def enum_names(self) -> tuple[str, ...]:
-        """Return every enum name BTF knows, or ``()`` when there is none."""
-        database = self._btf_database()
-        return database.enums() if database else ()
 
     @staticmethod
     def _dwarf_constant(member: str) -> int | None:

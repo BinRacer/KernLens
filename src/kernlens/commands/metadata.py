@@ -478,10 +478,10 @@ def kernlens_klookup(symbol: str = "", apply: bool = False) -> None:  # noqa: A0
         print(f"{entry.address:#x} {entry.type or '?'} {entry.name}")
     print(message.notice(f"{len(symbols)} symbol(s) found"))
     if apply:
-        _kallsyms_apply(symbols)
+        _kallsyms_apply()
 
 
-def _kallsyms_apply(symbols: object) -> None:
+def _kallsyms_apply() -> None:
     """Report that ``--apply`` needs an ELF symbol table (pwndbg parity).
 
     pwndbg reconstructs a symbol table from the kallsyms and loads it into

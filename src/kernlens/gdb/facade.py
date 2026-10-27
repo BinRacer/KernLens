@@ -273,22 +273,6 @@ class KernelDebugger:
             return None
         return self._result_offset(result)
 
-    def find_kbase_adaptive(self) -> KbaseResult | None:
-        """Recover the kernel base and keep the reader's slide in sync.
-
-        Used by KASLR-aware callers that want the two to agree; it only
-        touches the slide when the IDT reports a *different* one, so a
-        plain ``kl-kbase`` diagnostic stays read-only.
-        """
-        result: KbaseResult | None = self.kbase.find()
-        if result is None:
-            return None
-        offset = self._result_offset(result)
-        if offset is not None and offset != self.config.kaslr_offset:
-            self.config.kaslr_offset = offset
-            self.kernel.reset()
-        return result
-
     def _result_offset(self, result: KbaseResult) -> int | None:
         """Return the KASLR slide implied by a base-recovery result."""
         offset = result.kaslr_offset
