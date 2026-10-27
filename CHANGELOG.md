@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Six workflow examples, each driving a group of commands in the order an
+  investigation actually uses them rather than one command at a time.
+  Together they take command coverage from 1 of 40 to **35 of 40**, all
+  verified against the 6.1.134 test kernel:
+  - `examples/api/kernel_facts.py` (`kfacts`) — establish what the target
+    is before trusting an address: version, command line, the config flags
+    that change how a *value* is interpreted, the hardening checklist,
+    modules, the syscall table, symbol lookup and the boot log.
+  - `examples/api/address_tour.py` (`atour`) — carry one address through
+    all nine page-table views.  Steps 3 and 4 are the pair worth
+    comparing: `kl-pt` is arithmetic and never fails, `kl-walk` reads
+    memory and stops at the first absent entry, so an address that gets
+    indices but no walk is unmapped.
+  - `examples/api/slab_tour.py` (`stour`) — allocator state from the
+    cache descriptor down to a single object, ending at the buddy order
+    the slab itself occupies.
+  - `examples/api/symbols_tour.py` (`ytour`) — resolve, read raw, read
+    typed, and print the stack.  Step 1 returning eight symbols for
+    `init_task` is expected: kallsyms is a substring search, so selecting
+    by exact name is the caller's job, and step 2 is how to confirm it.
+  - `examples/breakpoints/per_cpu.py` (`pbreak`) — stop in `schedule` and
+    read the *right* CPU's copy of a per-CPU variable.  GDB shows one
+    thread, so the naive read gives CPU 0's copy whichever CPU took the
+    breakpoint: wrong three times out of four, silently.
+  - `examples/tracing/kaslr_retarget.py` (`retarget`) — discover and apply
+    the KASLR slide, then prove the addresses moved.  Finding the slide is
+    not applying it, and that is the step people skip.
+- `example_manifest.UNCOVERED_COMMANDS` records the five commands no
+  example executes yet, each with a reason: `kl-bits` and `kl-int` belong
+  with the primitives tour, while `kl-buddydump`, `kl-kbpf` and
+  `kl-kdmabuf` need a workload that an idle VM cannot provide.  A gap that
+  is written down is a decision; a gap that is not is an oversight.
 - `tools/example_manifest.py` and `tools/check_examples.py` make the
   examples' coverage a checked claim instead of an impression.  The
   manifest is one row per example declaring the API names and commands
@@ -29,12 +61,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     constant names are already a table in the README, and a row
     mentioning `PTE_NX` would otherwise read as coverage.
   - `REQUIRED_COMMAND_COVERAGE` is a ratchet that may only increase.
-    It is `0` today, matching the single command the examples execute;
-    the planned workflow examples raise it to 40.
-  - `tests/unit/test_examples.py` has 39 tests, 7 of them negative --
+    The six workflow examples above raise it from `0` to `35`, and a test
+    asserts it equals the measured coverage rather than sitting below it.
+  - `tests/unit/test_examples.py` has 51 tests, 11 of them negative --
     a claim without the code, an unknown name, a command only mentioned
-    in prose, a missing README link, and a ratchet above actual
-    coverage all fail.
+    in prose, a missing README link, a ratchet above actual coverage, a
+    function that is not really a forwarding wrapper, and a locally bound
+    name masquerading as an API reference all fail.
 
 ### Changed
 

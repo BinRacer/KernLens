@@ -286,6 +286,127 @@ class ExecutionDetectionTests(unittest.TestCase):
         self.assertEqual(check_examples.executed_commands(path), set())
 
 
+class WrapperDetectionTests(unittest.TestCase):
+    """The ``_run("kl-x")`` pattern the tour examples use must count.
+
+    Without this, every command behind a wrapper would be invisible and
+    the coverage number would be wrong in the pessimistic direction --
+    the opposite failure from the one that inflated the original
+    estimate, and just as misleading.
+    """
+
+    def _write(self, source: str) -> pathlib.Path:
+        directory = tempfile.mkdtemp()
+        path = pathlib.Path(directory) / "sample.py"
+        path.write_text(source, encoding="utf-8")
+        return path
+
+    def test_forwarding_wrapper_counts(self) -> None:
+        path = self._write(
+            "import gdb\n"
+            "def _run(cmd):\n"
+            "    gdb.execute(cmd, to_string=True)\n"
+            "_run('kl-base')\n"
+        )
+        self.assertEqual(
+            check_examples.executed_commands(path), {"kernlens-base"}
+        )
+
+    def test_wrapper_with_arguments_counts(self) -> None:
+        path = self._write(
+            "import gdb\n"
+            "def _run(cmd):\n"
+            "    gdb.execute(cmd)\n"
+            "_run(f'kl-walk {0x1000:#x}')\n"
+        )
+        self.assertEqual(
+            check_examples.executed_commands(path), {"kernlens-walk"}
+        )
+
+    def test_non_forwarding_function_does_not_count(self) -> None:
+        """A function that ignores its argument is not a wrapper."""
+        path = self._write(
+            "import gdb\n"
+            "def _run(cmd):\n"
+            "    gdb.execute('kl-base')\n"
+            "_run('kl-walk 0x1000')\n"
+        )
+        # `kl-base` is executed directly inside the function; the call
+        # argument is not forwarded, so `kl-walk` must not be counted.
+        self.assertEqual(
+            check_examples.executed_commands(path), {"kernlens-base"}
+        )
+
+    def test_dynamic_wrapper_argument_does_not_count(self) -> None:
+        path = self._write(
+            "import gdb\n"
+            "def _run(cmd):\n"
+            "    gdb.execute(cmd)\n"
+            "_run(f'kl-{name}')\n"
+        )
+        self.assertEqual(check_examples.executed_commands(path), set())
+
+
+class LocalNameTests(unittest.TestCase):
+    """A name the script binds itself is not a reference to the API.
+
+    Every tour example has ``args = parser.parse_args(...)``, which made
+    all of them appear to use the facade's ``arg()`` -- a register reader
+    -- when they use nothing of the sort.  Excluding bound names fixes
+    that without dropping ``arg`` from the surface, because an example
+    that really calls ``arg("$rdi")`` must still be counted.
+    """
+
+    def _write(self, source: str) -> pathlib.Path:
+        directory = tempfile.mkdtemp()
+        path = pathlib.Path(directory) / "sample.py"
+        path.write_text(source, encoding="utf-8")
+        return path
+
+    def test_assigned_local_name_is_not_a_reference(self) -> None:
+        path = self._write("args = parse()\nprint(args)\n")
+        qualified, bare = check_examples._references(path)
+        self.assertNotIn("args", bare)
+
+    def test_parameter_name_is_not_a_reference(self) -> None:
+        path = self._write("def f(arg):\n    return arg\n")
+        qualified, bare = check_examples._references(path)
+        self.assertNotIn("arg", bare)
+
+    def test_imported_name_is_not_a_reference(self) -> None:
+        path = self._write("import shlex\nshlex.split('a b')\n")
+        qualified, bare = check_examples._references(path)
+        self.assertNotIn("shlex", bare)
+
+    def test_free_use_of_arg_still_counts(self) -> None:
+        """The real facade helper must still be seen when it is used."""
+        path = self._write("value = arg('$rdi')\nprint(value)\n")
+        surface = check_examples.referenced(path)
+        self.assertIn("arg", surface)
+
+
+class UncoveredCommandsTests(unittest.TestCase):
+    """The declared gap must equal the measured gap."""
+
+    def test_declared_gap_is_exactly_the_uninvoked_set(self) -> None:
+        measured = set(check_examples.uninvoked_commands())
+        declared = set(example_manifest.UNCOVERED_COMMANDS)
+        self.assertEqual(measured, declared)
+
+    def test_every_declared_gap_has_a_reason(self) -> None:
+        for name, reason in example_manifest.UNCOVERED_COMMANDS.items():
+            self.assertTrue(reason.strip(), f"{name} has no reason recorded")
+
+    def test_declared_gaps_are_real_commands(self) -> None:
+        for name in example_manifest.UNCOVERED_COMMANDS:
+            self.assertIn(name, CANONICAL_COMMANDS)
+
+    def test_ratchet_equals_the_measured_coverage(self) -> None:
+        """The ratchet must match reality, not sit below it."""
+        measured = len(check_examples.covered_commands())
+        self.assertEqual(example_manifest.REQUIRED_COMMAND_COVERAGE, measured)
+
+
 class ReportTests(unittest.TestCase):
     """The report is what the plan's numbers are regenerated from."""
 

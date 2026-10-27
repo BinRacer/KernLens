@@ -49,10 +49,22 @@ EXAMPLE_ROOTS: tuple[str, ...] = ("api", "tracing", "breakpoints")
 #: How many distinct commands the examples must cover between them.
 #:
 #: A ratchet, not a target: raise it when coverage grows, never lower it.
-#: Today the examples demonstrate two invocations in a single file, both
-#: incidental to a tracer; Phase 1 of the plan adds six workflow examples
-#: that cover all 40.
-REQUIRED_COMMAND_COVERAGE: int = 0
+#: Phase 0 shipped at 0, when the only executed command was an incidental
+#: `kl-base` inside a tracer.  The six workflow examples added in Phase 1
+#: take it to 35 of the 40; the remaining five are listed below and are
+#: deliberately left for a later phase rather than faked here.
+REQUIRED_COMMAND_COVERAGE: int = 35
+
+#: Commands no example executes yet, and why.  Recorded so that "35 of 40"
+#: reads as a decision rather than an oversight -- and so that whoever
+#: closes the gap knows what the gap is.
+UNCOVERED_COMMANDS: dict[str, str] = {
+    "kernlens-bits": "bit/integer primitives; a tour is planned for Phase 3",
+    "kernlens-int": "same as kernlens-bits",
+    "kernlens-buddydump": "needs a workload that leaves free blocks at a known order",
+    "kernlens-kbpf": "needs BPF programs loaded in the target",
+    "kernlens-kdmabuf": "needs a DMA-buf exporter; nothing exports on an idle VM",
+}
 
 
 @dataclass(frozen=True)
@@ -135,6 +147,63 @@ EXAMPLES: tuple[Example, ...] = (
         purpose="loading KernLens in every session",
         kind="config",
     ),
+    _example(
+        "api", "kernel_facts.py",
+        purpose="establish what the target is before trusting an address",
+        commands=(
+            "kernlens-kversion",
+            "kernlens-kcmdline",
+            "kernlens-kconfig",
+            "kernlens-kchecksec",
+            "kernlens-kmod",
+            "kernlens-ksyscalls",
+            "kernlens-klookup",
+            "kernlens-kdmesg",
+        ),
+    ),
+    _example(
+        "api", "address_tour.py",
+        purpose="carry one address through all nine page-table views",
+        surface=(
+            "KAddr.virt_to_phys",
+            "kdbg.page_bytes",
+            "kdbg.walk",
+            "read_kvar",
+        ),
+        commands=(
+            "kernlens-base",
+            "kernlens-addr",
+            "kernlens-page",
+            "kernlens-pt",
+            "kernlens-walk",
+            "kernlens-pagewalk",
+            "kernlens-pte",
+            "kernlens-v2p",
+            "kernlens-p2v",
+            "kernlens-pageinfo",
+        ),
+    ),
+    _example(
+        "api", "slab_tour.py",
+        purpose="read allocator state from the cache down to one object",
+        surface=("kdbg.cpu_freelist", "kdbg.slab_cache"),
+        commands=("kernlens-base", "kernlens-slab", "kernlens-buddy"),
+    ),
+    _example(
+        "api", "symbols_tour.py",
+        purpose="resolve a symbol, then read it, then decode it",
+        surface=("kdbg.lookup",),
+        commands=(
+            "kernlens-base",
+            "kernlens-klookup",
+            "kernlens-sym",
+            "kernlens-read",
+            "kernlens-kvar",
+            "kernlens-read-field",
+            "kernlens-bt",
+            "kernlens-chain",
+        ),
+    ),
     # --- tracing/ -------------------------------------------------------
     _example(
         "tracing", "gdb_tracer.py",
@@ -151,6 +220,12 @@ EXAMPLES: tuple[Example, ...] = (
     _example(
         "tracing", "cve_2025_38616_trace.py",
         purpose="a CVE-2025-38616 KTLS use-after-free tracer",
+        # `commands` lists only what the tracer *executes*.  It names
+        # `kl-kaslr` and `kl-kaslr-offset` in its banner and forwards to
+        # them through `_delegate_kaslr()`, which builds the command name
+        # dynamically (`f"kl-{command}"`) and so cannot be resolved
+        # statically -- deliberately not claimed.
+        commands=("kernlens-base",),
         surface=(
             "kdbg.addr",
             "kdbg.arg",
@@ -176,11 +251,6 @@ EXAMPLES: tuple[Example, ...] = (
             "kdbg.read_kvar",
             "kdbg.style",
             "kdbg.u64",
-            "arg",
-            "chain",
-            "cur_cpu",
-            "link_text",
-            "nr_cpus",
         ),
     ),
     # --- breakpoints/ ---------------------------------------------------
@@ -199,6 +269,34 @@ EXAMPLES: tuple[Example, ...] = (
         "breakpoints", "watchfield.py",
         purpose="report only the write that reaches a chosen value",
         surface=("kdbg.warn",),
+    ),
+    _example(
+        "breakpoints", "per_cpu.py",
+        purpose="read the right CPU's copy of a per-CPU variable",
+        surface=("kdbg.nr_cpus", "kdbg.percpu_off"),
+        commands=(
+            "kernlens-base",
+            "kernlens-cpu",
+            "kernlens-percpu",
+            "kernlens-msr",
+        ),
+    ),
+    # --- tracing/ (continued) -------------------------------------------
+    _example(
+        "tracing", "kaslr_retarget.py",
+        purpose="make a tracer work when the KASLR slide is not what you assumed",
+        surface=("kdbg.link_text",),
+        commands=(
+            "kernlens-status",
+            "kernlens-kbase",
+            "kernlens-base",
+            "kernlens-kaslr",
+            "kernlens-kaslr-offset",
+            "kernlens-color",
+            "kernlens-help",
+            "kernlens-sym",
+            "kernlens-kvar",
+        ),
     ),
 )
 

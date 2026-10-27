@@ -27,6 +27,28 @@ The three overlap, so the split is by intent:
 A tracer that stops on a condition belongs in both; put it in
 `tracing/` if the log is the product, in `breakpoints/` if the stop is.
 
+## Coverage is checked, not claimed
+
+`tools/example_manifest.py` declares what each script is responsible for
+exercising, and `tools/check_examples.py --check` fails the build when a
+claim and the code disagree.  Today the scripts execute **35 of the 40
+commands**; the five that remain are listed with their reasons in
+`UNCOVERED_COMMANDS` in that manifest, so the gap reads as a decision
+rather than an oversight.
+
+```
+$ uv run python tools/check_examples.py --report
+examples coverage
+
+commands             35/ 40
+facade bound         34/140
+...
+```
+
+The count is of commands an example *executes*, not names.  A banner that
+says "try `kl-walk`" does not count, which is the difference between 35
+and the 23 a grep would suggest.
+
 ## All examples expect the same startup
 
 ```gdb

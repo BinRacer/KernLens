@@ -8,6 +8,30 @@ running and the interesting events accumulate in the output.
 | --- | --- |
 | [`gdb_tracer.py`](gdb_tracer.py) | every `kfree`, printing the slab that owns the argument; also demonstrates registering your own commands |
 | [`cve_2025_38616_trace.py`](cve_2025_38616_trace.py) | a full CVE-2025-38616 KTLS use-after-free chain, from the skb's refcounts to the double free |
+| [`kaslr_retarget.py`](kaslr_retarget.py) | not events: it fixes the slide so a tracer's link-time addresses resolve at all |
+
+## Before you trace anything: `kaslr_retarget.py`
+
+```gdb
+(gdb) source /path/to/KernLens/examples/tracing/kaslr_retarget.py
+(gdb) retarget
+```
+
+Every address in a vmlinux is a link-time address.  On a KASLR kernel
+nothing lives there, and the failure is quiet: a breakpoint set on
+`0xffffffff81234567` reports success, never fires, and looks like the code
+path was not taken.
+
+`retarget` runs the four commands that get you unstuck, in the order that
+gets you unstuck fastest -- `kl-status` (what KernLens believes),
+`kl-kbase -v` (what the target says, and which of three methods found it),
+`kl-base` (apply it -- finding is not applying, and this is the step people
+skip), and `kl-kaslr` / `kl-kaslr-offset` (the manual override for when
+discovery fails).  It closes with `kl-color` and `kl-help`, which belong to
+the same "fix the environment first" family.
+
+Run it before the other two tracers.  A tracer that appears to see no
+events is very often a tracer pointed at the wrong slide.
 
 ## The shape of a tracer
 
