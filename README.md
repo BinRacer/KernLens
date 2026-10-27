@@ -816,10 +816,19 @@ registry against it:
 uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux --check
 uv run python tools/gen_layouts.py --btf /sys/kernel/btf/vmlinux --check
 uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux   # report
+uv run python tools/gen_layouts.py --btf /sys/kernel/btf/vmlinux \
+    --coverage --version "$(uname -r | cut -d- -f1)"         # CI form
 ```
 
 `--check` exits non-zero on any drift, so it can guard a table update in
-CI.
+CI.  `--coverage` is the weaker claim CI actually makes: it asserts only
+that the probe resolved every struct the registry *claims for that
+release*, and says nothing about the offsets.  That distinction matters
+because a struct can legitimately disappear -- `struct kmem_cache_cpu`
+was replaced by sheaves at 7.0 -- so a coverage check that ignored the
+version would report a healthy probe as broken.  Without `--version` it
+falls back to demanding every entry, which is the strict reading wanted
+when the kernel cannot be identified.
 
 `tools/abi_ranges.py` decides *which releases need their own row* before
 any of that.  The kernel has changed these structures across releases, so

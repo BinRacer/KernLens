@@ -91,20 +91,20 @@ jobs:
           fi
           # The runner kernel differs from the verified one, so only the
           # probe's coverage is asserted here -- that it resolved every
-          # struct the registry declares (a parse regression would give 0).
+          # struct the registry claims *for this release*.  --check would
+          # be wrong: it compares offsets, which the registry only
+          # guarantees for the kernels it was verified against.
+          #
+          # The release has to be passed, because a struct can legitimately
+          # be absent from a newer kernel: `struct kmem_cache_cpu` was
+          # replaced by sheaves at 7.0, so demanding it from a 7.0 probe
+          # reports a healthy parse as a failure.  Without --version the
+          # check falls back to claiming every entry, which is the strict
+          # behaviour wanted when the kernel cannot be identified.
+          release="$(uname -r | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/')"
           uv run --frozen python tools/gen_layouts.py \
-            --btf /sys/kernel/btf/vmlinux --json > /tmp/layouts.json
-          uv run --frozen python - <<'PY'
-          import json, sys
-          sys.path.insert(0, "tools")
-          import gen_layouts
-          report = json.load(open("/tmp/layouts.json"))
-          expected = set(gen_layouts.build_spec())
-          missing = expected - set(report)
-          print(f"probed {len(report)}/{len(expected)} structs")
-          if missing:
-              sys.exit(f"probe resolved nothing for: {sorted(missing)}")
-          PY
+            --btf /sys/kernel/btf/vmlinux \
+            --coverage --version "$release"
 
       - name: Build distributions
         run: uv build

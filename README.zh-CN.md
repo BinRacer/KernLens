@@ -775,9 +775,16 @@ for exact struct offsets.
 uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux --check
 uv run python tools/gen_layouts.py --btf /sys/kernel/btf/vmlinux --check
 uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux   # 报告
+uv run python tools/gen_layouts.py --btf /sys/kernel/btf/vmlinux \
+    --coverage --version "$(uname -r | cut -d- -f1)"         # CI 用法
 ```
 
 `--check` 在发现任何偏差时以非零码退出，可用于 CI 中守护表的更新。
+`--coverage` 是 CI 实际断言的较弱主张：它只要求探测**对应该版本**
+注册表所声明存在的每个结构体都被解析到，不比对偏移。这个区别很关键，
+因为结构体可能合法地消失——`struct kmem_cache_cpu` 在 7.0 被 sheaves
+取代——所以无视版本的覆盖检查会把健康的探测误报为失败。不传
+`--version` 时会退化为要求全部条目，这是内核版本无法识别时应有的严格读法。
 
 `tools/abi_ranges.py` 负责决定**哪些内核版本需要单独一行**。
 这些结构体跨版本发生过变化，所以「用某一个内核验证过的一行」

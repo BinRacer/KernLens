@@ -92,6 +92,34 @@ def build_spec() -> dict[str, list[str]]:
     return spec
 
 
+def expected_types(
+    version: layouts.Version | None,
+    config: dict[str, str] | None = None,
+) -> set[str]:
+    """Return the structs the registry claims exist for one build.
+
+    A coverage check must ask this, not :func:`build_spec`, because the
+    registry deliberately holds structs that some releases do not have:
+    ``struct kmem_cache_cpu`` was replaced by sheaves at 7.0, so its
+    absence from a 7.0 probe is correct, not a parse failure.  Asking
+    ``build_spec`` would demand every entry from every era and report a
+    healthy probe as broken.
+
+    A struct is expected when at least one band matches the build, which
+    is exactly the rule :func:`compare` uses to decide whether the
+    registry has anything to say about it.  ``version=None`` means the
+    release is unknown, so every entry is expected -- the caller is
+    probing an unidentified kernel and no band can be ruled out.
+    """
+    if version is None:
+        return {entry.type_name for entry in layouts.entries()}
+    expected: set[str] = set()
+    for entry in layouts.entries():
+        if any(v.matches(version, config) for v in entry.variants):
+            expected.add(entry.type_name)
+    return expected
+
+
 def _band_paths(
     layout: layouts.StructLayout,
     version: layouts.Version | None,
@@ -295,6 +323,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--version", metavar="X.Y.Z",
         help="kernel version used to select version-gated registry variants",
     )
+    parser.add_argument(
+        "--coverage", action="store_true",
+        help=(
+            "exit non-zero unless the probe resolved every struct the "
+            "registry claims for --version (a parse regression would "
+            "resolve none).  Unlike --check this makes no claim about "
+            "the offsets, so it is safe on a kernel the registry was not "
+            "verified against"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -330,7 +368,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.version else None
     )
     config = _load_config(args.config)
-
+    if args.coverage:
+        expected = expected_types(version, config)
+        missing = sorted(expected - set(report))
+        print(f"probed {len(report)}/{len(expected)} claimed struct(s)")
+        if missing:
+            print(
+                "the probe resolved nothing for: " + ", ".join(missing),
+                file=sys.stderr,
+            )
+            return 1
+        return 0
     if args.check:
         diffs = compare(report, version, config)
         if diffs:
