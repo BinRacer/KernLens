@@ -127,6 +127,9 @@ class EntryAddressTests(unittest.TestCase):
             KPageTable.pgd_entry_addr(base, va), 0xFFFF888000000888,
         )
         self.assertEqual(
+            KPageTable.p4d_entry_addr(base, va), 0xFFFF888000000888,
+        )
+        self.assertEqual(
             KPageTable.pud_entry_addr(base, va), base,
         )
         self.assertEqual(

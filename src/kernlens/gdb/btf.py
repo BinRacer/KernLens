@@ -83,17 +83,15 @@ class BTF:
     """A parsed BTF type database, queried by struct name and field path."""
 
     __slots__: tuple[str, ...] = (
-        "_types", "_strings", "_struct_ids", "_enums", "_member_index",
+        "_types", "_struct_ids", "_enums", "_member_index",
     )
 
     def __init__(
         self,
         types: dict[int, tuple[int, str, int, tuple[tuple[str, int, int], ...]]],
-        strings: bytes,
         enums: dict[str, tuple[tuple[str, int], ...]] | None = None,
     ) -> None:
         self._types = types
-        self._strings = strings
         self._enums = enums or {}
         self._member_index: dict[str, str] | None = None
         self._struct_ids: dict[str, int] = {}
@@ -105,14 +103,6 @@ class BTF:
                 self._struct_ids.setdefault(f"struct {name}", type_id)
 
     # --- naming ---------------------------------------------------------
-
-    def _string(self, offset: int) -> str:
-        if offset <= 0 or offset >= len(self._strings):
-            return ""
-        end = self._strings.find(b"\x00", offset)
-        if end < 0:
-            return ""
-        return self._strings[offset:end].decode("utf-8", "replace")
 
     def _find(self, type_name: str) -> int | None:
         """Return the type id for *type_name* (tolerating a ``struct`` tag)."""
@@ -140,20 +130,6 @@ class BTF:
     def has(self, type_name: str) -> bool:
         """Whether the blob defines *type_name* as a struct or union."""
         return self._find(type_name) is not None
-
-    def has_enum(self, enum_name: str) -> bool:
-        """Whether the blob defines *enum_name*.
-
-        Used as an ABI probe: ``enum page_type`` exists from Linux 7.0
-        onwards and is absent before it, so its presence identifies which
-        ``struct page`` type encoding the running kernel uses -- a fact
-        the layout alone cannot express.
-        """
-        return _bare_enum(enum_name) in self._enums
-
-    def enums(self) -> tuple[str, ...]:
-        """Return every enum name the blob defines, in blob order."""
-        return tuple(self._enums)
 
     def enum_members(self, enum_name: str) -> dict[str, int] | None:
         """Return ``{member: value}`` for *enum_name*, or ``None``.
@@ -270,7 +246,7 @@ def parse(data: bytes) -> BTF | None:
         return None
     if not types:
         return None
-    return BTF(types, strings, enums)
+    return BTF(types, enums)
 
 
 #: Prefixes a caller may use when naming an enum.

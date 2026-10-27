@@ -14,15 +14,10 @@ import argparse
 from .. import BitOps, ByteOrder, IntCodec, IntFmt, IntType
 from ..output import message
 from ..output.tree import IndentContextManager
-from .formatting import parse_int
+from .formatting import fmt_onoff, parse_int
 from .framework import Command, CommandCategory
 
 _MASK64 = 0xFFFFFFFFFFFFFFFF
-
-
-def _onoff(value: bool) -> str:
-    """Paint a boolean as an on/off status."""
-    return message.on("True") if value else message.off("False")
 
 
 _bits_parser = argparse.ArgumentParser(
@@ -63,7 +58,7 @@ def kernlens_bits(value: int, bit: int | None = None) -> None:
     )
     indent.print(
         indent.prefix("power")
-        + ": is_power_of_2=" + _onoff(BitOps.is_power_of_2(value))
+        + ": is_power_of_2=" + fmt_onoff(BitOps.is_power_of_2(value))
         + "  log2_floor="
         + (str(BitOps.log2_floor(value)) if value > 0 else message.warn("?"))
         + "  log2_ceil="
@@ -72,7 +67,7 @@ def kernlens_bits(value: int, bit: int | None = None) -> None:
     if bit is not None:
         indent.print(
             indent.prefix(f"bit {bit}")
-            + ": test=" + _onoff(BitOps.bit_test(value, bit))
+            + ": test=" + fmt_onoff(BitOps.bit_test(value, bit))
             + "  set=" + indent.aux_hex(BitOps.bit_set(value, bit))
             + "  clear=" + indent.aux_hex(BitOps.bit_clear(value, bit))
             + "  toggle=" + indent.aux_hex(BitOps.bit_toggle(value, bit))
@@ -116,8 +111,8 @@ def kernlens_int(value: int, width: int = 64) -> None:
     indent.print(
         indent.prefix("view")
         + f": unsigned={unsigned}  signed={signed}"
-        + "  in_u=" + _onoff(IntCodec.is_in_range(value, ty_u))
-        + "  in_i=" + _onoff(IntCodec.is_in_range(value, ty_i))
+        + "  in_u=" + fmt_onoff(IntCodec.is_in_range(value, ty_u))
+        + "  in_i=" + fmt_onoff(IntCodec.is_in_range(value, ty_i))
     )
     indent.print(
         indent.prefix("range")

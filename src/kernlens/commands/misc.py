@@ -21,6 +21,7 @@ import gdb  # type: ignore[import-not-found]
 from ..gdb.facade import kdbg
 from ..output import message
 from ..output.tree import IndentContextManager
+from .formatting import fmt_cpu_ranges
 from .framework import (
     Command,
     CommandCategory,
@@ -30,22 +31,6 @@ from .framework import (
 )
 
 _MASK64 = 0xFFFFFFFFFFFFFFFF
-
-
-def _cpu_ranges(cpus: list[int]) -> str:
-    """Format CPU ids as compact ranges, e.g. ``0-3,6,8-9``."""
-    if not cpus:
-        return "-"
-    ranges: list[str] = []
-    start = previous = cpus[0]
-    for cpu in cpus[1:]:
-        if cpu == previous + 1:
-            previous = cpu
-            continue
-        ranges.append(f"{start}" if start == previous else f"{start}-{previous}")
-        start = previous = cpu
-    ranges.append(f"{start}" if start == previous else f"{start}-{previous}")
-    return ",".join(ranges)
 
 
 # =========================================================================
@@ -93,7 +78,7 @@ def kernlens_cpu(cpu: int | None = None) -> None:
             if kdbg.cpu_online(index) is True
         ]
         indent.print(
-            indent.prefix("Online") + f": {_cpu_ranges(online)} "
+            indent.prefix("Online") + f": {fmt_cpu_ranges(online)} "
             f"({len(online)}/{nr_cpus})"
         )
     if cpu is not None:

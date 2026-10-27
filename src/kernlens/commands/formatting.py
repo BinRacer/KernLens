@@ -13,7 +13,8 @@ functions and the help renderer share one implementation.
 
 The helpers fall into three groups:
 
-* writers and painters (:func:`writeln`, :func:`style`);
+* writers, painters and small renderers (:func:`writeln`,
+  :func:`style`, :func:`fmt_onoff`, :func:`fmt_cpu_ranges`);
 * argument parsers used as ``argparse`` ``type=`` callables
   (:func:`parse_int`, :func:`parse_depth`);
 * kernel facts derived from the facade with a built-in fallback
@@ -27,6 +28,7 @@ import gdb  # type: ignore[import-not-found]
 
 from .. import KERNEL_BASE, PAGE_OFFSET_BASE, VMEMAP_BASE
 from ..gdb.facade import kdbg
+from ..output import message
 
 #: Mask for a 64-bit value.
 MASK64 = 0xFFFFFFFFFFFFFFFF
@@ -87,6 +89,11 @@ def fmt_cpu_ranges(cpus: list[int]) -> str:
     return ",".join(ranges)
 
 
+def fmt_onoff(value: bool) -> str:
+    """Paint a boolean as an on/off status."""
+    return message.on("True") if value else message.off("False")
+
+
 def kernel_running() -> bool:
     """Return ``True`` when GDB has a live inferior with a PID."""
     try:
@@ -122,6 +129,7 @@ __all__ = [
     "MASK64",
     "default_base",
     "fmt_cpu_ranges",
+    "fmt_onoff",
     "kernel_running",
     "page_offset_base",
     "parse_depth",
