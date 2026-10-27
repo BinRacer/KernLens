@@ -5,9 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Changed
+## [0.3.0] - 2026-10-28
 
 ### Added
 
@@ -19,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gen_tutorial.py` refused to write anything -- so the tutorial could
   only be rebuilt on the machine that first produced it, which is the
   same thing as not being rebuildable.
-
   Invocations now name boot-dependent values as `{placeholders}`
   (`{direct}`, `{text_addr}`, `{slide}`, `{vmemmap_page}`,
   `{slab_object}`, ...) filled from the capture's own context block.
@@ -28,32 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Verified by rebooting -- slide `0x14000000` -> `0x17400000`, direct
   map `0xffff8fe6c0400000` -> `0xffff992880400000` -- and regenerating
   all 40 pages without a source edit.
-
-- **The README is a front page again.**  927 lines -> 266, in both
-  languages, organised around what the tool does rather than how it is
-  built:
-  - it opens with two captured outputs instead of a module list -- a
-    2 MiB page walk that stops at `(huge leaf)`, and a SLUB freelist
-    decode showing the stored word and the XOR that relates it to the
-    pointer.  The old README contained 34 fenced blocks and **zero**
-    lines of command output.
-  - the command surface is stated.  "40" did not appear in the file
-    before; a reader could not tell what they were buying.  There is now
-    a table of all 40, grouped as `kl-help` groups them, generated from
-    the registry and the tutorial pages.
-  - quickstart is three commands: clone, one line in `~/.gdbinit`,
-    `kl-base`.  Contributor setup moved to `CONTRIBUTING.md`.
-  - the repository tree and dependency graph moved to
-    `docs/architecture.md`, where an equivalent tree already lived.
-- `docs/api.md` and `docs/api.zh-CN.md` hold the 317-line API reference
-  that was in the middle of the README; `CONTRIBUTING.md` and
-  `CONTRIBUTING.zh-CN.md` hold the 110 lines of development notes.  The
-  text is moved, not rewritten -- it was accurate.  The `Conventions`
-  list went with the API reference, being a set of behavioural
-  guarantees about the classes.
-
-### Added
-
 - `ReadmeStructureTests` (3 tests) pinning the three properties that
   made the rewrite worth doing: the front page stays under a line
   ceiling, it shows real captured output, and the material moved out of
@@ -77,9 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shell's), and a feature template that asks what the command must
   *refuse*.  Plus a PR template whose checklist includes "the tutorial
   was regenerated, not hand-edited".
-
-### Added
-
 - `docs/readme-redesign-plan.md` -- a measured plan for rewriting the
   front page.  The current README is accurate but organised for someone
   who has already decided to adopt the tool: it opens with the order the
@@ -89,25 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a fifth of the length, says where each removed section goes, and
   sketches a banner that carries the 40-command surface and a real
   output fragment instead of a bare gradient wordmark.
-
-### Fixed
-
-- `docs/architecture.md` listed `api/trace.py`, which the rename in the
-  previous commit had removed, and its tree block had lost its column
-  alignment.  The tree also omitted `docs/example-coverage-plan.md`,
-  `docs/tutorial/`, and the three READMEs under `examples/`.  Rewritten
-  against the real tree and re-aligned.
-- `docs/architecture.md` and both root READMEs told a reader to
-  `source trace.py`, a file that no longer exists.  The snippets now name
-  a file the reader creates (`my_script.py`) and point at
-  `examples/api/installed_api_tour.py` for a working version -- which is
-  what the snippet was always illustrating: any file sourced after
-  `gdbinit.py` inherits the installed names.
-- `docs/example-coverage-plan.md` claimed `tests/unit/test_examples.py`
-  had 63 tests in two places; it had grown to 85.
-
-### Added
-
 - `DocumentationTrackingTests` in `tests/unit/test_structure.py` (3
   tests).  The architecture tree drifted twice -- once when the examples
   were regrouped, once when they were renamed -- and both times the
@@ -117,44 +66,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rooted path the repository does not have.  `CHANGELOG.md` and
   `CREDITS.md` are exempt: the first is a record of what was once true,
   the second names pwndbg's own files as licence provenance.
-
-### Changed
-
-- **Every example filename is now `<subject>_<kind>.py`.**  The tree had
-  four parallel conventions -- `_tour`, `_tracer` beside `_trace`, a bare
-  `_walk`, and seven files with no marker at all -- and `trace.py`
-  managed to name neither its subject nor its kind.  A reader meets an
-  example before knowing what it is for, and the filename is the only
-  description available in a listing, a traceback or a `diff`.
-  - `api/hello.py` -> `api/hello_sample.py`
-  - `api/trace.py` -> `api/installed_api_tour.py` (it demonstrates the
-    names `gdbinit.py` installs; `trace` said nothing)
-  - `api/kernel_facts.py` -> `api/kernel_facts_tour.py`
-  - `tracing/cve_2025_38616_trace.py` -> `tracing/cve_2025_38616_tracer.py`
-  - `tracing/kaslr_retarget.py` -> `tracing/kaslr_retarget_tour.py`
-  - `breakpoints/{conditional,watchfield,per_cpu}.py` -> `..._bp.py`
-- The kind set is `_tour`, `_walk`, `_tracer`, `_bp`, `_snapshot` and
-  `_sample`; `docs/naming.md` tabulates every file against it, and
-  `check_examples.check_example_names()` fails the build on an
-  unclassified name or a kind with no subject.  The one exemption
-  (`api/gdbinit.example`, a `~/.gdbinit` fragment rather than a script)
-  is a data entry, so a new non-script file has to be a deliberate act.
-- `gdb_tracer.py` keeps the generic subject `gdb` on purpose: it is the
-  tracer other tracers are modelled on, and a file about a specific
-  subsystem names the subsystem.
-
-### Fixed
-
-- `tools/run_examples_gdb.py` reported a false mismatch across boots.
-  Its shape digest hashed section headings verbatim, so
-  `kernel identity (slide +0x16200000)` differed on the next boot --
-  because the slide had changed, which is the one thing guaranteed to
-  change.  Addresses and counts are now placeholders, so the record
-  survives a reboot while a renamed section still fails.  Both
-  properties are pinned by `ExampleCaptureShapeTests`.
-
-### Added
-
 - The examples are now *executed* by CI, not merely inspected.  Three
   questions that fail in three different ways, each with its own
   mechanism:
@@ -187,46 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 19 tests: `RunnerDeclarationTests` (7, exercising each rejection path
   against a scratch tree, including that a *narrow* `except gdb.error`
   does not count as safe) and `GeneratedCoverageTests` (4).
-
-### Fixed
-
-- `examples/api/freelist_walk.py` had four defects that only a live
-  target exposed.  All four produced *confident, plausible* output rather
-  than an error, which is why none of them showed up in a green build:
-  - **The hardening report inverted itself.**  `kconfig_get()` returns
-    `"y"`, `"n"`, `"m"` or `None` -- a string, never a bool -- and the
-    example tested it for truthiness, so every option set to `n` printed
-    as `y`.  On the test kernel that meant claiming
-    `INIT_ON_FREE_DEFAULT_ON` was *on*, i.e. freed objects zeroed, while
-    the chain below it was visibly intact.  The options are now printed
-    by value.
-  - **`kconfig_get()` returning `None` is not the same as `"n"`.**  The
-    config parser keeps only `NAME=value` lines, so `# X is not set` is
-    dropped: an option disabled in the config and an option absent from
-    the image are indistinguishable.  Both read as off, and a `*` now
-    marks the ones the tool cannot tell apart -- worth saying, because a
-    reader debugging a surprising chain is exactly who needs to know.
-  - **`nr_cpus()` returning -1 wiped out the whole run.**  It is the
-    documented sentinel for "unreadable", and `range(-1)` is empty, so a
-    single failed symbol read skipped every chain *and* then indexed
-    `cpus[0]`.  It now falls back to one CPU and says so.
-  - **A decoded link was only checked for being *some* slab object.**
-    `slab_object()` also returns the owning cache, and that half was
-    thrown away.  A stale link that lands in a different cache's slab
-    passes the first check and is still wrong, so the walk now compares
-    the cache and stops.
-- `examples/api/freelist_walk.py` was also missing the stop condition
-  its own docstring promised: a chain longer than the slab has objects,
-  which is how a corrupted freelist that still points at readable slab
-  memory shows up.  It stopped on "not a slab object" and on cycles, and
-  neither catches that case.
-- `tests/unit/test_examples.py` gains `FreelistWalkRegressions` (4 tests,
-  each shown to fail when its fix is reverted).  They are AST assertions
-  rather than output assertions because the file needs a live GDB and the
-  test environment's stubbed `gdb` has no memory to read.
-
-### Added
-
 - `examples/api/freelist_walk.py` (`flwalk`) — the SLUB freelist as an
   *encoding* rather than a report.  It prints the hardening config first
   (`SLAB_FREELIST_HARDENED`, `SLAB_FREELIST_RANDOM`, `INIT_ON_*`),
@@ -343,76 +214,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     in prose, a missing README link, a ratchet above actual coverage, a
     function that is not really a forwarding wrapper, and a locally bound
     name masquerading as an API reference all fail.
-
-### Changed
-
-- The `examples/` tree is now grouped by intent: `examples/api/` for
-  scripts written against the API, `examples/tracing/` for breakpoints
-  that log and keep running, and `examples/breakpoints/` for breakpoints
-  whose whole purpose is to stop.  The existing scripts moved unchanged
-  apart from their self-references (`slab_snapshot.py`, `trace.py`, and
-  `gdbinit.example` into `api/`; `gdb_tracer.py` and
-  `cve_2025_38616_tracer.py` into `tracing/`), and every path that named
-  them -- `gdbinit.py`, `MANIFEST.in`, the CI workflow, both READMEs,
-  and `docs/architecture.md` -- follows.  Each directory carries a
-  README that starts from the question the reader actually has, and
-  `examples/README.md` routes between them.
-  - New `examples/api/hello_sample.py` is the smallest useful script: it shows
-    where the installed names come from, how to fall back to importing
-    `src/` when run outside GDB, and four pure-Python calls.  It prints
-    the same eight lines in both contexts.
-  - New `examples/breakpoints/conditional_bp.py` installs
-    `kbp-object <address>`, a `kfree` breakpoint that stops only for one
-    object.  It compares the slab object start rather than the raw
-    argument, because `kfree` legitimately receives interior pointers.
-  - New `examples/breakpoints/watchfield_bp.py` installs
-    `kwatch-field <type> <field> <address> --expect N`, which reports
-    only the transition into a chosen value.  QEMU's gdbstub implements
-    no hardware watchpoints, so the command catches `gdb.error` and
-    names that limitation instead of surfacing the bare rsp error.
-
-- `kl-help` now requires a namespaced argument.  `kl-help kl-walk` (and
-  `kl-help kernlens-walk`) work; a bare `kl-help walk` is rejected with a
-  hint naming the `kl-` spelling.  KernLens registers `kl-*` and
-  `kernlens-*` only, precisely so its commands never collide with GDB's
-  own, and accepting a bare name in the help text undid that -- `kl-help
-  print` would have answered "no command matches" while GDB's own `help
-  print` works, and `kl-help slab` reads like a question about a GDB
-  command.  The rejected query is answered with the form that does work:
-
-  ```
-  kernlens-help: no command matches 'slab' -- names are namespaced, so
-  try 'kl-slab'; run 'kl-help' for the full list
-  ```
-  - This drops the never-working `kl-help -slab` spelling, which argparse
-    read as an option and rejected.  The previous test only passed because
-    it matched the `usage:` line argparse printed on its way out.
-
-- Invalid arguments now print one guided message on every failure path:
-  a missing required argument, an unknown option, a bad `--range`, a
-  mutually exclusive pair, and a `type=` converter that raises.  The
-  README had documented this since the command layer landed, but only the
-  converter path was implemented; the rest fell through to argparse's own
-  bare usage line and, worse, `ArgumentParser.error` ends in
-  `sys.exit`, which would have closed the GDB shell.  The parser's
-  `error` is now replaced with a variant that raises and is caught inside
-  `invoke`, so the failure never leaves the command:
-
-  ```
-  kl-walk: error: the following arguments are required: va
-  usage : kernlens-walk [-h] [-p ROOT] va [{4,5}]
-  try   : kl-help kl-walk  (detailed help and examples)
-  ```
-  - The message and the pointer use the `kl-` alias, not the canonical
-    `kernlens-` name, matching how the commands are documented.
-
-### Added
-
 - Four commands gained an option that previously lived on a sibling
   command, so a task no longer needs a detour through the other one.
   Every addition is opt-in: the existing invocations, defaults, and
   output are unchanged, and pwndbg-derived help stays identical.
-
   - `kl-walk --pgd <table>` (short `-p`) walks a top-level table other
     than the live CR3, so a saved or foreign root can be followed
     without switching to its task.  It is the same option `kl-pagewalk`
@@ -428,272 +233,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     mutually exclusive pair and, like the other KernLens-only `kbase`
     extras, hidden from `--help` (documented in the `Notes` section
     instead) so the pwndbg option surface is unchanged.
-
-### Fixed
-
-- Loading KernLens no longer silently hands a command to another plugin.
-  GDB does not protect command names: re-defining one replaces the
-  previous definition without an error (even a built-in), so whichever
-  plugin loads last wins.  `register_all()` previously swallowed the
-  "already exists" error and recorded the name as registered anyway,
-  which meant `kl-help` could list a command that actually ran someone
-  else's implementation.  Registration now asks GDB for the exact list of
-  pre-existing user commands (`help user-defined`) and reports any name
-  it does not own:
-
-  ```
-  kernlens: alias 'kl-bits' is already defined by another plugin; the
-  built-in definition is shadowed. Load KernLens last, or rename the
-  conflicting definition.
-  ```
-
-  - A name that is genuinely taken is left alone and is **not** added to
-    `command_names`, so `kl-help` never advertises a definition KernLens
-    does not control.  `framework.conflicts()` returns the shadowed names.
-  - Re-sourcing `gdbinit.py` stays silent: the owner of each name is
-    recorded in a session map on the `gdb` module itself (a reload builds
-    a fresh `framework` module, so the map cannot live there), and only a
-    name owned by something else is reported.
-  - `gdb.execute("help <name>")` was rejected as the probe: GDB's `help`
-    matches abbreviations *and* prefixes, so `kernlens-pt` also resolves
-    `kernlens-pte` and a bare `pt` resolves the built-in `ptype`.  The
-    first cut reported seven of KernLens' own commands as squatters.
-  - Consequence worth noting: sharing a session with pwndbg stays
-    warning-free, because pwndbg registers bare names (`pagewalk`,
-    `kbase`, `slab`, …) while KernLens registers only `kernlens-*` and
-    `kl-*`; the two namespaces do not intersect.
-
-### Changed
-
-- The CI actions were bumped off the deprecated Node 20 runtime (GitHub
-  removed Node 20 from the runners on 2026-09-23, so every run warned
-  that `checkout@v4`, `setup-python@v5` and `setup-uv@v6` were being
-  forced onto Node 24): `actions/checkout@v7`,
-  `actions/setup-python@v7` and `astral-sh/setup-uv@v10.3.2`, all of
-  which declare `runs.using: node24`.
-  - `setup-uv` is pinned to an exact version on purpose: the project
-    stopped publishing rolling major aliases after `v7` (`@v10` does not
-    exist, and `@v7` would miss three majors of fixes).
-  - A `.github/dependabot.yml` now tracks the `github-actions` and `uv`
-    ecosystems weekly, so the next runtime migration arrives as a
-    reviewable PR instead of as a warning on every run.
-
-- CI is now `concurrency`-guarded (`ci-<workflow>-<ref>`,
-  `cancel-in-progress`), so a burst of pushes to a branch cancels the
-  superseded run instead of queueing several full matrices.  It can also
-  be started by hand (`workflow_dispatch`), and a `push` that only
-  touches prose (`CHANGELOG.md`, `CREDITS.md`, `LICENSE`, `docs/**`,
-  `images/**`, `examples/gdbinit.example`) no longer runs the suite.
-  - The two READMEs are deliberately **not** in `paths-ignore`: both are
-    asserted by `tests/integration/test_gdbinit.py` (their command tables
-    must match the frozen contract), so a README edit has to run the
-    suite.
-  - The filter is on `push` only.  Applying it to `pull_request` as well
-    would leave a required check permanently "pending" on a doc-only PR,
-    because no run would ever be created to satisfy it.
-
-- Architecture refactor with no user-visible behaviour change (every
-  command, alias, and public name is byte-for-byte the same):
-  - `gdb/kernel.py` (previously a ~1.6k-line class) is now a thin
-    `KernelInspector` composition over `gdb/inspectors/`, with one
-    mixin per kernel subsystem (`metadata`, `modules`, `structpage`,
-    `kallsyms`, `dmesg`, `bpf`, `buddy`, `slabcache`, `dmabuf`) sharing
-    a common `InspectorBase` and its read primitives.
-  - The 40 command classes moved out of `gdbinit.py` (3.3k → ~160 lines)
-    into a `kernlens.commands` package, then reworked into pwndbg's
-    function style: each command is a plain `kernlens_<verb>` function
-    decorated with `@Command(parser, category, aliases=[...])`.
-    `commands/framework.py` owns the decorator, the `CommandDefinition`
-    record, the `OnlyWhen*` guards, and `register_all()` (idempotent),
-    so `gdbinit.py` is only a bootstrap.  `-h`/`--help` print the
-    per-command `argparse` help (examples, notes, and aliases folded
-    into the epilog) and a failing guard or `gdb.GdbError` prints a
-    `message.error(...)` line instead of aborting the session.
-  - `output/message.py` and `output/tree.py` add pwndbg's `message`
-    helpers (`error`/`warn`/`hint`/`notice`/`success`/`info`/`on`/`off`)
-    and the indenting-tree context manager used by the command output.
-  - The facade's public surface is now declared once, in a single
-    `_BINDINGS` table in `gdb/facade.py`; `gdb/api.py` derives
-    `FACADE_FUNCTIONS` and `INSTANCE_NAMES` from it instead of keeping
-    parallel hand-maintained lists.
-  - Semantic colour roles moved to `output/colors.py`, so the command
-    formatting helpers no longer repeat raw `Palette` members.
-  - `tests/contract_spec.py` freezes the external contract (commands,
-    facade bound names, installed free functions, component instances);
-    both integration suites assert the live surfaces match it.
-
-- The ported pwndbg commands now use pwndbg's exact option names and
-  metavars, so `kl-*` lines can be copied from pwndbg workflows verbatim:
-  - `kl-slab` absorbs the old `kernlens-slabs` command (`list [filter]`,
-    `info <name>...`, `contains <addr>...`) with pwndbg's `-v/--verbose`,
-    `-c/--cpu`, `-n/--node`, `-p/--partial`, and `-a/--active`, and shows
-    both lists for `info` like pwndbg does.  A bare address still prints
-    a single slab, and the kernlens-only granular inspector is now
-    reachable as `kl-slab details <addr> [-c <cpu>]`.
-  - `kl-kbpf` takes pwndbg's `-v/--verbose`, `-b/--break <n>`, and
-    `-p/--progs` / `-m/--maps` short options.
-  - `kl-buddydump` takes pwndbg's `-z/--zone`, `-o/--order`,
-    `-m/--mtype`, `-p/--pcp-only`, `-c/--cpu`, `-n/--node`,
-    `-f/--find`, and `--MIGRATE_TYPES`.
-  - `kl-kbase` takes `-r/--rebase` and `-v/--verbose`; the kernlens-only
-    `--set` / `--phys` / `--idt` remain available but are hidden.
-  - `kl-msr` takes pwndbg's `msr` positional plus `-w/--write`,
-    `-l/--list`, and `-r/--range A-B` (a single-ended range is rejected
-    with pwndbg's message), and evaluates the explicit MSR before the
-    range exactly as pwndbg does.
-  - `kl-kmod` gained `-l/--load <path>` (loads a module's symbols at its
-    runtime base), and `kl-klookup` gained `-a/--apply` (KernLens reads
-    kallsyms live, so it explains that the symbols are already current).
-  - `kl-pagewalk <vaddr>`, `kl-p2v <paddr>`, and `kl-v2p <vaddr>` use
-    pwndbg's metavars.
-
-- The integration fixtures and their command arguments now come from the
-  real test kernel (Linux 6.1.134 as built for the pwn4kernel VM) rather
-  than invented stand-ins.  A fixture that no longer matches the kernel
-  the code targets now fails here instead of surfacing as a surprise on a
-  live session:
-  - boot-invariant facts are used verbatim and were re-verified across
-    successive boots: link-time symbol offsets from `System.map`
-    (`_text`, `divide_error`, `kfree`, `commit_creds`, `__x64_sys_read`/
-    `write`/`open`, `sys_call_table`, `modules`, `jiffies`), the
-    zero-based per-CPU offsets (`current_task`, `__per_cpu_start/_end`),
-    `sizeof(struct page)` (64), the banner/release, the `CONFIG_*`
-    values, and the `syscall` count (451).
-  - KASLR-relocated addresses are a **sample boot**: they are derived as
-    `link + slide` (with `_text` as a link-time base), exactly as the
-    kernel does.  The direct-map/vmemmap bases (`page_offset_base`,
-    `vmemmap_base`) and `__per_cpu_offset[0]` are kernel *variables*
-    filled in from the physical memory map -- also boot-chosen, so they
-    are sample-boot values too, not `link + slide`.
-
-- The examples use the same real-environment values, and
-  `examples/slab_snapshot.py` grew `--page-offset-base` / `--vmemmap-base`
-  so a report can be pointed at any kernel (the library defaults describe
-  a generic nokaslr kernel):
-  - `slab_snapshot.py` now renders a real direct-map page
-    (`page_offset_base + 0x120000`) with the real 4 KiB PTE the live page
-    tables hold for it and the real `kmalloc-1k` cache shape, so its
-    `pgd/pud/pmd/pte` and `leaf phys` match a genuine page-table walk.
-  - `trace.py` reports on a real mapped direct-map address instead of an
-    invented one, so its split/walk lines reflect the test kernel.
-  - `gdb_tracer.py` documents that its `kfree`/`$rdi` default is the
-    validated hook point.
-
-- `examples/tracing/cve_2025_38616_tracer.py` is validated end to end against the
-  **real** PoC: with the tracer armed, running `/home/ctf/exploit` in the
-  guest produces the complete KTLS use-after-free chain (write/`splice`
-  merging into one skb A, the `tcp_ack` release that leaves
-  `H->dataref == 1`, the deferred free, the `tls_strp_msg_hold` clone
-  that hands the freed page to `n`, and the `skb_free_head` of `n` -- the
-  double free).  The host-side `BUG: Bad page map` / `Bad page state`
-  markers corroborate it.
-
-### Fixed
-
-- The layout-probe CI step failed on every matrix job.  It installed
-  `bpftool` and read `/sys/kernel/btf/vmlinux` with it, but the Ubuntu
-  `bpftool` package installs a *wrapper* that dispatches to a per-kernel
-  tools package (`linux-tools-<release>`) which does not exist on a
-  GitHub runner, so the probe aborted with
-  `bpftool failed on /sys/kernel/btf/vmlinux`.  The tool now reads the
-  blob with the project's own BTF parser, so the step needs neither
-  `bpftool` nor `libbpf`; the CI condition is just "is there BTF here".
-
-- `kernlens.gdb.btf` could not resolve a field that BTF inlines
-  anonymously, so a BTF-only probe disagreed with the DWARF/bpftool view
-  for `struct page.lru`/`compound_head`/`_mapcount`, `struct slab`'s
-  `freelist`/`counters` and `bpf_prog.insns` -- 6 fields across the
-  registry.  `BTF.offset` now descends into unnamed struct/union members
-  (named members still win, and a self-referential anonymous member is
-  guarded), which also makes the runtime BTF tier resolve those fields.
-
-- Real-kernel fixes found by exercising every command's options against a
-  live QEMU/KGDB session (Linux 6.1.134, KASLR on, DWARF5 debug info).
-  The session is confirmed booted over SSH (`ctf@127.0.0.1:2222`) before
-  any GDB is attached, so the debuggee is a genuinely running kernel:
-  - `kl-percpu` resolved per-CPU symbols to a bogus address on a real
-    kernel.  Per-CPU symbols are **zero-based**: `__per_cpu_start` is the
-    first thing in the per-CPU section, so its address is a genuine `0`
-    and each symbol's bare value (``0x1fb80`` for `current_task`) *is* its
-    offset inside the section.  The command read those symbols through
-    `kvar_addr()`, which adds the KASLR slide -- correct for an ordinary
-    global, but here it turned the offset into an address far outside the
-    section.  The command now reads the bare value for the symbol and for
-    the section bounds, so `kl-percpu current_task` reports the real
-    `__per_cpu_offset[cpu] + 0x1fb80`.
-  - `cur_cpu()` (and therefore `kl-cpu`'s `current=`, the `[defer?]`
-    lines, and `kl-percpu`'s default CPU) never resolved on a real
-    kernel: it bailed out on the genuinely-zero `__per_cpu_start` and did
-    not mask GDB's negative-valued `$gs_base`.  Both are fixed, and the
-    new `CpuInfo.percpu_start()` makes the zero-based section base
-    explicit.  Found while validating the CVE tracer against the live
-    `exploit` binary, where every `cur_cpu=?` was in fact CPU 0.
-  - `kl-status` always printed `KASLR slide: +0x0`.  The reader follows
-    KASLR on its own for every read, but the command reported the
-    `kaslr_offset` attribute, which stays zero until a command sets it.
-    A new facade method (`kdbg.kaslr_slide()`) asks the reader for the
-    slide actually in effect, so a status check right after boot agrees
-    with the reads that follow.
-  - A malformed `kl-slab` argument (`kl-slab bogus`) raised an uncaught
-    `argparse.ArgumentTypeError` out of the command body; GDB turns an
-    uncaught Python exception inside `invoke` into a fatal error that
-    aborts the whole sourced script.  The framework now reports argument
-    errors the way argparse would and returns.
-  - `kl-slab info` now honours `-a/--active` (per-CPU active cache and
-    freelist) and `-p/--partial` (the node's `nr_partial` and head slab)
-    as separate views, followed by them being forced on by default, so
-    `-p` no longer prints the CPU caches and `-a` no longer prints the
-    node lists.  `-n/--node` filters the node view.
-  - `kl-buddydump -f/--find` accepted only decimal (pwndbg's `type=int`)
-    even though the value is an address; it now parses `0x...` and
-    `&symbol` and matches a free page by physical address, virtual
-    address, or `struct page` pointer.
-  - The CVE tracer's `tcp_eat_recv_skb` breakpoint degraded to a bare
-    symbol name.  `bp_spec()` asks GDB for `&symbol` to add the slide,
-    but `tcp_eat_recv_skb` is a `static` function that the test kernel's
-    DWARF exposes only as inlined locations -- there is no
-    `&`-expressible symbol for it (`gdb.lookup_global_symbol` and
-    `lookup_static_symbol` both return `None`), so `bp_spec()` correctly
-    falls back to the bare name and GDB resolves it through DWARF at the
-    link-time address.  The tracer now reports that case explicitly
-    instead of printing a breakpoint that looks relocated but is not.
-
-- Real-kernel fixes found by validating against a live QEMU/KGDB session
-  (Linux 6.1.134, KASLR on, DWARF5 debug info):
-  - The inspectors now resolve struct field offsets from the loaded
-    `vmlinux` debug info instead of hardcoding them
-    (`InspectorBase._offset_of` / `_sizeof`, cached and reset with the
-    rest of the derived state).  The previous fixed offsets did not
-    match a real build, so `kl-slabs`, `kl-slab --detail`, `kl-kdmesg`,
-    `kl-buddydump`, and `kl-kbpf` returned nothing.
-  - Offsets now come from a three-tier chain: DWARF first, then the
-    image's embedded **BTF** (`CONFIG_DEBUG_INFO_BTF`), then the
-    fallback registry.  `kernlens.gdb.btf` parses BTF directly -- no
-    `bpftool` and no `libbpf` -- reading the `.BTF` section of the
-    loaded image through GDB, or an ELF/raw blob via
-    `reader.config.btf_path`.  It never borrows the host's BTF while
-    debugging another kernel, which would silently describe the wrong
-    build.  Only the final tier warns.
-  - The fallback table moved to a single registry
-    (`kernlens.gdb.layouts`), which records where each struct is
-    defined and gates its entries on the kernel version and `CONFIG_*`
-    predicates.  Its values are verified against Linux 7.0
-    (`VERIFIED_KERNEL`); on the 6.1.134 validation target they are
-    reached only through DWARF, so nothing changes there.
-  - `kl-kbpf --maps` read `map_type`/`key_size`/`value_size`/
-    `max_entries` at the pre-4.15 offsets (`0x10`–`0x1C`); with
-    `CONFIG_SECURITY` the LSM `security` pointer shifts them to
-    `0x18`–`0x24`, so maps were mis-decoded.  `kl-kdmabuf` read
-    `struct dma_buf`'s `priv`/`list_node`/`exp_name` from stale offsets
-    too; both are now resolved from the debug info.
-  - Every command warns once, through `message.warn`, when any struct
-    layout fell back to the built-in table, because those values are
-    only verified for one build and may be silently wrong for another.
-    Loading a matching `vmlinux` resolves every offset from DWARF and
-    suppresses the warning.
-
-### Added
-
 - `kernlens.gdb.btf`, a self-contained parser for the kernel's BTF type
   information.  It reads the fixed header plus the type and string
   sections and answers ``offset(type, path)`` / ``sizeof(type)``,
@@ -703,7 +242,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   disk) or, when ``reader.config.btf_path`` is set, from a raw blob or
   any ELF carrying one.  A malformed or absent blob yields ``None``
   rather than raising, so "no BTF" and "no DWARF" behave alike.
-
 - `tools/gen_layouts.py`, which probes a real kernel for the struct
   layouts the fallback registry declares and verifies the registry
   against it.  It reads a `vmlinux` through GDB's DWARF (`--vmlinux`) or
@@ -734,9 +272,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     unreadable MSR instead of aborting.
   - `kl-kmod` reported "cannot read the modules list" for an empty (but
     valid) module list; it now distinguishes "no modules loaded".
-
-### Added
-
 - Self-healing KASLR adaptation.  `MemoryReader` now detects the KASLR
   slide on demand through an IDT-based recovery hook and re-detects it
   when a read fails at the current slide, retrying the read; a link-time
@@ -747,7 +282,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   KASLR change without a manual `kl-base`.  `kl-base` and
   `kl-kbase --set` remain the explicit way to pin the slide, and
   `kl-kaslr` / `kl-kaslr-offset` still override it by hand.
-
 - pwndbg-derived kernel metadata commands (behaviour adapted from
   pwndbg, MIT — see `CREDITS.md`): `kernlens-kcmdline` / `kl-kcmdline`
   (boot command line), `kernlens-kversion` / `kl-kversion` (version
@@ -831,9 +365,272 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real `help <command>` output: each command's GDB docstring now carries
   its summary, usage, arguments, and examples, and the `kl-` aliases
   inherit it.
+- Added `examples/tracing/cve_2025_38616_tracer.py`, a CVE-2025-38616 KTLS
+  use-after-free tracer refactored to use `kernlens.gdb.facade`
+  directly instead of loading a separate helper module.
+- Added a project-level `gdbinit.py` and `examples/gdbinit.example`.
+  Sourcing the startup file from `~/.gdbinit` registers
+  `kernlens-status`, `kernlens-slab`, `kernlens-page`, `kernlens-pte`,
+  KASLR, and color commands without installing breakpoints.
+- Added short `kl-` command aliases (`kl-status`, `kl-slab`, `kl-page`,
+  `kl-pte`, `kl-sym`, `kl-bt`, `kl-chain`, `kl-read`, `kl-cpu`,
+  `kl-percpu`, `kl-kaslr`, `kl-kaslr-offset`, `kl-color`) while
+  retaining every original `kernlens-*` command.
+- Expanded the startup commands with symbol resolution, backtrace,
+  call-chain, memory-dump, CPU topology, and per-CPU address helpers.
+- Added command frontends for the pure-Python helpers: `kernlens-kvar`
+  (KASLR-aware global reads), `kernlens-addr` (KAddr), `kernlens-pt`
+  (KPageTable), `kernlens-bits` (BitOps), and `kernlens-int`
+  (IntCodec / IntFmt).
+- Pure-Python package with a standard `src/kernlens` layout, `py.typed`
+  marker, and setuptools configuration (`pip install -e .`).
+- `kernlens.BitOps` / `BITS`: byte swap, width reinterpretation,
+  population/scan, power-of-two, rotation, alignment, bit-field, and
+  `cpumask` helpers.
+- `kernlens.IntCodec` / `ByteOrderCodec` / `LE` / `BE`: struct-based
+  integer packing, unpacking, arrays, and range checks for the eight
+  integer types.
+- `kernlens.IntFmt`: address/hex/size/offset/flags formatting, byte
+  hex/ASCII/C-string views, hexdumps, and typed array formatting.
+- `kernlens.KAddr`: x86-64 classification, canonical checks, direct-map
+  translation, page alignment, KASLR conversion, `ERR_PTR`, and tag
+  helpers.
+- `kernlens.KPageTable`: 4-level and 5-level page-table geometry,
+  canonicalization, entry addresses, PTE decoding, huge-page helpers,
+  and leaf-to-physical reconstruction.
+- `kernlens.Logger` / `LogLevel` / `Palette` / `Styler`: severity
+  filtering, prefix and stream control, once/throttle/counter state,
+  checks, banners, rules, and a full set of ANSI-aware layout helpers.
+- `kernlens.gdb.toolkit`: `DebugConfig`, `KernelStyler`, `MemoryReader`,
+  `SymbolResolver`, `Kaslr`, `CpuInfo`, `SlubInspector`,
+  `KernelDebugger`, and the `kdbg` singleton.  The package supports
+  both normal imports and the legacy `exec()` loading mode.
+- Slab inspection: head/tail translation, cache names, per-CPU slabs,
+  hardened freelist decoding, bounded freelist distance, partial-list
+  scanning, and a multi-line `print_slab` report.
+- Unit and integration test suites, including a fake `gdb` module that
+  exercises the toolkit without a running kernel.
+- Architecture documentation, a pure-Python snapshot example, a GDB
+  tracer example, and CI configuration.
+- `CHANGELOG.md`, `.gitignore`, and project metadata.
 
 ### Changed
 
+- **The README is a front page again.**  927 lines -> 266, in both
+  languages, organised around what the tool does rather than how it is
+  built:
+  - it opens with two captured outputs instead of a module list -- a
+    2 MiB page walk that stops at `(huge leaf)`, and a SLUB freelist
+    decode showing the stored word and the XOR that relates it to the
+    pointer.  The old README contained 34 fenced blocks and **zero**
+    lines of command output.
+  - the command surface is stated.  "40" did not appear in the file
+    before; a reader could not tell what they were buying.  There is now
+    a table of all 40, grouped as `kl-help` groups them, generated from
+    the registry and the tutorial pages.
+  - quickstart is three commands: clone, one line in `~/.gdbinit`,
+    `kl-base`.  Contributor setup moved to `CONTRIBUTING.md`.
+  - the repository tree and dependency graph moved to
+    `docs/architecture.md`, where an equivalent tree already lived.
+- `docs/api.md` and `docs/api.zh-CN.md` hold the 317-line API reference
+  that was in the middle of the README; `CONTRIBUTING.md` and
+  `CONTRIBUTING.zh-CN.md` hold the 110 lines of development notes.  The
+  text is moved, not rewritten -- it was accurate.  The `Conventions`
+  list went with the API reference, being a set of behavioural
+  guarantees about the classes.
+- **Every example filename is now `<subject>_<kind>.py`.**  The tree had
+  four parallel conventions -- `_tour`, `_tracer` beside `_trace`, a bare
+  `_walk`, and seven files with no marker at all -- and `trace.py`
+  managed to name neither its subject nor its kind.  A reader meets an
+  example before knowing what it is for, and the filename is the only
+  description available in a listing, a traceback or a `diff`.
+  - `api/hello.py` -> `api/hello_sample.py`
+  - `api/trace.py` -> `api/installed_api_tour.py` (it demonstrates the
+    names `gdbinit.py` installs; `trace` said nothing)
+  - `api/kernel_facts.py` -> `api/kernel_facts_tour.py`
+  - `tracing/cve_2025_38616_trace.py` -> `tracing/cve_2025_38616_tracer.py`
+  - `tracing/kaslr_retarget.py` -> `tracing/kaslr_retarget_tour.py`
+  - `breakpoints/{conditional,watchfield,per_cpu}.py` -> `..._bp.py`
+- The kind set is `_tour`, `_walk`, `_tracer`, `_bp`, `_snapshot` and
+  `_sample`; `docs/naming.md` tabulates every file against it, and
+  `check_examples.check_example_names()` fails the build on an
+  unclassified name or a kind with no subject.  The one exemption
+  (`api/gdbinit.example`, a `~/.gdbinit` fragment rather than a script)
+  is a data entry, so a new non-script file has to be a deliberate act.
+- `gdb_tracer.py` keeps the generic subject `gdb` on purpose: it is the
+  tracer other tracers are modelled on, and a file about a specific
+  subsystem names the subsystem.
+- The `examples/` tree is now grouped by intent: `examples/api/` for
+  scripts written against the API, `examples/tracing/` for breakpoints
+  that log and keep running, and `examples/breakpoints/` for breakpoints
+  whose whole purpose is to stop.  The existing scripts moved unchanged
+  apart from their self-references (`slab_snapshot.py`, `trace.py`, and
+  `gdbinit.example` into `api/`; `gdb_tracer.py` and
+  `cve_2025_38616_tracer.py` into `tracing/`), and every path that named
+  them -- `gdbinit.py`, `MANIFEST.in`, the CI workflow, both READMEs,
+  and `docs/architecture.md` -- follows.  Each directory carries a
+  README that starts from the question the reader actually has, and
+  `examples/README.md` routes between them.
+  - New `examples/api/hello_sample.py` is the smallest useful script: it shows
+    where the installed names come from, how to fall back to importing
+    `src/` when run outside GDB, and four pure-Python calls.  It prints
+    the same eight lines in both contexts.
+  - New `examples/breakpoints/conditional_bp.py` installs
+    `kbp-object <address>`, a `kfree` breakpoint that stops only for one
+    object.  It compares the slab object start rather than the raw
+    argument, because `kfree` legitimately receives interior pointers.
+  - New `examples/breakpoints/watchfield_bp.py` installs
+    `kwatch-field <type> <field> <address> --expect N`, which reports
+    only the transition into a chosen value.  QEMU's gdbstub implements
+    no hardware watchpoints, so the command catches `gdb.error` and
+    names that limitation instead of surfacing the bare rsp error.
+- `kl-help` now requires a namespaced argument.  `kl-help kl-walk` (and
+  `kl-help kernlens-walk`) work; a bare `kl-help walk` is rejected with a
+  hint naming the `kl-` spelling.  KernLens registers `kl-*` and
+  `kernlens-*` only, precisely so its commands never collide with GDB's
+  own, and accepting a bare name in the help text undid that -- `kl-help
+  print` would have answered "no command matches" while GDB's own `help
+  print` works, and `kl-help slab` reads like a question about a GDB
+  command.  The rejected query is answered with the form that does work:
+  ```
+  kernlens-help: no command matches 'slab' -- names are namespaced, so
+  try 'kl-slab'; run 'kl-help' for the full list
+  ```
+  - This drops the never-working `kl-help -slab` spelling, which argparse
+    read as an option and rejected.  The previous test only passed because
+    it matched the `usage:` line argparse printed on its way out.
+- Invalid arguments now print one guided message on every failure path:
+  a missing required argument, an unknown option, a bad `--range`, a
+  mutually exclusive pair, and a `type=` converter that raises.  The
+  README had documented this since the command layer landed, but only the
+  converter path was implemented; the rest fell through to argparse's own
+  bare usage line and, worse, `ArgumentParser.error` ends in
+  `sys.exit`, which would have closed the GDB shell.  The parser's
+  `error` is now replaced with a variant that raises and is caught inside
+  `invoke`, so the failure never leaves the command:
+  ```
+  kl-walk: error: the following arguments are required: va
+  usage : kernlens-walk [-h] [-p ROOT] va [{4,5}]
+  try   : kl-help kl-walk  (detailed help and examples)
+  ```
+  - The message and the pointer use the `kl-` alias, not the canonical
+    `kernlens-` name, matching how the commands are documented.
+- The CI actions were bumped off the deprecated Node 20 runtime (GitHub
+  removed Node 20 from the runners on 2026-09-23, so every run warned
+  that `checkout@v4`, `setup-python@v5` and `setup-uv@v6` were being
+  forced onto Node 24): `actions/checkout@v7`,
+  `actions/setup-python@v7` and `astral-sh/setup-uv@v10.3.2`, all of
+  which declare `runs.using: node24`.
+  - `setup-uv` is pinned to an exact version on purpose: the project
+    stopped publishing rolling major aliases after `v7` (`@v10` does not
+    exist, and `@v7` would miss three majors of fixes).
+  - A `.github/dependabot.yml` now tracks the `github-actions` and `uv`
+    ecosystems weekly, so the next runtime migration arrives as a
+    reviewable PR instead of as a warning on every run.
+- CI is now `concurrency`-guarded (`ci-<workflow>-<ref>`,
+  `cancel-in-progress`), so a burst of pushes to a branch cancels the
+  superseded run instead of queueing several full matrices.  It can also
+  be started by hand (`workflow_dispatch`), and a `push` that only
+  touches prose (`CHANGELOG.md`, `CREDITS.md`, `LICENSE`, `docs/**`,
+  `images/**`, `examples/gdbinit.example`) no longer runs the suite.
+  - The two READMEs are deliberately **not** in `paths-ignore`: both are
+    asserted by `tests/integration/test_gdbinit.py` (their command tables
+    must match the frozen contract), so a README edit has to run the
+    suite.
+  - The filter is on `push` only.  Applying it to `pull_request` as well
+    would leave a required check permanently "pending" on a doc-only PR,
+    because no run would ever be created to satisfy it.
+- Architecture refactor with no user-visible behaviour change (every
+  command, alias, and public name is byte-for-byte the same):
+  - `gdb/kernel.py` (previously a ~1.6k-line class) is now a thin
+    `KernelInspector` composition over `gdb/inspectors/`, with one
+    mixin per kernel subsystem (`metadata`, `modules`, `structpage`,
+    `kallsyms`, `dmesg`, `bpf`, `buddy`, `slabcache`, `dmabuf`) sharing
+    a common `InspectorBase` and its read primitives.
+  - The 40 command classes moved out of `gdbinit.py` (3.3k → ~160 lines)
+    into a `kernlens.commands` package, then reworked into pwndbg's
+    function style: each command is a plain `kernlens_<verb>` function
+    decorated with `@Command(parser, category, aliases=[...])`.
+    `commands/framework.py` owns the decorator, the `CommandDefinition`
+    record, the `OnlyWhen*` guards, and `register_all()` (idempotent),
+    so `gdbinit.py` is only a bootstrap.  `-h`/`--help` print the
+    per-command `argparse` help (examples, notes, and aliases folded
+    into the epilog) and a failing guard or `gdb.GdbError` prints a
+    `message.error(...)` line instead of aborting the session.
+  - `output/message.py` and `output/tree.py` add pwndbg's `message`
+    helpers (`error`/`warn`/`hint`/`notice`/`success`/`info`/`on`/`off`)
+    and the indenting-tree context manager used by the command output.
+  - The facade's public surface is now declared once, in a single
+    `_BINDINGS` table in `gdb/facade.py`; `gdb/api.py` derives
+    `FACADE_FUNCTIONS` and `INSTANCE_NAMES` from it instead of keeping
+    parallel hand-maintained lists.
+  - Semantic colour roles moved to `output/colors.py`, so the command
+    formatting helpers no longer repeat raw `Palette` members.
+  - `tests/contract_spec.py` freezes the external contract (commands,
+    facade bound names, installed free functions, component instances);
+    both integration suites assert the live surfaces match it.
+- The ported pwndbg commands now use pwndbg's exact option names and
+  metavars, so `kl-*` lines can be copied from pwndbg workflows verbatim:
+  - `kl-slab` absorbs the old `kernlens-slabs` command (`list [filter]`,
+    `info <name>...`, `contains <addr>...`) with pwndbg's `-v/--verbose`,
+    `-c/--cpu`, `-n/--node`, `-p/--partial`, and `-a/--active`, and shows
+    both lists for `info` like pwndbg does.  A bare address still prints
+    a single slab, and the kernlens-only granular inspector is now
+    reachable as `kl-slab details <addr> [-c <cpu>]`.
+  - `kl-kbpf` takes pwndbg's `-v/--verbose`, `-b/--break <n>`, and
+    `-p/--progs` / `-m/--maps` short options.
+  - `kl-buddydump` takes pwndbg's `-z/--zone`, `-o/--order`,
+    `-m/--mtype`, `-p/--pcp-only`, `-c/--cpu`, `-n/--node`,
+    `-f/--find`, and `--MIGRATE_TYPES`.
+  - `kl-kbase` takes `-r/--rebase` and `-v/--verbose`; the kernlens-only
+    `--set` / `--phys` / `--idt` remain available but are hidden.
+  - `kl-msr` takes pwndbg's `msr` positional plus `-w/--write`,
+    `-l/--list`, and `-r/--range A-B` (a single-ended range is rejected
+    with pwndbg's message), and evaluates the explicit MSR before the
+    range exactly as pwndbg does.
+  - `kl-kmod` gained `-l/--load <path>` (loads a module's symbols at its
+    runtime base), and `kl-klookup` gained `-a/--apply` (KernLens reads
+    kallsyms live, so it explains that the symbols are already current).
+  - `kl-pagewalk <vaddr>`, `kl-p2v <paddr>`, and `kl-v2p <vaddr>` use
+    pwndbg's metavars.
+- The integration fixtures and their command arguments now come from the
+  real test kernel (Linux 6.1.134 as built for the pwn4kernel VM) rather
+  than invented stand-ins.  A fixture that no longer matches the kernel
+  the code targets now fails here instead of surfacing as a surprise on a
+  live session:
+  - boot-invariant facts are used verbatim and were re-verified across
+    successive boots: link-time symbol offsets from `System.map`
+    (`_text`, `divide_error`, `kfree`, `commit_creds`, `__x64_sys_read`/
+    `write`/`open`, `sys_call_table`, `modules`, `jiffies`), the
+    zero-based per-CPU offsets (`current_task`, `__per_cpu_start/_end`),
+    `sizeof(struct page)` (64), the banner/release, the `CONFIG_*`
+    values, and the `syscall` count (451).
+  - KASLR-relocated addresses are a **sample boot**: they are derived as
+    `link + slide` (with `_text` as a link-time base), exactly as the
+    kernel does.  The direct-map/vmemmap bases (`page_offset_base`,
+    `vmemmap_base`) and `__per_cpu_offset[0]` are kernel *variables*
+    filled in from the physical memory map -- also boot-chosen, so they
+    are sample-boot values too, not `link + slide`.
+- The examples use the same real-environment values, and
+  `examples/slab_snapshot.py` grew `--page-offset-base` / `--vmemmap-base`
+  so a report can be pointed at any kernel (the library defaults describe
+  a generic nokaslr kernel):
+  - `slab_snapshot.py` now renders a real direct-map page
+    (`page_offset_base + 0x120000`) with the real 4 KiB PTE the live page
+    tables hold for it and the real `kmalloc-1k` cache shape, so its
+    `pgd/pud/pmd/pte` and `leaf phys` match a genuine page-table walk.
+  - `trace.py` reports on a real mapped direct-map address instead of an
+    invented one, so its split/walk lines reflect the test kernel.
+  - `gdb_tracer.py` documents that its `kfree`/`$rdi` default is the
+    validated hook point.
+- `examples/tracing/cve_2025_38616_tracer.py` is validated end to end against the
+  **real** PoC: with the tracer armed, running `/home/ctf/exploit` in the
+  guest produces the complete KTLS use-after-free chain (write/`splice`
+  merging into one skb A, the `tcp_ack` release that leaves
+  `H->dataref == 1`, the deferred free, the `tls_strp_msg_hold` clone
+  that hands the freed page to `n`, and the `skb_free_head` of `n` -- the
+  double free).  The host-side `BUG: Bad page map` / `Bad page state`
+  markers corroborate it.
 - The GDB commands now expose the memory-inspection surface that was
   previously unreachable, while staying true to "commands inspect a
   debuggee": `kl-slab --detail [--cpu <id>]` prints the granular SLUB
@@ -916,19 +713,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `KERNLENS_INSTANCES` maps them and `KERNLENS_CLASSES` exposes
   constructors that allocate independent state.  See
   `examples/trace.py`, `FACADE_FUNCTIONS`, and `core_functions()`.
-
-### Removed
-
-- Removed the legacy root modules (`BitOps.py`, `IntCodec.py`,
-  `IntFmt.py`, `KAddr.py`, `KPageTable.py`, `Logger.py`, `_Internal.py`)
-  and `gdb/toolkit.py`.  Use `kernlens.core.*`, `kernlens.output`, and
-  `kernlens.gdb.facade` instead.
-- Removed the one-off `docs/project-review.md` report; the maintained
-  references are `docs/architecture.md`, `docs/naming.md`, README, and
-  this changelog.
-
-### Changed
-
 - Reorganized the package into three layers: `core/` (pure Python),
   `output/` (palette, levels, logger, styler), and `gdb/` (one module
   per adapter component plus a facade).  Imports now use
@@ -949,9 +733,210 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `IntCodec`'s `byteorder` parameters are annotated as
   `ByteOrder | ByteOrderCodec`, matching the documented behaviour and
   the rest of the API.
+- Development is now managed with uv: the dev dependencies use a PEP 735
+  dependency group, `uv.lock` is committed, and the documented commands
+  and CI use `uv sync` / `uv run`.
+- Moved the package from a flat `src/` directory to `src/kernlens/` so the
+  distribution name, import name, and src layout agree.
+- `kernlens.gdb` exports component names lazily, so importing the package
+  outside GDB no longer fails.
+- `Styler.box` gained a `joints` keyword; `Styler.block` gained a
+  `vertical` keyword.
+- `Styler.pad` now rejects unknown alignment tokens.
+
+### Removed
+
+- Removed the legacy root modules (`BitOps.py`, `IntCodec.py`,
+  `IntFmt.py`, `KAddr.py`, `KPageTable.py`, `Logger.py`, `_Internal.py`)
+  and `gdb/toolkit.py`.  Use `kernlens.core.*`, `kernlens.output`, and
+  `kernlens.gdb.facade` instead.
+- Removed the one-off `docs/project-review.md` report; the maintained
+  references are `docs/architecture.md`, `docs/naming.md`, README, and
+  this changelog.
 
 ### Fixed
 
+- `docs/architecture.md` listed `api/trace.py`, which the rename in the
+  previous commit had removed, and its tree block had lost its column
+  alignment.  The tree also omitted `docs/example-coverage-plan.md`,
+  `docs/tutorial/`, and the three READMEs under `examples/`.  Rewritten
+  against the real tree and re-aligned.
+- `docs/architecture.md` and both root READMEs told a reader to
+  `source trace.py`, a file that no longer exists.  The snippets now name
+  a file the reader creates (`my_script.py`) and point at
+  `examples/api/installed_api_tour.py` for a working version -- which is
+  what the snippet was always illustrating: any file sourced after
+  `gdbinit.py` inherits the installed names.
+- `docs/example-coverage-plan.md` claimed `tests/unit/test_examples.py`
+  had 63 tests in two places; it had grown to 85.
+- `tools/run_examples_gdb.py` reported a false mismatch across boots.
+  Its shape digest hashed section headings verbatim, so
+  `kernel identity (slide +0x16200000)` differed on the next boot --
+  because the slide had changed, which is the one thing guaranteed to
+  change.  Addresses and counts are now placeholders, so the record
+  survives a reboot while a renamed section still fails.  Both
+  properties are pinned by `ExampleCaptureShapeTests`.
+- `examples/api/freelist_walk.py` had four defects that only a live
+  target exposed.  All four produced *confident, plausible* output rather
+  than an error, which is why none of them showed up in a green build:
+  - **The hardening report inverted itself.**  `kconfig_get()` returns
+    `"y"`, `"n"`, `"m"` or `None` -- a string, never a bool -- and the
+    example tested it for truthiness, so every option set to `n` printed
+    as `y`.  On the test kernel that meant claiming
+    `INIT_ON_FREE_DEFAULT_ON` was *on*, i.e. freed objects zeroed, while
+    the chain below it was visibly intact.  The options are now printed
+    by value.
+  - **`kconfig_get()` returning `None` is not the same as `"n"`.**  The
+    config parser keeps only `NAME=value` lines, so `# X is not set` is
+    dropped: an option disabled in the config and an option absent from
+    the image are indistinguishable.  Both read as off, and a `*` now
+    marks the ones the tool cannot tell apart -- worth saying, because a
+    reader debugging a surprising chain is exactly who needs to know.
+  - **`nr_cpus()` returning -1 wiped out the whole run.**  It is the
+    documented sentinel for "unreadable", and `range(-1)` is empty, so a
+    single failed symbol read skipped every chain *and* then indexed
+    `cpus[0]`.  It now falls back to one CPU and says so.
+  - **A decoded link was only checked for being *some* slab object.**
+    `slab_object()` also returns the owning cache, and that half was
+    thrown away.  A stale link that lands in a different cache's slab
+    passes the first check and is still wrong, so the walk now compares
+    the cache and stops.
+- `examples/api/freelist_walk.py` was also missing the stop condition
+  its own docstring promised: a chain longer than the slab has objects,
+  which is how a corrupted freelist that still points at readable slab
+  memory shows up.  It stopped on "not a slab object" and on cycles, and
+  neither catches that case.
+- `tests/unit/test_examples.py` gains `FreelistWalkRegressions` (4 tests,
+  each shown to fail when its fix is reverted).  They are AST assertions
+  rather than output assertions because the file needs a live GDB and the
+  test environment's stubbed `gdb` has no memory to read.
+- Loading KernLens no longer silently hands a command to another plugin.
+  GDB does not protect command names: re-defining one replaces the
+  previous definition without an error (even a built-in), so whichever
+  plugin loads last wins.  `register_all()` previously swallowed the
+  "already exists" error and recorded the name as registered anyway,
+  which meant `kl-help` could list a command that actually ran someone
+  else's implementation.  Registration now asks GDB for the exact list of
+  pre-existing user commands (`help user-defined`) and reports any name
+  it does not own:
+  ```
+  kernlens: alias 'kl-bits' is already defined by another plugin; the
+  built-in definition is shadowed. Load KernLens last, or rename the
+  conflicting definition.
+  ```
+  - A name that is genuinely taken is left alone and is **not** added to
+    `command_names`, so `kl-help` never advertises a definition KernLens
+    does not control.  `framework.conflicts()` returns the shadowed names.
+  - Re-sourcing `gdbinit.py` stays silent: the owner of each name is
+    recorded in a session map on the `gdb` module itself (a reload builds
+    a fresh `framework` module, so the map cannot live there), and only a
+    name owned by something else is reported.
+  - `gdb.execute("help <name>")` was rejected as the probe: GDB's `help`
+    matches abbreviations *and* prefixes, so `kernlens-pt` also resolves
+    `kernlens-pte` and a bare `pt` resolves the built-in `ptype`.  The
+    first cut reported seven of KernLens' own commands as squatters.
+  - Consequence worth noting: sharing a session with pwndbg stays
+    warning-free, because pwndbg registers bare names (`pagewalk`,
+    `kbase`, `slab`, …) while KernLens registers only `kernlens-*` and
+    `kl-*`; the two namespaces do not intersect.
+- The layout-probe CI step failed on every matrix job.  It installed
+  `bpftool` and read `/sys/kernel/btf/vmlinux` with it, but the Ubuntu
+  `bpftool` package installs a *wrapper* that dispatches to a per-kernel
+  tools package (`linux-tools-<release>`) which does not exist on a
+  GitHub runner, so the probe aborted with
+  `bpftool failed on /sys/kernel/btf/vmlinux`.  The tool now reads the
+  blob with the project's own BTF parser, so the step needs neither
+  `bpftool` nor `libbpf`; the CI condition is just "is there BTF here".
+- `kernlens.gdb.btf` could not resolve a field that BTF inlines
+  anonymously, so a BTF-only probe disagreed with the DWARF/bpftool view
+  for `struct page.lru`/`compound_head`/`_mapcount`, `struct slab`'s
+  `freelist`/`counters` and `bpf_prog.insns` -- 6 fields across the
+  registry.  `BTF.offset` now descends into unnamed struct/union members
+  (named members still win, and a self-referential anonymous member is
+  guarded), which also makes the runtime BTF tier resolve those fields.
+- Real-kernel fixes found by exercising every command's options against a
+  live QEMU/KGDB session (Linux 6.1.134, KASLR on, DWARF5 debug info).
+  The session is confirmed booted over SSH (`ctf@127.0.0.1:2222`) before
+  any GDB is attached, so the debuggee is a genuinely running kernel:
+  - `kl-percpu` resolved per-CPU symbols to a bogus address on a real
+    kernel.  Per-CPU symbols are **zero-based**: `__per_cpu_start` is the
+    first thing in the per-CPU section, so its address is a genuine `0`
+    and each symbol's bare value (``0x1fb80`` for `current_task`) *is* its
+    offset inside the section.  The command read those symbols through
+    `kvar_addr()`, which adds the KASLR slide -- correct for an ordinary
+    global, but here it turned the offset into an address far outside the
+    section.  The command now reads the bare value for the symbol and for
+    the section bounds, so `kl-percpu current_task` reports the real
+    `__per_cpu_offset[cpu] + 0x1fb80`.
+  - `cur_cpu()` (and therefore `kl-cpu`'s `current=`, the `[defer?]`
+    lines, and `kl-percpu`'s default CPU) never resolved on a real
+    kernel: it bailed out on the genuinely-zero `__per_cpu_start` and did
+    not mask GDB's negative-valued `$gs_base`.  Both are fixed, and the
+    new `CpuInfo.percpu_start()` makes the zero-based section base
+    explicit.  Found while validating the CVE tracer against the live
+    `exploit` binary, where every `cur_cpu=?` was in fact CPU 0.
+  - `kl-status` always printed `KASLR slide: +0x0`.  The reader follows
+    KASLR on its own for every read, but the command reported the
+    `kaslr_offset` attribute, which stays zero until a command sets it.
+    A new facade method (`kdbg.kaslr_slide()`) asks the reader for the
+    slide actually in effect, so a status check right after boot agrees
+    with the reads that follow.
+  - A malformed `kl-slab` argument (`kl-slab bogus`) raised an uncaught
+    `argparse.ArgumentTypeError` out of the command body; GDB turns an
+    uncaught Python exception inside `invoke` into a fatal error that
+    aborts the whole sourced script.  The framework now reports argument
+    errors the way argparse would and returns.
+  - `kl-slab info` now honours `-a/--active` (per-CPU active cache and
+    freelist) and `-p/--partial` (the node's `nr_partial` and head slab)
+    as separate views, followed by them being forced on by default, so
+    `-p` no longer prints the CPU caches and `-a` no longer prints the
+    node lists.  `-n/--node` filters the node view.
+  - `kl-buddydump -f/--find` accepted only decimal (pwndbg's `type=int`)
+    even though the value is an address; it now parses `0x...` and
+    `&symbol` and matches a free page by physical address, virtual
+    address, or `struct page` pointer.
+  - The CVE tracer's `tcp_eat_recv_skb` breakpoint degraded to a bare
+    symbol name.  `bp_spec()` asks GDB for `&symbol` to add the slide,
+    but `tcp_eat_recv_skb` is a `static` function that the test kernel's
+    DWARF exposes only as inlined locations -- there is no
+    `&`-expressible symbol for it (`gdb.lookup_global_symbol` and
+    `lookup_static_symbol` both return `None`), so `bp_spec()` correctly
+    falls back to the bare name and GDB resolves it through DWARF at the
+    link-time address.  The tracer now reports that case explicitly
+    instead of printing a breakpoint that looks relocated but is not.
+- Real-kernel fixes found by validating against a live QEMU/KGDB session
+  (Linux 6.1.134, KASLR on, DWARF5 debug info):
+  - The inspectors now resolve struct field offsets from the loaded
+    `vmlinux` debug info instead of hardcoding them
+    (`InspectorBase._offset_of` / `_sizeof`, cached and reset with the
+    rest of the derived state).  The previous fixed offsets did not
+    match a real build, so `kl-slabs`, `kl-slab --detail`, `kl-kdmesg`,
+    `kl-buddydump`, and `kl-kbpf` returned nothing.
+  - Offsets now come from a three-tier chain: DWARF first, then the
+    image's embedded **BTF** (`CONFIG_DEBUG_INFO_BTF`), then the
+    fallback registry.  `kernlens.gdb.btf` parses BTF directly -- no
+    `bpftool` and no `libbpf` -- reading the `.BTF` section of the
+    loaded image through GDB, or an ELF/raw blob via
+    `reader.config.btf_path`.  It never borrows the host's BTF while
+    debugging another kernel, which would silently describe the wrong
+    build.  Only the final tier warns.
+  - The fallback table moved to a single registry
+    (`kernlens.gdb.layouts`), which records where each struct is
+    defined and gates its entries on the kernel version and `CONFIG_*`
+    predicates.  Its values are verified against Linux 7.0
+    (`VERIFIED_KERNEL`); on the 6.1.134 validation target they are
+    reached only through DWARF, so nothing changes there.
+  - `kl-kbpf --maps` read `map_type`/`key_size`/`value_size`/
+    `max_entries` at the pre-4.15 offsets (`0x10`–`0x1C`); with
+    `CONFIG_SECURITY` the LSM `security` pointer shifts them to
+    `0x18`–`0x24`, so maps were mis-decoded.  `kl-kdmabuf` read
+    `struct dma_buf`'s `priv`/`list_node`/`exp_name` from stale offsets
+    too; both are now resolved from the debug info.
+  - Every command warns once, through `message.warn`, when any struct
+    layout fell back to the built-in table, because those values are
+    only verified for one build and may be silently wrong for another.
+    Loading a matching `vmlinux` resolves every offset from DWARF and
+    suppresses the warning.
 - Source headers said GPL-2.0-or-later while `LICENSE`, `pyproject.toml`,
   and the user-facing files say GPL-3.0-or-later; all headers now agree.
 - The `tests/conftest.py` docstring referenced a pytest `pythonpath`
@@ -977,80 +962,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (for example `1 MiB - 1` is `1M`, not `1024K`).
 - `kl-percpu` checks ``__per_cpu_end`` and validates the CPU index;
   `kl-cpu` rejects negative and out-of-range CPU numbers.
-
-## [0.2.0] - 2026-10-26
-
-### Changed
-
-- Development is now managed with uv: the dev dependencies use a PEP 735
-  dependency group, `uv.lock` is committed, and the documented commands
-  and CI use `uv sync` / `uv run`.
-
-### Added
-
-- Added `examples/tracing/cve_2025_38616_tracer.py`, a CVE-2025-38616 KTLS
-  use-after-free tracer refactored to use `kernlens.gdb.facade`
-  directly instead of loading a separate helper module.
-- Added a project-level `gdbinit.py` and `examples/gdbinit.example`.
-  Sourcing the startup file from `~/.gdbinit` registers
-  `kernlens-status`, `kernlens-slab`, `kernlens-page`, `kernlens-pte`,
-  KASLR, and color commands without installing breakpoints.
-- Added short `kl-` command aliases (`kl-status`, `kl-slab`, `kl-page`,
-  `kl-pte`, `kl-sym`, `kl-bt`, `kl-chain`, `kl-read`, `kl-cpu`,
-  `kl-percpu`, `kl-kaslr`, `kl-kaslr-offset`, `kl-color`) while
-  retaining every original `kernlens-*` command.
-- Expanded the startup commands with symbol resolution, backtrace,
-  call-chain, memory-dump, CPU topology, and per-CPU address helpers.
-- Added command frontends for the pure-Python helpers: `kernlens-kvar`
-  (KASLR-aware global reads), `kernlens-addr` (KAddr), `kernlens-pt`
-  (KPageTable), `kernlens-bits` (BitOps), and `kernlens-int`
-  (IntCodec / IntFmt).
-
-### Fixed
-
 - Logger tests patched `kernlens.output.logger.time` by string, which fails on
   Python 3.10 because the package re-exports the `Logger` class and
   shadows the submodule attribute.  Tests now patch the imported module
   object directly.
-
-## [0.1.0] - 2026-10-25
-
-### Added
-
-- Pure-Python package with a standard `src/kernlens` layout, `py.typed`
-  marker, and setuptools configuration (`pip install -e .`).
-- `kernlens.BitOps` / `BITS`: byte swap, width reinterpretation,
-  population/scan, power-of-two, rotation, alignment, bit-field, and
-  `cpumask` helpers.
-- `kernlens.IntCodec` / `ByteOrderCodec` / `LE` / `BE`: struct-based
-  integer packing, unpacking, arrays, and range checks for the eight
-  integer types.
-- `kernlens.IntFmt`: address/hex/size/offset/flags formatting, byte
-  hex/ASCII/C-string views, hexdumps, and typed array formatting.
-- `kernlens.KAddr`: x86-64 classification, canonical checks, direct-map
-  translation, page alignment, KASLR conversion, `ERR_PTR`, and tag
-  helpers.
-- `kernlens.KPageTable`: 4-level and 5-level page-table geometry,
-  canonicalization, entry addresses, PTE decoding, huge-page helpers,
-  and leaf-to-physical reconstruction.
-- `kernlens.Logger` / `LogLevel` / `Palette` / `Styler`: severity
-  filtering, prefix and stream control, once/throttle/counter state,
-  checks, banners, rules, and a full set of ANSI-aware layout helpers.
-- `kernlens.gdb.toolkit`: `DebugConfig`, `KernelStyler`, `MemoryReader`,
-  `SymbolResolver`, `Kaslr`, `CpuInfo`, `SlubInspector`,
-  `KernelDebugger`, and the `kdbg` singleton.  The package supports
-  both normal imports and the legacy `exec()` loading mode.
-- Slab inspection: head/tail translation, cache names, per-CPU slabs,
-  hardened freelist decoding, bounded freelist distance, partial-list
-  scanning, and a multi-line `print_slab` report.
-- Unit and integration test suites, including a fake `gdb` module that
-  exercises the toolkit without a running kernel.
-- Architecture documentation, a pure-Python snapshot example, a GDB
-  tracer example, and CI configuration.
-- `CHANGELOG.md`, `.gitignore`, and project metadata.
-
-### Fixed
-
 - `BitOps.coerce` raised `NameError` because `IntType` was only
   referenced in a string annotation.
 - `IntFmt.bytes_cstring` added a spurious ellipsis when the NUL
@@ -1071,12 +986,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `IntFmt.bytes_*_array` now accepts either `ByteOrder` or a
   `ByteOrderCodec` (e.g. `byteorder=LE`), matching the documented API.
 
-### Changed
+## Version history note
 
-- Moved the package from a flat `src/` directory to `src/kernlens/` so the
-  distribution name, import name, and src layout agree.
-- `kernlens.gdb` exports component names lazily, so importing the package
-  outside GDB no longer fails.
-- `Styler.box` gained a `joints` keyword; `Styler.block` gained a
-  `vertical` keyword.
-- `Styler.pad` now rejects unknown alignment tokens.
+Earlier revisions of this file carried `0.1.0` and `0.2.0` headings.
+Neither was ever tagged or published, and neither was ever the version in
+`pyproject.toml`, which has read `0.2.0` since the file was created.  The
+`0.1.0` heading was dated 2026-10-25 -- a day whose only commit was the
+licence bootstrap -- while listing modules that first appeared on the
+26th.  They were development milestones written after the fact, not
+release records.
+
+Their entries are folded into the release above, in their original
+wording.  `0.3.0` is the first tagged release, and every entry in it
+describes code that exists at the tag.
