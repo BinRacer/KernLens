@@ -26,8 +26,8 @@ kernlens-kvar page_offset_base
 
 ```text
 symbol: page_offset_base
-address: 0xffffffff939893a8
-value: 0xffff8cb880000000
+address: 0xffffffff9a1893a8
+value: 0xffff992880000000
 ```
 
 ### Reading it
@@ -46,7 +46,7 @@ kernlens-kvar nr_online_nodes
 
 ```text
 symbol: nr_online_nodes
-address: 0xffffffff94068384
+address: 0xffffffff9a868384
 value: 0x100000001
 ```
 

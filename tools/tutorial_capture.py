@@ -77,7 +77,9 @@ def _probe() -> dict:
         "vmemmap_base": vmemmap,
         "direct": page_offset + FREE_PHYS,
         "text_addr": (link + slide + 0x100000) & 0xFFFFFFFFFFFFFFFF,
+        "text_sym": (link + slide + 0x100) & 0xFFFFFFFFFFFFFFFF,
         "vmemmap_page": vmemmap + FREE_PFN * kdbg.page_bytes(),
+        "slab_object": _slab_object(),
         "nr_cpus": kdbg.nr_cpus(),
         "cache_count": len(kdbg.slab_caches()),
     }
@@ -179,7 +181,7 @@ def _cases(ctx: dict) -> list[tuple[str, list[str]]]:
         ("kernlens-p2v", [f"kernlens-p2v {FREE_PHYS:#x}"]),
         ("kernlens-v2p", [f"kernlens-v2p {direct}"]),
         ("kernlens-sym", [
-            f"kernlens-sym {ctx['text'] + 0x100:#x}",
+            f"kernlens-sym {ctx['text_sym']:#x}",
             f"kernlens-sym {direct}",
         ]),
         ("kernlens-bt", ["kernlens-bt", "kernlens-bt 4"]),

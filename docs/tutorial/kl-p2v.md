@@ -26,8 +26,8 @@ kernlens-p2v 0x400000
 
 ```text
 Physical: 0x400000
-Virtual: 0xffff8cb880400000
-page: 0xffffd0a1c0010000
+Virtual: 0xffff992880400000
+page: 0xffffd62040010000
 PFN: 1024  type: buddy
 refcount: 0
 ```

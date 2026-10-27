@@ -25,7 +25,7 @@ kernlens-help
 ### Output
 
 ```text
-KernLens 0.2.0 — command reference
+KernLens 0.3.0 — command reference
   type kl-help kl-<command> for usage, options, and examples
 
 overview

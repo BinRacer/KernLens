@@ -20,17 +20,17 @@ Classifies an address and, for a direct-map address, prints the physical address
 ### Invocation
 
 ```gdb
-kernlens-page 0xffff8cb880400000
+kernlens-page 0xffff992880400000
 ```
 
 ### Output
 
 ```text
-Address: 0xffff8cb880400000
+Address: 0xffff992880400000
 Class: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 Physical: 0x400000  pfn=1024
-page: 0xffffd0a1c0010000
-bases: page_offset=0xffff8cb880000000 vmemmap=0xffffd0a1c0000000
+page: 0xffffd62040010000
+bases: page_offset=0xffff992880000000 vmemmap=0xffffd62040000000
 ```
 
 ### Reading it
@@ -42,19 +42,19 @@ bases: page_offset=0xffff8cb880000000 vmemmap=0xffffd0a1c0000000
 ### Invocation
 
 ```gdb
-kernlens-page 0xffff8cb880400000 -v
+kernlens-page 0xffff992880400000 -v
 ```
 
 ### Output
 
 ```text
-Address: 0xffff8cb880400000
+Address: 0xffff992880400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff8cb880400000 up=0xffff8cb880400000
+Alignment: down=0xffff992880400000 up=0xffff992880400000
 Physical: 0x400000  pfn=1024
-page: 0xffffd0a1c0010000
+page: 0xffffd62040010000
 ```
 
 ### Reading it

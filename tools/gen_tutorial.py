@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import sys
 from typing import Any
 
@@ -73,13 +74,27 @@ def render_page(
     meta: dict[str, Any],
     prose: dict[str, Any],
     cases: list[dict[str, Any]],
+    context: dict[str, Any] | None = None,
 ) -> str:
     """Render one command page.
 
     *meta* is the command's own metadata (usage, aliases, options), so
     the "Synopsis" section cannot drift from the parser.  *prose* is the
     hand-written half of the page.
+
+    *context* is the capture's environment block.  A prose invocation may
+    name a boot-dependent value as ``{key}`` -- ``{direct}``,
+    ``{text_addr}``, ``{slide}`` -- and it is filled from here.  Without
+    this the tutorial could only be regenerated on the boot that first
+    produced it: the prose is hand-written, the addresses are not
+    constants, and the two used to disagree the moment the machine
+    rebooted.
     """
+    context = context or {}
+
+    def boot(value: str) -> str:
+        return fill_context(value, context, name)
+
     title = prose.get("title", meta["summary"])
     alias = ", ".join(f"`{a}`" for a in meta["aliases"]) or "(none)"
     lines: list[str] = []
@@ -116,6 +131,8 @@ def render_page(
         lines.append("")
 
     for section in prose.get("sections", []):
+        if section.get("invocation"):
+            section = {**section, "invocation": boot(section["invocation"])}
         lines.append(f"## {section['heading']}\n")
         if section.get("text"):
             lines.append(section["text"].strip() + "\n")
@@ -161,18 +178,44 @@ def _find_case(
     return None
 
 
+def fill_context(value: str, context: dict[str, Any], where: str = "") -> str:
+    """Fill ``{name}`` placeholders from the capture's context block.
+
+    Prose invocations name boot-dependent values symbolically --
+    ``kernlens-walk {direct}`` -- because the prose is hand-written while
+    the addresses change on every boot.  Without this the tutorial could
+    only be regenerated on the machine that first produced it.
+    """
+    def replace(match: re.Match[str]) -> str:
+        key = match.group(1)
+        if key not in context:
+            raise SystemExit(
+                f"{where or 'tutorial prose'} names unknown context key "
+                f"{key!r}; add it to tools/tutorial_capture.py"
+            )
+        raw = context[key]
+        return f"{raw:#x}" if isinstance(raw, int) else str(raw)
+
+    return re.sub(r"\{([a-z_]+)\}", replace, value)
+
+
 def missing_captures(
     prose_by_command: dict[str, dict[str, Any]],
     cases: list[dict[str, Any]],
+    context: dict[str, Any] | None = None,
 ) -> list[str]:
     """List every section whose invocation has no captured output."""
+    context = context or {}
     missing: list[str] = []
     for name, prose in prose_by_command.items():
         for section in prose.get("sections", []):
             invocation = section.get("invocation")
-            if invocation and _find_case(cases, invocation) is None:
+            if not invocation:
+                continue
+            filled = fill_context(invocation, context, name)
+            if _find_case(cases, filled) is None:
                 heading = section.get("heading", "?")
-                missing.append(f"{name}: {heading!r} -> {invocation!r}")
+                missing.append(f"{name}: {heading!r} -> {filled!r}")
     return missing
 
 
@@ -192,6 +235,7 @@ def build_pages(
     meta: dict[str, dict[str, Any]],
     prose_module: Any,
     cases: list[dict[str, Any]],
+    context: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """Render every page, keyed by file name."""
     pages: dict[str, str] = {}
@@ -201,7 +245,9 @@ def build_pages(
                 f"tutorial prose names unknown command {name!r}"
             )
         stem = name.removeprefix("kernlens-")
-        pages[f"kl-{stem}.md"] = render_page(name, meta[name], prose, cases)
+        pages[f"kl-{stem}.md"] = render_page(
+            name, meta[name], prose, cases, context,
+        )
     return pages
 
 
@@ -227,9 +273,9 @@ def main(argv: list[str] | None = None) -> int:
 
     _context, cases = load_capture(args.capture)
     meta = load_metadata(args.meta)
-    pages = build_pages(meta, prose_module, cases)
+    pages = build_pages(meta, prose_module, cases, _context)
 
-    missing = missing_captures(prose_module.PAGES, cases)
+    missing = missing_captures(prose_module.PAGES, cases, _context)
     if missing:
         print("error: sections without captured output:", file=sys.stderr)
         for entry in missing:

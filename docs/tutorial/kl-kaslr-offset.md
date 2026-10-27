@@ -19,13 +19,13 @@ Applies a slide you were given, with no derivation and no verification.  `0` mea
 ### Invocation
 
 ```gdb
-kernlens-kaslr-offset 0x10c00000
+kernlens-kaslr-offset 0x17400000
 ```
 
 ### Output
 
 ```text
-KASLR offset: +0x10c00000
+KASLR offset: +0x17400000
 ```
 
 ### Reading it

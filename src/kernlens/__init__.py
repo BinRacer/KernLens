@@ -60,7 +60,7 @@ from .core.fmt import IntFmt
 from .core.paging import KPageTable
 from .output import LogLevel, Logger, Palette, Styler
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 #: Natural-order sorted; see the docstring above for the grouping each
 #: name belongs to.

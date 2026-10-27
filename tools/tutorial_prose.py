@@ -244,7 +244,7 @@ PAGES["kernlens-kbase"] = {
         },
         {
             "heading": "Applying an explicit value",
-            "invocation": "kernlens-kbase --offset 0x10c00000",
+            "invocation": "kernlens-kbase --offset {slide}",
             "reading": (
                 "`--offset` sets the slide directly and prints nothing "
                 "else, which is the form to use in a script that already "
@@ -279,7 +279,7 @@ PAGES["kernlens-kaslr"] = {
     "sections": [
         {
             "heading": "Deriving and applying",
-            "invocation": "kernlens-kaslr 0xffffffff91c00000",
+            "invocation": "kernlens-kaslr {text}",
             "reading": (
                 "The difference from the link-time `_text` is the slide.  "
                 "Both values are printed so a typo (an address that is not "
@@ -304,7 +304,7 @@ PAGES["kernlens-kaslr-offset"] = {
     "sections": [
         {
             "heading": "Applying a numeric slide",
-            "invocation": "kernlens-kaslr-offset 0x10c00000",
+            "invocation": "kernlens-kaslr-offset {slide}",
             "reading": (
                 "One line, echoing the value that was set.  The slide is "
                 "a plain attribute on the facade, so this returns "
@@ -735,7 +735,7 @@ PAGES["kernlens-addr"] = {
     "sections": [
         {
             "heading": "A direct-map address",
-            "invocation": "kernlens-addr 0xffff8cb880400000",
+            "invocation": "kernlens-addr {direct}",
             "reading": (
                 "`Region` is a set of independent tests, not a single "
                 "classification: `kernel`, `user`, `direct`, `vmemmap`, "
@@ -748,7 +748,7 @@ PAGES["kernlens-addr"] = {
         },
         {
             "heading": "A text address",
-            "invocation": "kernlens-addr 0xffffffff91d00000",
+            "invocation": "kernlens-addr {text_addr}",
             "reading": (
                 "Now `text=True` and `direct=False`, and there is no "
                 "`Physical` row: text is mapped by the kernel image's own "
@@ -769,7 +769,7 @@ PAGES["kernlens-addr"] = {
         },
         {
             "heading": "Ignoring a tag",
-            "invocation": "kernlens-addr 0xffff8cb880400000 0xfff",
+            "invocation": "kernlens-addr {direct} 0xfff",
             "reading": (
                 "The optional second argument masks the low bits before the "
                 "analysis, which is how an address-tagged or page-offset-"
@@ -796,7 +796,7 @@ PAGES["kernlens-pt"] = {
     "sections": [
         {
             "heading": "A direct-map address",
-            "invocation": "kernlens-pt 0xffff8cb880400000",
+            "invocation": "kernlens-pt {direct}",
             "reading": (
                 "The 4-level row shows five entries (pgd/pud/pmd/pte/off) "
                 "and the 5-level row six (with p4d), which is the whole "
@@ -810,7 +810,7 @@ PAGES["kernlens-pt"] = {
         },
         {
             "heading": "A text address",
-            "invocation": "kernlens-pt 0xffffffff91d00000",
+            "invocation": "kernlens-pt {text_addr}",
             "reading": (
                 "The upper-half indices are near their maximum "
                 "(`pgd=511`, `pud=510`) because the kernel image sits at "
@@ -838,7 +838,7 @@ PAGES["kernlens-walk"] = {
     "sections": [
         {
             "heading": "A 2 MiB huge-page mapping",
-            "invocation": "kernlens-walk 0xffff8cb880400000",
+            "invocation": "kernlens-walk {direct}",
             "reading": (
                 "Each level row is `name: idx= entry= value=`, so the "
                 "entry's address and content are both visible.  The walk "
@@ -851,7 +851,7 @@ PAGES["kernlens-walk"] = {
         },
         {
             "heading": "Forcing 5-level paging",
-            "invocation": "kernlens-walk 0xffff8cb880400000 5",
+            "invocation": "kernlens-walk {direct} 5",
             "reading": (
                 "The optional second argument forces the mode.  Here the "
                 "walk reports an absent `p4d` entry, which is the correct "
@@ -877,7 +877,7 @@ PAGES["kernlens-pagewalk"] = {
     "sections": [
         {
             "heading": "The pwndbg layout",
-            "invocation": "kernlens-pagewalk 0xffff8cb880400000",
+            "invocation": "kernlens-pagewalk {direct}",
             "reading": (
                 "The order is reversed relative to `kl-walk` -- the leaf is "
                 "printed first -- because that is what pwndbg's command "
@@ -920,7 +920,7 @@ PAGES["kernlens-pte"] = {
         },
         {
             "heading": "With an address for context",
-            "invocation": "kernlens-pte 0x8000000000120063 0xffff8cb880400000",
+            "invocation": "kernlens-pte 0x8000000000120063 {direct}",
             "reading": (
                 "Giving the address lets the command label the three leaf "
                 "interpretations of the same bits: what the value would "
@@ -947,7 +947,7 @@ PAGES["kernlens-page"] = {
     "sections": [
         {
             "heading": "The default view",
-            "invocation": "kernlens-page 0xffff8cb880400000",
+            "invocation": "kernlens-page {direct}",
             "reading": (
                 "`Class` is the region set from `kl-addr`.  `Physical` and "
                 "`page` follow from the direct map and the vmemmap, both of "
@@ -958,7 +958,7 @@ PAGES["kernlens-page"] = {
         },
         {
             "heading": "Verbose",
-            "invocation": "kernlens-page 0xffff8cb880400000 -v",
+            "invocation": "kernlens-page {direct} -v",
             "reading": (
                 "`-v` adds the full `kl-addr` block -- canonicality, the "
                 "`ERR_PTR` check, and the alignment pair -- before the same "
@@ -985,7 +985,7 @@ PAGES["kernlens-pageinfo"] = {
     "sections": [
         {
             "heading": "From struct page to address",
-            "invocation": "kernlens-pageinfo 0xffffd0a1c0010000",
+            "invocation": "kernlens-pageinfo {vmemmap_page}",
             "reading": (
                 "`type: buddy` is the most useful field: it says the page "
                 "is on a buddy free list, which is what you expect for a "
@@ -1043,7 +1043,7 @@ PAGES["kernlens-v2p"] = {
     "sections": [
         {
             "heading": "A direct-map address",
-            "invocation": "kernlens-v2p 0xffff8cb880400000",
+            "invocation": "kernlens-v2p {direct}",
             "reading": (
                 "The result matches `kl-p2v 0x400000` in reverse, which is "
                 "the check that matters.  Because a direct-map address's "
@@ -1074,7 +1074,7 @@ PAGES["kernlens-sym"] = {
     "sections": [
         {
             "heading": "A text address",
-            "invocation": "kernlens-sym 0xffffffff91c00100",
+            "invocation": "kernlens-sym {text_sym}",
             "reading": (
                 "The symbol, its section, and `file:line` -- the line comes "
                 "from DWARF, so it is exact for this build.  The address "
@@ -1083,7 +1083,7 @@ PAGES["kernlens-sym"] = {
         },
         {
             "heading": "A data address",
-            "invocation": "kernlens-sym 0xffff8cb880400000",
+            "invocation": "kernlens-sym {direct}",
             "reading": (
                 "`?? at ??` means nothing covers the address.  For a "
                 "direct-map address that is the correct answer -- the direct "
@@ -1182,7 +1182,7 @@ PAGES["kernlens-read"] = {
     "sections": [
         {
             "heading": "Words",
-            "invocation": "kernlens-read 0xffff8cb880400000",
+            "invocation": "kernlens-read {direct}",
             "reading": (
                 "Each row is `address: value symbol`.  The values here are "
                 "the contents of a free page, so they are leftover data -- "
@@ -1194,7 +1194,7 @@ PAGES["kernlens-read"] = {
         },
         {
             "heading": "Hex and ASCII",
-            "invocation": "kernlens-read 0xffff8cb880400000 16 -m ascii",
+            "invocation": "kernlens-read {direct} 16 -m ascii",
             "reading": (
                 "`-m ascii` switches to the `hexdump -C` style: eight "
                 "bytes of hex, then the printable rendering, with "
@@ -1261,7 +1261,7 @@ PAGES["kernlens-read-field"] = {
         {
             "heading": "A nested path",
             "invocation": (
-                "kernlens-read-field 0xffffd0a1c0010000 'struct page' "
+                "kernlens-read-field {vmemmap_page} 'struct page' "
                 "_refcount.counter"
             ),
             "reading": (
@@ -1372,7 +1372,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "Which cache owns an object",
-            "invocation": "kernlens-slab contains 0xffff8cb8870a4240",
+            "invocation": "kernlens-slab contains {slab_object}",
             "reading": (
                 "Given an object address, reports the cache it belongs to and "
                 "the cache's object and slab sizes.  This is the fastest way "
@@ -1384,7 +1384,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "One slab in detail",
-            "invocation": "kernlens-slab details 0xffff8cb8870a4240",
+            "invocation": "kernlens-slab details {slab_object}",
             "reading": (
                 "`Slab @` is the `struct page` for the slab (the argument is "
                 "an object inside it).  `freeptr: offset=96` is where the "
@@ -1454,7 +1454,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "By virtual address",
-            "invocation": "kernlens-buddy info 0xffff8cb880400000",
+            "invocation": "kernlens-buddy info {direct}",
             "reading": (
                 "A direct-map address is translated exactly once and gives "
                 "the same answer as `pfn:1024`.  `virt:`, `phys:`, `page:` "
@@ -1547,7 +1547,7 @@ PAGES["kernlens-buddydump"] = {
         },
         {
             "heading": "Searching for an address",
-            "invocation": "kernlens-buddydump -f 0xffff8cb880400000",
+            "invocation": "kernlens-buddydump -f {direct}",
             "reading": (
                 "`-f/--find` matches against the virtual address, the "
                 "physical address, or the `struct page`, so any of the three "
@@ -1673,7 +1673,7 @@ PAGES["kernlens-bits"] = {
         },
         {
             "heading": "An address",
-            "invocation": "kernlens-bits 0xffffffff91d00000",
+            "invocation": "kernlens-bits {text_addr}",
             "reading": (
                 "`trailing_zeros=20` is the page offset of this address "
                 "(2 MiB aligned), which is the kind of fact that jumps out "

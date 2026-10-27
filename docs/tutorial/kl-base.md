@@ -19,8 +19,8 @@ kernlens-base
 ### Output
 
 ```text
-kernel base: 0xffffffff91c00000 (runtime)
-KASLR offset: +0x10c00000
+kernel base: 0xffffffff98400000 (runtime)
+KASLR offset: +0x17400000
 link _text: 0xffffffff81000000
 method: symbol
 status: kernel running

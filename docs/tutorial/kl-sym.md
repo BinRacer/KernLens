@@ -19,13 +19,13 @@ Resolves an address to the symbol that covers it and its source location, using 
 ### Invocation
 
 ```gdb
-kernlens-sym 0xffffffff91c00100
+kernlens-sym 0xffffffff98400100
 ```
 
 ### Output
 
 ```text
-0xffffffff91c00100  secondary_startup_64 at arch/x86/kernel/head_64.S:282
+0xffffffff98400100  secondary_startup_64 at arch/x86/kernel/head_64.S:282
 ```
 
 ### Reading it
@@ -37,13 +37,13 @@ The symbol, its section, and `file:line` -- the line comes from DWARF, so it is 
 ### Invocation
 
 ```gdb
-kernlens-sym 0xffff8cb880400000
+kernlens-sym 0xffff992880400000
 ```
 
 ### Output
 
 ```text
-0xffff8cb880400000  ?? at ??
+0xffff992880400000  ?? at ??
 ```
 
 ### Reading it
