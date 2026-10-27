@@ -17,6 +17,7 @@ page was hand-edited.
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import importlib.util
 import io
@@ -572,6 +573,97 @@ class CliTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             with contextlib.redirect_stderr(io.StringIO()):
                 check_examples.main([])
+
+
+class FreelistWalkRegressions(unittest.TestCase):
+    """Three defects in ``api/freelist_walk.py`` that only a target showed.
+
+    The file needs a live GDB, so it cannot be executed here the way the
+    pure tours can -- the stubbed ``gdb`` in the test environment has no
+    memory to read.  What *can* be asserted is the shape of the code that
+    went wrong, because each defect was a wrong-but-plausible expression
+    rather than a typo, and each one silently produced confident output.
+
+    These are deliberately narrow.  They pin the specific mistake and the
+    reason it was a mistake; anything broader would be a second
+    implementation of the example, and would fail for unrelated reasons.
+    """
+
+    PATH = pathlib.Path(check_examples._ROOT) / "examples/api/freelist_walk.py"
+
+    def _tree(self) -> ast.Module:
+        return ast.parse(self.PATH.read_text(encoding="utf-8"))
+
+    def _source(self) -> str:
+        return self.PATH.read_text(encoding="utf-8")
+
+    def test_config_value_is_not_used_as_a_boolean(self) -> None:
+        """`config_get()` returns "y"/"n"/"m"/None, never a bool.
+
+        Testing the return for truthiness reported every option set to
+        ``n`` as ``y``.  On this target that claimed freed objects are
+        zeroed while the chain was visibly intact -- the one section
+        written to prevent that misreading, giving it.
+        """
+        tree = self._tree()
+        bool_tested: list[int] = []
+        for node in ast.walk(tree):
+            # `if kdbg.kconfig_get(...)` / `x = kdbg.kconfig_get(...)`
+            # followed by `if x` -- catch the direct form, which is the
+            # one that was written and the one that reads as correct.
+            if isinstance(node, ast.If):
+                for sub in ast.walk(node.test):
+                    if not isinstance(sub, ast.Call):
+                        continue
+                    func = sub.func
+                    name = getattr(func, "attr", getattr(func, "id", ""))
+                    if name == "kconfig_get":
+                        bool_tested.append(node.lineno)
+        self.assertEqual(
+            bool_tested, [],
+            "kconfig_get() returns a string; only `is None` separates "
+            "an option that is off from one missing from the map",
+        )
+        # The value is compared against None, which is the only test that
+        # distinguishes "off" from "not in the map".
+        self.assertIn("if value is None:", self._source())
+
+    def test_cpu_count_sentinel_is_handled(self) -> None:
+        """`nr_cpus()` returns -1 on failure, and `range(-1)` is empty.
+
+        That skipped every chain *and* indexed ``cpus[0]``, so a single
+        unreadable symbol turned the whole example into a stack trace.
+        """
+        source = self._source()
+        self.assertIn("total = kdbg.nr_cpus()", source)
+        self.assertIn("if total <= 0:", source)
+        self.assertNotIn("list(range(kdbg.nr_cpus()))", source)
+
+    def test_decoded_link_is_checked_against_its_own_cache(self) -> None:
+        """A link into another cache decodes fine and is still wrong.
+
+        `slab_object()` answers "is this a slab object" *and* which cache
+        owns it.  Keeping only the first answer let a stale link that
+        happens to point at another cache's slab pass the check.
+        """
+        source = self._source()
+        self.assertIn("resolved = kdbg.slab_object(nxt)", source)
+        self.assertIn("resolved[1].address != cache.address", source)
+        self.assertNotIn("if not kdbg.slab_object(nxt):", source)
+
+    def test_chain_is_bounded_by_the_slab_object_count(self) -> None:
+        """The walk must stop when the chain outlives the slab.
+
+        Both the module docstring and `walk()`'s own docstring promised
+        this stop condition, and neither claimed binding list mentioned
+        it -- so it was documented and absent.  A corrupted freelist that
+        still points at readable slab memory is exactly the case it
+        catches, and the only one of the two original stops that misses
+        it.
+        """
+        source = self._source()
+        self.assertIn("depth >= objects", source)
+        self.assertIn("longer than the slab", source)
 
 
 if __name__ == "__main__":
