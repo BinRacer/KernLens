@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import builtins
 import pathlib
 import re
 import sys
@@ -395,12 +396,19 @@ def surface_groups() -> dict[str, dict[str, set[str]]]:
 
 
 def _known_bare() -> set[str]:
-    """Every free-function and core-method name callable unqualified."""
+    """Every free-function and core-method name callable unqualified.
+
+    Python builtins are subtracted: the facade has a ``hex()``, ``list()``
+    and ``dict()`` helper, and a script calling the *builtin* of the same
+    name would otherwise read as API usage.  An example that genuinely
+    calls ``kdbg.hex()`` still counts, because that is a qualified
+    attribute rather than a bare name.
+    """
     _, free = facade_bindings()
     known = set(free)
     for methods in core_methods().values():
         known |= methods
-    return known
+    return known - set(dir(builtins))
 
 
 def command_aliases(name: str) -> Iterator[str]:

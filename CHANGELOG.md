@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Three pure-Python tours that close the core-class coverage completely.
+  All three run on the host as well as inside GDB, so their *output* is
+  asserted in tests rather than merely their existence:
+  - `examples/api/intcodec_tour.py` (`icodec`) — round-trips every
+    `pack_*`/`unpack_*` pair in both byte orders, plus the array and
+    offset forms.  `IntCodec` 0/21 -> **21/21**.
+  - `examples/api/intfmt_tour.py` (`ifmt`) — organised by what the value
+    *is* (address, size, byte span, signed/masked, offset, time) rather
+    than by method name.  `IntFmt` 4/26 -> **26/26**.
+  - `examples/api/bitops_tour.py` (`btour`) — alignment, field packing on
+    a real packed `struct slab` word (`inuse:16 | objects:15 | frozen:1`,
+    round trip checked), single bits, CPU masks read from a live
+    `__cpu_online_mask`, sign extension, rotations, byte order.
+    `BitOps` 2/44 -> **44/44**.
+- `KAddr` (5/25) and `KPageTable` (5/38) are deliberately not covered yet:
+  both need real page-table state to demonstrate honestly, and both are
+  recorded as deferred in `docs/example-coverage-plan.md`.
+- The examples' failure modes are now tested, which forced three fixes:
+  - The tours guard command registration with `hasattr(gdb, "Command")`.
+    The test suite installs a stub `gdb` that imports but has no
+    `Command`, and an example that cannot be imported there cannot be
+    tested anywhere.
+  - `ByteOrder` and `IntType` are imported unconditionally from the
+    package: `gdbinit.py` installs classes and helpers, not the codec
+    enums, so probing for them left a `None` branch only GDB could reach.
+  - `check_examples._known_bare()` subtracts `builtins`, so a script
+    calling Python's `hex()` no longer reads as using the facade's
+    `hex()`.  A genuine `kdbg.hex()` call still counts.
 - Six workflow examples, each driving a group of commands in the order an
   investigation actually uses them rather than one command at a time.
   Together they take command coverage from 1 of 40 to **35 of 40**, all

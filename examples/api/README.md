@@ -27,6 +27,39 @@ and used alone.
 | `stour [cache]` | [`slab_tour.py`](slab_tour.py) | `kl-slab` `kl-buddy` |
 | `ytour [symbol]` | [`symbols_tour.py`](symbols_tour.py) | `kl-klookup` `kl-sym` `kl-read` `kl-kvar` `kl-read-field` `kl-bt` `kl-chain` |
 
+## The pure-Python tours
+
+Three scripts for the half of KernLens that needs no debugger at all.
+They run from a plain interpreter, from a test, and from inside GDB
+without changing a line -- which is the property that makes them worth
+reading: the arithmetic half of any tracer can be unit-tested on the
+host, and only the memory reads need a target.
+
+| Command | File | Covers |
+| --- | --- | --- |
+| `icodec` | [`intcodec_tour.py`](intcodec_tour.py) | every integer width, both byte orders, arrays, offsets |
+| `ifmt` | [`intfmt_tour.py`](intfmt_tour.py) | addresses, sizes, byte dumps, signed/masked values, times |
+| `btour` | [`bitops_tour.py`](bitops_tour.py) | alignment, field packing, single bits, CPU masks, sign extension |
+
+**`icodec`** round-trips `u8` through `u64` and `i8` through `i64`, in
+both byte orders, printing the *bytes* as well as the decoded value.  That
+is deliberate: a width mistake drops the top bytes and a byte-order
+mistake reverses them, and both produce a number that looks plausible.
+Step 6 reads a real `struct page` when a target is attached and says so
+plainly when it is using a stand-in.
+
+**`ifmt`** is organised by *what the value is*, not by method name.  The
+section worth reading twice is step 1: `pfn()` and `page_off()` take a
+**physical** address and do not translate, so handing them a virtual one
+yields a number shaped like a PFN and off by the whole direct-map base.
+The example shows both the correct and the incorrect call.
+
+**`btour`** decodes a real packed word -- `inuse:16 | objects:15 |
+frozen:1` from a 6.1.134 `struct slab` -- and checks the round trip
+closes.  It uses `kdbg.kvar_addr` rather than `gdb.parse_and_eval` to read
+`__cpu_online_mask`, because the macro spelling has no symbol and the
+variable only resolves once the slide is applied.
+
 **`kfacts`** starts from nothing and asks what the target is.  Run it
 before any other example: `CONFIG_SLAB_FREELIST_HARDENED=y` is the reason
 `stour` will show encoded freelist pointers, and `CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y`
