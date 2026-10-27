@@ -32,7 +32,7 @@ number comes from the target through `kl-percpu current_task`, not from
 Source it after `gdbinit.py`::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/breakpoints/per_cpu.py
+    (gdb) source /path/to/KernLens/examples/breakpoints/per_cpu_bp.py
     (gdb) pbreak                # break in schedule, report per-CPU state
     (gdb) pbreak --cpu 2        # only stop when CPU 2 is the one running
     (gdb) pbreak --off          # remove it
@@ -50,7 +50,7 @@ import shlex
 try:
     import gdb
 except ImportError as exc:  # pragma: no cover - GDB only
-    raise SystemExit("per_cpu.py must be sourced by GDB") from exc
+    raise SystemExit("per_cpu_bp.py must be sourced by GDB") from exc
 
 
 def _bootstrap_if_needed() -> None:

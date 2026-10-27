@@ -15,7 +15,7 @@ then calls four parts of the API that need no setup at all.
 Load it after ``gdbinit.py``, like any other example::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/api/hello.py
+    (gdb) source /path/to/KernLens/examples/api/hello_sample.py
     (gdb) hello 0xffffffff81000000
 
 Run it outside GDB and it prints the same lines from the pure-Python

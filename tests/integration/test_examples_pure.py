@@ -42,7 +42,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 #: say what "worked" looks like; the manifest says where a file runs, not
 #: what it should say.  Keyed by manifest path so a rename fails loudly.
 EXPECTED_OUTPUT: dict[str, tuple[str, ...]] = {
-    "examples/api/hello.py": (
+    "examples/api/hello_sample.py": (
         "address",
         "popcount",
         "canonical 48",
@@ -88,7 +88,7 @@ class HostExampleTests(unittest.TestCase):
         """
         path = _ROOT / example.path
         env = dict(os.environ)
-        # `hello.py` documents a `PYTHONPATH=src` fallback, so the source
+        # `hello_sample.py` documents a `PYTHONPATH=src` fallback, so the source
         # tree must be importable the same way the README says it is.
         env["PYTHONPATH"] = str(_ROOT / "src")
         return subprocess.run(
@@ -130,17 +130,17 @@ class HostExampleTests(unittest.TestCase):
         for path, headings in EXPECTED_OUTPUT.items():
             self.assertTrue(headings, f"{path} declares no heading to check")
 
-    def test_hello_py_names_are_available_outside_gdb(self) -> None:
+    def test_hello_sample_names_are_available_outside_gdb(self) -> None:
         """The smallest example is the one that proves the fallback works.
 
-        `hello.py` is the file the README tells a new reader to start
+        `hello_sample.py` is the file the README tells a new reader to start
         with, and its whole point is that the four calls it makes give the
         same answer with and without a debugger.  If this test fails, the
         first thing anyone tries is broken.
         """
         example = next(
             e for e in example_manifest.EXAMPLES
-            if e.path == "examples/api/hello.py"
+            if e.path == "examples/api/hello_sample.py"
         )
         result = self._run(example)
         self.assertEqual(result.returncode, 0, result.stderr)

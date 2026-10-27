@@ -105,10 +105,10 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── gdbinit.py            # thin bootstrap sourced by GDB
 ├── examples/
 │   ├── api/                          # scripting the API
-│   │   ├── hello.py                  # minimal script: names + fallback
+│   │   ├── hello_sample.py                  # minimal script: names + fallback
 │   │   ├── slab_snapshot.py          # pure-Python report
 │   │   ├── trace.py                  # script sourced after gdbinit.py
-│   │   ├── kernel_facts.py           # `kfacts`  -- establish the target
+│   │   ├── kernel_facts_tour.py           # `kfacts`  -- establish the target
 │   │   ├── address_tour.py           # `atour`   -- nine page-table views
 │   │   ├── slab_tour.py              # `stour`   -- cache down to one object
 │   │   ├── symbols_tour.py           # `ytour`   -- resolve, read, decode
@@ -119,12 +119,12 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   │   └── gdbinit.example           # sample ~/.gdbinit
 │   ├── tracing/                      # breakpoints that log and continue
 │   │   ├── gdb_tracer.py             # GDB breakpoint / command example
-│   │   ├── cve_2025_38616_trace.py   # CVE-specific KTLS tracer
-│   │   └── kaslr_retarget.py         # `retarget` -- fix the base, then go
+│   │   ├── cve_2025_38616_tracer.py   # CVE-specific KTLS tracer
+│   │   └── kaslr_retarget_tour.py         # `retarget` -- fix the base, then go
 │   └── breakpoints/                  # breakpoints whose purpose is to stop
-│       ├── conditional.py            # break only on one object
-│       ├── watchfield.py             # watch a field reach a value
-│       └── per_cpu.py                # `pbreak`   -- the right CPU's copy
+│       ├── conditional_bp.py            # break only on one object
+│       ├── watchfield_bp.py             # watch a field reach a value
+│       └── per_cpu_bp.py                # `pbreak`   -- the right CPU's copy
 ├── images/banner.svg
 ├── pyproject.toml
 ├── tools/                            # generators and the example contract

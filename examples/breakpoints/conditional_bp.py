@@ -16,7 +16,7 @@ running and the interesting hit is the *only* thing that stops it.
 Load after ``gdbinit.py``::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/breakpoints/conditional.py
+    (gdb) source /path/to/KernLens/examples/breakpoints/conditional_bp.py
     (gdb) kbp-object 0xffff9a0d44c42b00
     (gdb) continue
 
@@ -30,7 +30,7 @@ try:
     import gdb
 except ImportError as exc:  # pragma: no cover - GDB only
     raise SystemExit(
-        "conditional.py must be sourced by GDB (it defines a breakpoint)"
+        "conditional_bp.py must be sourced by GDB (it defines a breakpoint)"
     ) from exc
 
 #: The argument register for the first parameter on x86-64 System V.
@@ -142,6 +142,6 @@ SAMPLE_OBJECT = 0xFFFF9A0D44C42B00
 _OBJECT_COMMAND = ObjectBreakpointCommand()
 
 gdb.write(
-    "conditional.py: kbp-object <address> [--keep] is ready "
+    "conditional_bp.py: kbp-object <address> [--keep] is ready "
     f"(sample: kbp-object {SAMPLE_OBJECT:#x})\n"
 )

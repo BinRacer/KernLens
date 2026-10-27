@@ -7,8 +7,8 @@ API, not how to trap the kernel — for that see
 
 | File | Runs where | Shows |
 | --- | --- | --- |
-| [`hello.py`](hello.py) | GDB **or** plain Python | the minimum script: names, the outside-GDB fallback, and four pure-Python calls |
-| [`trace.py`](trace.py) | GDB (after `gdbinit.py`) | using the installed public API directly, plus one breakpoint-based report |
+| [`hello_sample.py`](hello_sample.py) | GDB **or** plain Python | the minimum script: names, the outside-GDB fallback, and four pure-Python calls |
+| [`installed_api_tour.py`](installed_api_tour.py) | GDB (after `gdbinit.py`) | using the installed public API directly, plus one breakpoint-based report |
 | [`slab_snapshot.py`](slab_snapshot.py) | plain Python | a full slab report with no debugger at all |
 | [`gdbinit.example`](gdbinit.example) | `~/.gdbinit` | loading KernLens in every session |
 
@@ -22,7 +22,7 @@ and used alone.
 
 | Command | File | Covers |
 | --- | --- | --- |
-| `kfacts [symbol]` | [`kernel_facts.py`](kernel_facts.py) | `kl-kversion` `kl-kcmdline` `kl-kconfig` `kl-kchecksec` `kl-kmod` `kl-ksyscalls` `kl-klookup` `kl-kdmesg` |
+| `kfacts [symbol]` | [`kernel_facts_tour.py`](kernel_facts_tour.py) | `kl-kversion` `kl-kcmdline` `kl-kconfig` `kl-kchecksec` `kl-kmod` `kl-ksyscalls` `kl-klookup` `kl-kdmesg` |
 | `atour [addr]` | [`address_tour.py`](address_tour.py) | `kl-addr` `kl-page` `kl-pt` `kl-walk` `kl-pagewalk` `kl-pte` `kl-v2p` `kl-p2v` `kl-pageinfo` |
 | `stour [cache]` | [`slab_tour.py`](slab_tour.py) | `kl-slab` `kl-buddy` |
 | `ytour [symbol]` | [`symbols_tour.py`](symbols_tour.py) | `kl-klookup` `kl-sym` `kl-read` `kl-kvar` `kl-read-field` `kl-bt` `kl-chain` |
@@ -112,7 +112,7 @@ the stack.  Step 1 returning eight symbols for `init_task` is expected --
 kallsyms is a substring search, so selecting by exact name is the
 caller's job.
 
-## Start with `hello.py`
+## Start with `hello_sample.py`
 
 It answers the two questions every new script hits:
 
@@ -121,7 +121,7 @@ It answers the two questions every new script hits:
 `BitOps` are simply there.  No import, no `sys.path` surgery.
 
 **What if the file is run outside GDB?**  Then nothing installed those
-names.  `hello.py` probes with `try: KAddr` and falls back to importing
+names.  `hello_sample.py` probes with `try: KAddr` and falls back to importing
 the package.  That fallback is what lets the arithmetic half of a script
 be unit-tested on the host.
 
@@ -132,7 +132,7 @@ copying: keep the arithmetic pure and only the memory reads need a
 target.
 
 ```console
-$ PYTHONPATH=src python examples/api/hello.py
+$ PYTHONPATH=src python examples/api/hello_sample.py
 address      : 0xffffffff81000000
 byte_swap64  : 0x00000081ffffffff
 popcount     : 34
@@ -143,7 +143,7 @@ page offset  : 0x0
 4-level      : (511, 510, 8, 0, 0)
 ```
 
-## `trace.py` — the installed API in GDB
+## `installed_api_tour.py` — the installed API in GDB
 
 Sourced after `gdbinit.py`, it prints one line per API family so you can
 see what is available.  It ends by calling

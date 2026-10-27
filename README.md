@@ -206,8 +206,8 @@ global `logger`, `styler`, or `config` instances.
 Facade free functions are listed in `FACADE_FUNCTIONS`; stateless core
 aliases come from `BitOps`, `IntCodec`, `KAddr`, `KPageTable`, and
 `IntFmt`.  `kdbg` remains the preferred object-oriented entry point.
-See [`examples/api/trace.py`](examples/api/trace.py) for a runnable
-example, or [`examples/api/hello.py`](examples/api/hello.py) for the
+See [`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py) for a runnable
+example, or [`examples/api/hello_sample.py`](examples/api/hello_sample.py) for the
 smallest starting point.
 
 ### Getting help
@@ -705,16 +705,25 @@ here is part of the package surface.
 | --- | --- |
 | [`examples/api/`](examples/api/README.md) | write a script against the API |
 | [`examples/tracing/`](examples/tracing/README.md) | trace behaviour as the kernel runs |
-| [`examples/breakpoints/`](examples/breakpoints/README.md) | stop, or notice, at the right moment |
+| [`examples/breakpoints/`](examples/breakpoints/README.md) | stop, or notice, at r
+he right moment |
+
+Every example filename is `<subject>_<kind>.py`, where the kind says what
+the file is: `_tour` walks through a subject, `_walk` follows a structure
+link by link, `_tracer` logs while the kernel runs, `_bp` stops (or
+decides), `_snapshot` computes a report with no target, `_sample` is the
+smallest thing that works.  The rule and the full table are in
+[`docs/naming.md`](docs/naming.md), and `tools/check_examples.py --check`
+enforces it.
 
 ### Scripting the API
 
-- [`examples/api/hello.py`](examples/api/hello.py) is the smallest
+- [`examples/api/hello_sample.py`](examples/api/hello_sample.py) is the smallest
   useful script and the one to copy: it shows where the names come from
   (installed into `__main__` by `gdbinit.py`), how to fall back when the
   file is run outside GDB, and four pure-Python calls that need no
   target.  It runs in both contexts and prints the same answers.
-- [`examples/api/trace.py`](examples/api/trace.py) is sourced after
+- [`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py) is sourced after
   `gdbinit.py` and uses the installed public API directly, without
   `from kernlens import ...`.
 - [`examples/api/slab_snapshot.py`](examples/api/slab_snapshot.py)
@@ -733,7 +742,7 @@ here is part of the package surface.
   shadow the KernLens commands of the same purpose).  It reads
   `KERNLENS_SYMBOL` / `KERNLENS_ARG` so it can trace any hook point
   without editing the file.
-- [`examples/tracing/cve_2025_38616_trace.py`](examples/tracing/cve_2025_38616_trace.py)
+- [`examples/tracing/cve_2025_38616_tracer.py`](examples/tracing/cve_2025_38616_tracer.py)
   is a CVE-2025-38616 KTLS use-after-free tracer that reuses the API and
   commands already installed by `gdbinit.py`; `trace-start` calls the
   registered `kl-base` command for automatic base selection; it refuses
@@ -745,13 +754,13 @@ here is part of the package surface.
 
 ### Breakpoint debugging
 
-- [`examples/breakpoints/conditional.py`](examples/breakpoints/conditional.py)
+- [`examples/breakpoints/conditional_bp.py`](examples/breakpoints/conditional_bp.py)
   installs `kbp-object <address>`, a `kfree` breakpoint that stops only
   for one object and passes every other hit through silently.  It
   compares the *slab object start* rather than the raw argument, because
   `kfree` legitimately receives interior pointers -- exactly the frees a
   use-after-free produces.
-- [`examples/breakpoints/watchfield.py`](examples/breakpoints/watchfield.py)
+- [`examples/breakpoints/watchfield_bp.py`](examples/breakpoints/watchfield_bp.py)
   installs `kwatch-field <type> <field> <address> --expect N`, a field
   watchpoint that reports only the transition *into* a chosen value
   (a refcount reaching zero while the object is still on a list is a

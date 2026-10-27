@@ -35,7 +35,7 @@ values readable in a terminal.
 Source it after `gdbinit.py` and run `retarget`::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/tracing/kaslr_retarget.py
+    (gdb) source /path/to/KernLens/examples/tracing/kaslr_retarget_tour.py
     (gdb) retarget              # discover, verify, then apply
     (gdb) retarget --dry-run    # show what it would do
     (gdb) retarget --offset 0x19600000
@@ -53,7 +53,7 @@ import shlex
 try:
     import gdb
 except ImportError as exc:  # pragma: no cover - GDB only
-    raise SystemExit("kaslr_retarget.py must be sourced by GDB") from exc
+    raise SystemExit("kaslr_retarget_tour.py must be sourced by GDB") from exc
 
 
 def _bootstrap_if_needed() -> None:

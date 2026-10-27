@@ -19,7 +19,7 @@ create per-file aliases for the facade.
 
 Load the tracer from GDB after ``gdbinit.py``::
 
-    (gdb) source examples/tracing/cve_2025_38616_trace.py
+    (gdb) source examples/tracing/cve_2025_38616_tracer.py
     (gdb) trace-start                    # auto base + install
     (gdb) trace-color on|off             # ANSI color toggle
     (gdb) c

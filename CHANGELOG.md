@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Every example filename is now `<subject>_<kind>.py`.**  The tree had
+  four parallel conventions -- `_tour`, `_tracer` beside `_trace`, a bare
+  `_walk`, and seven files with no marker at all -- and `trace.py`
+  managed to name neither its subject nor its kind.  A reader meets an
+  example before knowing what it is for, and the filename is the only
+  description available in a listing, a traceback or a `diff`.
+  - `api/hello.py` -> `api/hello_sample.py`
+  - `api/trace.py` -> `api/installed_api_tour.py` (it demonstrates the
+    names `gdbinit.py` installs; `trace` said nothing)
+  - `api/kernel_facts.py` -> `api/kernel_facts_tour.py`
+  - `tracing/cve_2025_38616_trace.py` -> `tracing/cve_2025_38616_tracer.py`
+  - `tracing/kaslr_retarget.py` -> `tracing/kaslr_retarget_tour.py`
+  - `breakpoints/{conditional,watchfield,per_cpu}.py` -> `..._bp.py`
+- The kind set is `_tour`, `_walk`, `_tracer`, `_bp`, `_snapshot` and
+  `_sample`; `docs/naming.md` tabulates every file against it, and
+  `check_examples.check_example_names()` fails the build on an
+  unclassified name or a kind with no subject.  The one exemption
+  (`api/gdbinit.example`, a `~/.gdbinit` fragment rather than a script)
+  is a data entry, so a new non-script file has to be a deliberate act.
+- `gdb_tracer.py` keeps the generic subject `gdb` on purpose: it is the
+  tracer other tracers are modelled on, and a file about a specific
+  subsystem names the subsystem.
+
+### Fixed
+
+- `tools/run_examples_gdb.py` reported a false mismatch across boots.
+  Its shape digest hashed section headings verbatim, so
+  `kernel identity (slide +0x16200000)` differed on the next boot --
+  because the slide had changed, which is the one thing guaranteed to
+  change.  Addresses and counts are now placeholders, so the record
+  survives a reboot while a renamed section still fails.  Both
+  properties are pinned by `ExampleCaptureShapeTests`.
+
 ### Added
 
 - The examples are now *executed* by CI, not merely inspected.  Three
@@ -142,7 +177,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   investigation actually uses them rather than one command at a time.
   Together they take command coverage from 1 of 40 to **35 of 40**, all
   verified against the 6.1.134 test kernel:
-  - `examples/api/kernel_facts.py` (`kfacts`) — establish what the target
+  - `examples/api/kernel_facts_tour.py` (`kfacts`) — establish what the target
     is before trusting an address: version, command line, the config flags
     that change how a *value* is interpreted, the hardening checklist,
     modules, the syscall table, symbol lookup and the boot log.
@@ -158,11 +193,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     typed, and print the stack.  Step 1 returning eight symbols for
     `init_task` is expected: kallsyms is a substring search, so selecting
     by exact name is the caller's job, and step 2 is how to confirm it.
-  - `examples/breakpoints/per_cpu.py` (`pbreak`) — stop in `schedule` and
+  - `examples/breakpoints/per_cpu_bp.py` (`pbreak`) — stop in `schedule` and
     read the *right* CPU's copy of a per-CPU variable.  GDB shows one
     thread, so the naive read gives CPU 0's copy whichever CPU took the
     breakpoint: wrong three times out of four, silently.
-  - `examples/tracing/kaslr_retarget.py` (`retarget`) — discover and apply
+  - `examples/tracing/kaslr_retarget_tour.py` (`retarget`) — discover and apply
     the KASLR slide, then prove the addresses moved.  Finding the slide is
     not applying it, and that is the step people skip.
 - `example_manifest.UNCOVERED_COMMANDS` records the five commands no
@@ -206,20 +241,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whose whole purpose is to stop.  The existing scripts moved unchanged
   apart from their self-references (`slab_snapshot.py`, `trace.py`, and
   `gdbinit.example` into `api/`; `gdb_tracer.py` and
-  `cve_2025_38616_trace.py` into `tracing/`), and every path that named
+  `cve_2025_38616_tracer.py` into `tracing/`), and every path that named
   them -- `gdbinit.py`, `MANIFEST.in`, the CI workflow, both READMEs,
   and `docs/architecture.md` -- follows.  Each directory carries a
   README that starts from the question the reader actually has, and
   `examples/README.md` routes between them.
-  - New `examples/api/hello.py` is the smallest useful script: it shows
+  - New `examples/api/hello_sample.py` is the smallest useful script: it shows
     where the installed names come from, how to fall back to importing
     `src/` when run outside GDB, and four pure-Python calls.  It prints
     the same eight lines in both contexts.
-  - New `examples/breakpoints/conditional.py` installs
+  - New `examples/breakpoints/conditional_bp.py` installs
     `kbp-object <address>`, a `kfree` breakpoint that stops only for one
     object.  It compares the slab object start rather than the raw
     argument, because `kfree` legitimately receives interior pointers.
-  - New `examples/breakpoints/watchfield.py` installs
+  - New `examples/breakpoints/watchfield_bp.py` installs
     `kwatch-field <type> <field> <address> --expect N`, which reports
     only the transition into a chosen value.  QEMU's gdbstub implements
     no hardware watchpoints, so the command catches `gdb.error` and
@@ -433,7 +468,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `gdb_tracer.py` documents that its `kfree`/`$rdi` default is the
     validated hook point.
 
-- `examples/cve_2025_38616_trace.py` is validated end to end against the
+- `examples/tracing/cve_2025_38616_tracer.py` is validated end to end against the
   **real** PoC: with the tracer armed, running `/home/ctf/exploit` in the
   guest produces the complete KTLS use-after-free chain (write/`splice`
   merging into one skb A, the `tcp_ack` release that leaves
@@ -739,7 +774,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default link-time base and zero slide otherwise, and can be run again
   safely after a reboot/re-attach.  `kl-kaslr` and `kl-kaslr-offset`
   remain the manual overrides.
-- `examples/cve_2025_38616_trace.py`: now loads without adding `src/`
+- `examples/tracing/cve_2025_38616_tracer.py`: now loads without adding `src/`
   to `sys.path` or importing `kernlens`; it reuses the API and commands
   installed by `gdbinit.py` and calls `kdbg` methods directly without
   per-file aliases.  `trace-start` runs the registered
@@ -842,7 +877,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `examples/cve_2025_38616_trace.py`, a CVE-2025-38616 KTLS
+- Added `examples/tracing/cve_2025_38616_tracer.py`, a CVE-2025-38616 KTLS
   use-after-free tracer refactored to use `kernlens.gdb.facade`
   directly instead of loading a separate helper module.
 - Added a project-level `gdbinit.py` and `examples/gdbinit.example`.

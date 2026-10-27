@@ -139,7 +139,7 @@ def _example(root: str, name: str, **kwargs: object) -> Example:
 EXAMPLES: tuple[Example, ...] = (
     # --- api/ -----------------------------------------------------------
     _example(
-        "api", "hello.py",
+        "api", "hello_sample.py",
         purpose="the smallest script: installed names, the outside-GDB "
                 "fallback, and four pure-Python calls",
         runs_on="host",
@@ -153,7 +153,7 @@ EXAMPLES: tuple[Example, ...] = (
         ),
     ),
     _example(
-        "api", "trace.py",
+        "api", "installed_api_tour.py",
         purpose="using the installed public API directly after gdbinit.py",
         surface=(
             "BitOps.byte_swap64",
@@ -191,7 +191,7 @@ EXAMPLES: tuple[Example, ...] = (
         kind="config",
     ),
     _example(
-        "api", "kernel_facts.py",
+        "api", "kernel_facts_tour.py",
         purpose="establish what the target is before trusting an address",
         commands=(
             "kernlens-kversion",
@@ -417,13 +417,13 @@ EXAMPLES: tuple[Example, ...] = (
         ),
     ),
     _example(
-        "tracing", "cve_2025_38616_trace.py",
+        "tracing", "cve_2025_38616_tracer.py",
         purpose="a CVE-2025-38616 KTLS use-after-free tracer",
         # `trace-start` installs breakpoints and then waits for the kernel
         # to hit them, so in a batch run it blocks rather than returning.
         # The harness still sources the file -- which is what catches a
         # tracer that no longer loads -- and stops there.  The kaslr
-        # wrappers it forwards to are exercised by `kaslr_retarget.py`.
+        # wrappers it forwards to are exercised by `kaslr_retarget_tour.py`.
         probe="-",
         # `commands` lists only what the tracer *executes*.  It names
         # `kl-kaslr` and `kl-kaslr-offset` in its banner and forwards to
@@ -460,7 +460,7 @@ EXAMPLES: tuple[Example, ...] = (
     ),
     # --- breakpoints/ ---------------------------------------------------
     _example(
-        "breakpoints", "conditional.py",
+        "breakpoints", "conditional_bp.py",
         purpose="stop only when the freed object is the one being watched",
         # `kbp-object` takes exactly one address and raises GdbError
         # otherwise.  `init_task` is a real symbol whose address is a
@@ -476,7 +476,7 @@ EXAMPLES: tuple[Example, ...] = (
         ),
     ),
     _example(
-        "breakpoints", "watchfield.py",
+        "breakpoints", "watchfield_bp.py",
         purpose="report only the write that reaches a chosen value",
         # `kwatch-field` installs a *hardware* watchpoint, and the QEMU
         # gdbstub behind the test VM rejects those ("this target may not
@@ -488,7 +488,7 @@ EXAMPLES: tuple[Example, ...] = (
         surface=("kdbg.warn",),
     ),
     _example(
-        "breakpoints", "per_cpu.py",
+        "breakpoints", "per_cpu_bp.py",
         purpose="read the right CPU's copy of a per-CPU variable",
         # The bare command installs a breakpoint and waits, so it would
         # look like a pass while proving nothing.  `--off` exercises the
@@ -504,7 +504,7 @@ EXAMPLES: tuple[Example, ...] = (
     ),
     # --- tracing/ (continued) -------------------------------------------
     _example(
-        "tracing", "kaslr_retarget.py",
+        "tracing", "kaslr_retarget_tour.py",
         purpose="make a tracer work when the KASLR slide is not what you assumed",
         surface=("kdbg.link_text",),
         commands=(

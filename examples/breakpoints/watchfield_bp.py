@@ -19,7 +19,7 @@ but only the interesting one is reported.
 Load after ``gdbinit.py``::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/breakpoints/watchfield.py
+    (gdb) source /path/to/KernLens/examples/breakpoints/watchfield_bp.py
     (gdb) kwatch-field 'struct page' _refcount.counter \\
              0xffffea0000004800 --expect 0
 
@@ -37,7 +37,7 @@ try:
     import gdb
 except ImportError as exc:  # pragma: no cover - GDB only
     raise SystemExit(
-        "watchfield.py must be sourced by GDB (it sets hardware watchpoints)"
+        "watchfield_bp.py must be sourced by GDB (it sets hardware watchpoints)"
     ) from exc
 
 
@@ -164,6 +164,6 @@ class WatchFieldCommand(gdb.Command):
 _WATCH_COMMAND = WatchFieldCommand()
 
 gdb.write(
-    "watchfield.py: kwatch-field <type> <field-path> <address> "
+    "watchfield_bp.py: kwatch-field <type> <field-path> <address> "
     "[--expect N] is ready\n"
 )

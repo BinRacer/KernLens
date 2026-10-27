@@ -54,6 +54,51 @@ by a linter.
 - Every module owns one implementation; there are no historical
   re-export modules at the package root.
 
+## Example files
+
+Examples are not library modules: a reader meets one before knowing what
+it is for, and the filename is the only description available in a
+directory listing, a traceback or a `git diff`.  So they carry one extra
+piece of information -- what kind of thing the file is.
+
+**`<subject>_<kind>.py`**, lower-case `snake_case`, no digits-only
+subjects, no verbs standing in for kinds.
+
+| Kind | The file | Its product |
+| --- | --- | --- |
+| `_tour` | installs one command and prints a sequence of sections | a walkthrough of one subject |
+| `_walk` | installs one command and follows a structure link by link | the chain it traversed |
+| `_tracer` | installs breakpoints that never stop the debuggee | a log |
+| `_bp` | installs a breakpoint whose purpose is to stop, or to decide | one trap |
+| `_snapshot` | computes a report from constants, with no target | a table |
+| `_sample` | the smallest thing that works | a starting point to copy |
+
+| File | Subject | Kind |
+| --- | --- | --- |
+| `api/address_tour.py` | page-table views of one address | `_tour` |
+| `api/installed_api_tour.py` | the names `gdbinit.py` installs | `_tour` |
+| `api/kernel_facts_tour.py` | identity of the target | `_tour` |
+| `api/freelist_walk.py` | the SLUB freelist encoding | `_walk` |
+| `api/slab_snapshot.py` | a slab report from constants | `_snapshot` |
+| `api/hello_sample.py` | the minimum viable script | `_sample` |
+| `tracing/gdb_tracer.py` | `kfree` arguments | `_tracer` |
+| `tracing/cve_2025_38616_tracer.py` | one CVE's UAF chain | `_tracer` |
+| `breakpoints/conditional_bp.py` | one object's frees | `_bp` |
+| `breakpoints/per_cpu_bp.py` | per-CPU addressing | `_bp` |
+
+Exempt: `api/gdbinit.example` is a dotfile fragment, not a script.
+
+The kind is not decoration -- it is the first thing a reader needs and
+the last thing a filename tends to say.  `trace.py` named neither its
+subject nor its kind; it is now `installed_api_tour.py`, and the rename
+is the whole argument for the rule.  `gdb_tracer.py` keeps its subject
+(`gdb`) only because it is the *generic* tracer that other tracers are
+modelled on; a file about a specific subsystem names the subsystem.
+
+`tools/check_examples.py --check` enforces the pattern, so a new example
+with an unclassified name fails the build rather than being discovered
+later.
+
 ## Import paths
 
 - `from kernlens import ...` is the convenient public surface for the

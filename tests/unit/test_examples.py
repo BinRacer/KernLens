@@ -141,7 +141,7 @@ class NegativeTests(unittest.TestCase):
     def test_claim_absent_from_the_file_is_reported(self) -> None:
         """Dropping the code but keeping the claim must fail."""
         broken = example_manifest.Example(
-            path="examples/api/hello.py",
+            path="examples/api/hello_sample.py",
             purpose="negative test",
             surface=("KAddr.is_vmalloc",),
             readme="examples/api/README.md",
@@ -152,7 +152,7 @@ class NegativeTests(unittest.TestCase):
 
     def test_unknown_surface_name_is_reported(self) -> None:
         broken = example_manifest.Example(
-            path="examples/api/hello.py",
+            path="examples/api/hello_sample.py",
             purpose="negative test",
             surface=("KAddr.not_a_real_method",),
             readme="examples/api/README.md",
@@ -177,7 +177,7 @@ class NegativeTests(unittest.TestCase):
 
     def test_unknown_command_claim_is_reported(self) -> None:
         broken = example_manifest.Example(
-            path="examples/api/trace.py",
+            path="examples/api/installed_api_tour.py",
             purpose="negative test",
             commands=("kl-not-a-command",),
             readme="examples/api/README.md",
@@ -194,12 +194,12 @@ class NegativeTests(unittest.TestCase):
     def test_mentioned_but_not_executed_command_is_reported(self) -> None:
         """Claiming a command a file only names in prose must fail.
 
-        ``cve_2025_38616_trace.py`` mentions ``kl-kaslr`` in a banner and
+        ``cve_2025_38616_tracer.py`` mentions ``kl-kaslr`` in a banner and
         in a docstring but never executes it -- that is exactly the
         distinction this checker exists to draw.
         """
         broken = example_manifest.Example(
-            path="examples/tracing/cve_2025_38616_trace.py",
+            path="examples/tracing/cve_2025_38616_tracer.py",
             purpose="negative test",
             commands=("kernlens-kaslr",),
             readme="examples/tracing/README.md",
@@ -215,7 +215,7 @@ class NegativeTests(unittest.TestCase):
 
     def test_missing_readme_link_is_reported(self) -> None:
         broken = example_manifest.Example(
-            path="examples/api/hello.py",
+            path="examples/api/hello_sample.py",
             purpose="negative test",
             readme="examples/tracing/README.md",
         )
@@ -705,6 +705,116 @@ class GeneratedCoverageTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()) as err:
                 self.assertEqual(gen_examples_readme.main(argv), 2)
             self.assertIn("exactly one", err.getvalue())
+
+
+class ExampleNameTests(unittest.TestCase):
+    """Every example filename says what kind of example it is.
+
+    Enforced by ``check_examples.check_example_names()``.  The negative
+    cases matter more than the positive one: a rule that only ever passes
+    is indistinguishable from a rule that is not applied, and this tree
+    had four parallel conventions before the rule existed.
+    """
+
+    def test_the_current_tree_classifies_every_example(self) -> None:
+        self.assertEqual(check_examples.check_example_names(), [])
+
+    def test_an_unclassified_name_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / "examples/api").mkdir(parents=True)
+            (root / "examples/api/whatever.py").write_text(
+                "# probe\n", encoding="utf-8",
+            )
+            failures = check_examples.check_example_names(root)
+            self.assertEqual(len(failures), 1, failures)
+            self.assertIn("does not end with a kind", failures[0].message)
+
+    def test_a_kind_without_a_subject_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / "examples/api").mkdir(parents=True)
+            (root / "examples/api/_tour.py").write_text(
+                "# probe\n", encoding="utf-8",
+            )
+            failures = check_examples.check_example_names(root)
+            self.assertEqual(len(failures), 1, failures)
+            self.assertIn("no subject", failures[0].message)
+
+    def test_every_kind_in_the_rule_is_used_by_a_real_file(self) -> None:
+        """No aspirational kinds: the list describes the tree.
+
+        A kind nobody uses is either a file that was never written or a
+        classification that stopped being true, and both make
+        ``docs/naming.md`` read as a plan rather than a description.
+        """
+        used = set()
+        for path in (check_examples._ROOT / "examples").rglob("*.py"):
+            for kind in check_examples.EXAMPLE_KINDS:
+                if path.stem.endswith(kind):
+                    used.add(kind)
+        self.assertEqual(
+            sorted(set(check_examples.EXAMPLE_KINDS) - used), [],
+            "kind(s) declared in EXAMPLE_KINDS that no example uses",
+        )
+
+
+class ExampleCaptureShapeTests(unittest.TestCase):
+    """The recorded run's shape must not depend on the boot.
+
+    ``tools/run_examples_gdb.py`` compares a live run against the recorded
+    one.  Its first version hashed the section headings verbatim, so a
+    different boot reported a mismatch on
+    ``kernel identity (slide +0x16200000)`` -- because the slide had
+    changed, which is the one thing that always changes.  A check that
+    fails for that reason teaches the reader to ignore it, so the
+    normalization is pinned here rather than trusted.
+
+    These run on the host: the heading extractor takes text and returns
+    text, and nothing about it needs a debugger.
+    """
+
+    def test_addresses_and_offsets_become_placeholders(self) -> None:
+        import run_examples_gdb
+
+        self.assertEqual(
+            run_examples_gdb._headings(
+                "=== kernel identity (slide +0x16200000) ===\n"
+            ),
+            ["kernel identity (slide +H)"],
+        )
+        self.assertEqual(
+            run_examples_gdb._headings(
+                "--- 4. which cache owns 0xffff8b02c66bfc00 "
+                "(kl-slab contains) ---\n"
+            ),
+            ["N. which cache owns H (kl-slab contains)"],
+        )
+
+    def test_two_boots_produce_the_same_shape(self) -> None:
+        import run_examples_gdb
+
+        boot_a = (
+            "=== kernel identity (slide +0x16200000) ===\n"
+            "=== kmalloc-1k cpu 0: the chain ===\n"
+        )
+        boot_b = (
+            "=== kernel identity (slide +0x23000000) ===\n"
+            "=== kmalloc-1k cpu 0: the chain ===\n"
+        )
+        self.assertEqual(
+            run_examples_gdb._headings(boot_a),
+            run_examples_gdb._headings(boot_b),
+        )
+
+    def test_a_renamed_section_still_differs(self) -> None:
+        """Normalization must not have flattened the thing being checked."""
+        import run_examples_gdb
+
+        self.assertNotEqual(
+            run_examples_gdb._headings("=== chain depth and the partial list ===\n"),
+            run_examples_gdb._headings("=== depth notes ===\n"),
+        )
 
 
 class FreelistWalkRegressions(unittest.TestCase):
