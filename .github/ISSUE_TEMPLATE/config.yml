@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security issue
+    url: https://github.com/BinRacer/KernLens/security/advisories/new
+    about: Report privately. Do not open a public issue for a wrong-answer or target-safety bug.
+  - name: Question or usage help
+    url: https://github.com/BinRacer/KernLens/blob/main/docs/tutorial/README.md
+    about: Every command has a page with real captured output; start there.

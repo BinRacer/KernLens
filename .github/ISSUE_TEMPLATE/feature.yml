@@ -1,0 +1,34 @@
+---
+name: New command or feature
+about: Propose a command, or a capability the API is missing
+labels: ["enhancement"]
+---
+
+## What question should it answer
+
+Phrase it as the question a user arrives with, not as the implementation:
+
+- good: "which cache did this address come from, and is it still free?"
+- not: "add a `kl-slub-lookup` command with a `-v` flag"
+
+## What makes it refuse
+
+Every command in KernLens refuses rather than guesses -- it prints
+`not present`, `unknown`, or `-` instead of a plausible number.  What
+are the cases where a correct implementation must decline here?
+
+This is not a formality: a command that cannot say "I do not know" will
+eventually say something false, and that is the failure mode the project
+optimises against.
+
+## Where the values come from
+
+Which is it -- DWARF, BTF, a verified fallback registry, or a raw memory
+read? If the answer is "a hardcoded offset", say which kernel version
+verified it.
+
+## Checklist
+
+- [ ] I looked in `kl-help` and `docs/tutorial/` and it is not there
+- [ ] The question is about reading a kernel, not writing to one
+      (KernLens is read-only by design)

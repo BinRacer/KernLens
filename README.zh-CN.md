@@ -12,6 +12,7 @@
   </p>
 
   <p>
+    <a href="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml"><img src="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml/badge.svg" alt="CI 状态"></a>
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="许可证：GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
@@ -243,6 +244,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 | [`examples/`](examples/README.md) | 可运行脚本，按意图分组 |
 | [`docs/naming.md`](docs/naming.md) | 命令与文件名约定 |
 | [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md) | 环境搭建、测试、布局生成器 |
+| [`SECURITY.md`](SECURITY.md) | 什么算漏洞，以及如何私下报告 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 全部变更，最新的在前 |
 
 ## 环境要求与许可
