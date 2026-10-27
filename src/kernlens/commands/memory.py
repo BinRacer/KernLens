@@ -144,7 +144,7 @@ def _slab_dispatch(
             _slab_parser.print_usage()
             return
         for token in tokens:
-            _slabs_contains_cmd(parse_int_arg(token))
+            _slabs_contains_cmd(parse_int_arg(token), verbose)
         return
     if command in ("details", "detail"):
         # kernlens extra: the granular SLUB inspector for one address.
@@ -394,7 +394,14 @@ def _slabs_info_cmd(
             _slabs_node_partial(indent, cache, node, verbose)
 
 
-def _slabs_contains_cmd(addr: int) -> None:
+def _slabs_contains_cmd(addr: int, verbose: bool = False) -> None:
+    """Report which cache, slab, and slot *addr* belongs to.
+
+    The plain form matches pwndbg (`obj @ cache size=... object_size=...`).
+    ``-v`` adds the slab it lives in, the slot number, the slab's
+    occupancy, and the neighbouring slots -- all of which the inspectors
+    already read for `details`.
+    """
     found = kdbg.slab_object(addr)
     if found is None:
         print(message.error(f"{addr:#x} does not belong to a SLUB cache"))
@@ -403,6 +410,41 @@ def _slabs_contains_cmd(addr: int) -> None:
     print(
         indent_addr(obj) + " @ " + message.notice(cache.name)
         + f"  size={cache.size} object_size={cache.object_size}"
+    )
+    if not verbose:
+        return
+    page = kdbg.head_to_page(obj)
+    if page is None:
+        print(message.warn("  cannot translate the object to a struct page"))
+        return
+    page = kdbg.compound_head(page)
+    counters = kdbg.slab_counters(page)
+    located = kdbg.object_index(page, obj, cache.address)
+    before, after = kdbg.neighbour_objects(cache.address, obj, page)
+    indent = IndentContextManager()
+    indent.print(indent.prefix("Slab head") + ": " + indent.addr_hex(page))
+    indent.print(
+        indent.prefix("Object #") + ": "
+        + (
+            f"{located[0]} / {located[1]}"
+            if located is not None else message.warn("?")
+        )
+    )
+    indent.print(
+        indent.prefix("Slab state") + ": "
+        + message.notice(kdbg.slab_state(page))
+    )
+    if counters is not None:
+        inuse, objects, frozen = counters
+        indent.print(
+            indent.prefix("Counters") + f": inuse={inuse} objects={objects} "
+            + f"frozen={frozen}"
+        )
+    indent.print(
+        indent.prefix("Neighbours") + ": "
+        + (indent.aux_hex(before) if before else message.warn("-"))
+        + " / "
+        + (indent.aux_hex(after) if after else message.warn("-"))
     )
 
 

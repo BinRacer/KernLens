@@ -301,6 +301,98 @@ class SlubInspector:
             visited += 1
         return False
 
+    # --- slab counters ---------------------------------------------------
+
+    def slab_counters(self, page: int) -> tuple[int, int, int] | None:
+        """Return ``(inuse, objects, frozen)`` for a ``struct slab``.
+
+        SLUB packs them into one 32-bit word: ``inuse:16`` then
+        ``objects:15`` then ``frozen:1``, which is why they cannot be read
+        as three separate fields.  The layout is fixed in the definition
+        of ``struct slab``, so the masks hold on every release that has
+        the type (v5.17 onwards).  ``None`` means the word was unreadable.
+        """
+        if not page:
+            return None
+        counters = self._reader.u64(f"((struct slab *){page})->counters")
+        if counters is None:
+            return None
+        return (
+            counters & 0xFFFF,
+            (counters >> 16) & 0x7FFF,
+            (counters >> 31) & 1,
+        )
+
+    def slab_state(self, page: int) -> str:
+        """Describe a slab as ``frozen`` / ``full`` / ``partial`` / ``empty``.
+
+        Derived from the counters rather than from which list the slab is
+        on: a frozen slab is deliberately absent from every list while a
+        CPU allocates from it, so list membership alone would report "not
+        on any list" for a perfectly normal slab.
+        """
+        counters = self.slab_counters(page)
+        if counters is None:
+            return "unknown"
+        inuse, objects, frozen = counters
+        if frozen:
+            return "frozen"
+        if objects == 0:
+            return "unknown"
+        if inuse >= objects:
+            return "full"
+        if inuse == 0:
+            return "empty"
+        return "partial"
+
+    def object_index(
+        self, head: int, obj: int, cache: int, page_size: int = 64,
+    ) -> tuple[int, int] | None:
+        """Return ``(index, objects)`` of *obj* inside its slab, or ``None``.
+
+        The slab's base is the direct-map address of its first page and
+        the objects sit at ``cache->size`` intervals, so the index is
+        ``(obj - base) // size`` -- the slot number, which is what
+        "object 7 of 16" means to a reader.
+        """
+        if not head or not obj or not cache:
+            return None
+        size = self._reader.u64(f"((struct kmem_cache *){cache})->size")
+        if not size:
+            return None
+        page_offset = self._reader.read_kvar("page_offset_base")
+        vmemmap = self._reader.read_kvar("vmemmap_base")
+        if not page_offset or not vmemmap:
+            return None
+        try:
+            base = KAddr.page_to_virt(head, page_offset, vmemmap, page_size)
+        except ValueError:
+            return None
+        if obj < base:
+            return None
+        counters = self.slab_counters(head)
+        objects = counters[1] if counters is not None else 0
+        return ((obj - base) // size, objects)
+
+    def neighbour_objects(
+        self, cache: int, obj: int, head: int, page_size: int = 64,
+    ) -> tuple[int | None, int | None]:
+        """Return the addresses of the objects before and after *obj*.
+
+        Bounded by the slab: a neighbour outside it is reported as
+        ``None`` rather than as an address in the next slab.
+        """
+        located = self.object_index(head, obj, cache, page_size)
+        if located is None:
+            return (None, None)
+        index, objects = located
+        size = self._reader.u64(f"((struct kmem_cache *){cache})->size")
+        if not size:
+            return (None, None)
+        previous = obj - size if index > 0 else None
+        following = obj + size if objects and index + 1 < objects else None
+        return (previous, following)
+
     # --- printing --------------------------------------------------------
 
     def print_slab(self, head: int) -> None:
