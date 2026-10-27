@@ -351,10 +351,14 @@ def _slabs_info_cmd(
             cpu_iter = list(range(min(nr_cpus, 8)))
         else:
             cpu_iter = []
+        # The inspector wants the cache *address*: passing the dataclass
+        # would build `((struct kmem_cache *)<SlabCache>)` and every CPU
+        # would silently read NULL.
+        cache_addr = cache.address
         for cpu_id in cpu_iter:
             if active:
-                active_slab = kdbg.cpu_active_slab(cache, cpu_id)
-                freelist = kdbg.cpu_freelist(cache, cpu_id)
+                active_slab = kdbg.cpu_active_slab(cache_addr, cpu_id)
+                freelist = kdbg.cpu_freelist(cache_addr, cpu_id)
                 indent.print(
                     indent.prefix(f"cpu {cpu_id}") + ": active="
                     + (

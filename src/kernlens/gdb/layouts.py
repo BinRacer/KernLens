@@ -156,12 +156,12 @@ _LAYOUTS: tuple[StructLayout, ...] = (
         variants=(
             StructVariant(
                 note=(
-                    "7.0 probe (host BTF).  `cpu_sheaves` replaced "
-                    "`cpu_slab` at +0 in 6.18 and `node[]` became "
-                    "`per_node[]` in 7.1, but both sit after every field "
-                    "read here."
+                    "7.0 probe (host BTF).  `cpu_slab` is GONE: 6.18 and "
+                    "6.19 still carried it at +0 (next to the new "
+                    "`cpu_sheaves`), and 7.0 dropped it.  `node[]` became "
+                    "`per_node[]` in 7.1, past every field here."
                 ),
-                version_min=(6, 18),
+                version_min=(7, 0),
                 fields={
                     "name": 0x58,
                     "size": 0x18,
@@ -175,15 +175,34 @@ _LAYOUTS: tuple[StructLayout, ...] = (
             ),
             StructVariant(
                 note=(
+                    "NOT probed -- 6.18/6.19 kept `cpu_slab` at +0 and "
+                    "inserted `lock_key` plus `sheaf_capacity` before "
+                    "`oo`, so every offset below differs from 7.0's.  "
+                    "Only `cpu_slab` (the slot slub.py reads) is claimed "
+                    "here; derive the rest with `abi_ranges.py` and pin "
+                    "them with `gen_layouts.py --vmlinux` on a 6.18 "
+                    "kernel before adding them."
+                ),
+                version_min=(6, 18),
+                version_max=(7, 0),
+                fields={
+                    "cpu_slab": 0x00,
+                },
+            ),
+            StructVariant(
+                note=(
                     "6.1.134 probe (DWARF).  One band covers 5.19-6.17: "
                     "6.12 only moved the definition from slub_def.h to "
-                    "mm/slab.h, and `cpu_slab` (read by slub.py) is "
-                    "still at +0 until 6.18.  The earlier releases also "
-                    "had `max` after `oo`; that is past every field here."
+                    "mm/slab.h.  `cpu_slab` is the first member -- the "
+                    "slot slub.py reads to reach the per-CPU area -- up "
+                    "to and including 6.19; 7.0 removed it.  The earlier "
+                    "releases also had `max` after `oo`; that is past "
+                    "every field here."
                 ),
                 version_min=(5, 19),
                 version_max=(6, 18),
                 fields={
+                    "cpu_slab": 0x00,
                     "name": 0x60,
                     "size": 0x18,
                     "object_size": 0x1C,
@@ -200,13 +219,14 @@ _LAYOUTS: tuple[StructLayout, ...] = (
                     "from `offset` on sits one word earlier.  NOT probed "
                     "-- derived from the member order in this project's "
                     "linux-stable clone (`tools/abi_ranges.py`), which "
-                    "shows the only change between 3.6 and 5.15 is the "
-                    "insertion of `reciprocal_size` before `offset`.  "
+                    "shows `reciprocal_size` appears at 5.9.  "
+                    "`cpu_slab` is the first member throughout.  "
                     "Verify with `gen_layouts.py --vmlinux` before "
                     "trusting it."
                 ),
                 version_max=(5, 9),
                 fields={
+                    "cpu_slab": 0x00,
                     "name": 0x58,
                     "size": 0x18,
                     "object_size": 0x1C,
@@ -215,6 +235,73 @@ _LAYOUTS: tuple[StructLayout, ...] = (
                     "align": 0x4C,
                     "flags": 0x08,
                     "list": 0x60,
+                },
+            ),
+        ),
+    ),
+    StructLayout(
+        type_name="struct kmem_cache_node",
+        origin_version="v3.10",
+        origin_path="mm/slab.h (moved to mm/slub.c at v6.8)",
+        variants=(
+            StructVariant(
+                note=(
+                    "The SLUB branch of the dual CONFIG_SLAB/CONFIG_SLUB "
+                    "definition: `spinlock_t list_lock` then `nr_partial` "
+                    "and `partial`.  Verified on 6.1.134 (DWARF: "
+                    "nr_partial +0x8, partial +0x10) and on 7.0 (host BTF: "
+                    "same two offsets, with `barn` appended at v6.18).  "
+                    "`partial` is what slub.py walks, so a missing row "
+                    "here used to leave a no-debug-info build with no "
+                    "answer at all."
+                ),
+                config=(("CONFIG_SLUB", "y"),),
+                fields={
+                    "nr_partial": 0x08,
+                    "partial": 0x10,
+                },
+            ),
+        ),
+    ),
+    StructLayout(
+        type_name="struct kmem_cache_cpu",
+        origin_version="v3.6",
+        origin_path=(
+            "include/linux/slub_def.h (moved to mm/slub.c at v6.8; "
+            "removed at v7.0 in favour of struct slub_percpu_sheaves)"
+        ),
+        variants=(
+            StructVariant(
+                note=(
+                    "6.1.134 probe (DWARF).  `slab` and `freelist` have "
+                    "sat at +0x10 and +0 throughout 5.17-6.19: the v6.5 "
+                    "`freelist_tid` union and the v6.19 anonymous "
+                    "`struct freelist_tid` both leave the pair where it "
+                    "was, and 6.18 only widens `lock`."
+                ),
+                version_min=(5, 17),
+                version_max=(6, 8),
+                fields={
+                    "freelist": 0x00,
+                    "tid": 0x08,
+                    "slab": 0x10,
+                },
+            ),
+            StructVariant(
+                note=(
+                    "Same slots after the definition moved from "
+                    "slub_def.h to mm/slub.c (v6.8); 6.5 added the "
+                    "`freelist_tid` union over `freelist`/`tid`, and 6.5 "
+                    "added `freelist_tid` again as a named member in 6.19.  "
+                    "NOT probed on a 6.8-6.19 kernel -- derived from the "
+                    "member lists in this project's linux-stable clone."
+                ),
+                version_min=(6, 8),
+                version_max=(6, 20),
+                fields={
+                    "freelist": 0x00,
+                    "tid": 0x08,
+                    "slab": 0x10,
                 },
             ),
         ),
@@ -513,15 +600,28 @@ def offset(
     """Return a fallback ``offsetof(type_name, path)``, or ``None``.
 
     The first :class:`StructVariant` whose version range and ``CONFIG_*``
-    predicates match is used; when nothing matches, the first variant
-    that declares the field is used anyway (the caller has already
-    committed to a table value and will warn about it).
+    predicates match is used.  Returning the first *declaring* variant
+    regardless only happens when **both** inputs are unknown (``None``):
+    that is the "neither the version banner nor ``.config`` was readable"
+    path, where something is better than nothing and the caller already
+    warns that the table may not fit.
+
+    Once the caller supplied a version or a config, a non-match is an
+    answer: the field does not exist in that build.  Handing out the
+    neighbouring band's offset is the exact bug this table exists to
+    prevent -- a 5.14 kernel must never be told 5.9's ``offset``, a 7.0
+    kernel has no ``cpu_slab`` at all, and a ``CONFIG_SLUB=n`` build has
+    no ``kmem_cache_node.partial``.
     """
     layout = _BY_TYPE.get(type_name)
     if layout is None:
         return None
     resolved = layout.resolved_field(path, version, config or None)
-    return resolved if resolved is not None else layout.field(path)
+    if resolved is not None:
+        return resolved
+    if version is None and config is None:
+        return layout.field(path)
+    return None
 
 
 def sizeof(

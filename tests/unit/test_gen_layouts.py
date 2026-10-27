@@ -96,6 +96,82 @@ class CompareTests(unittest.TestCase):
         self.assertEqual(len(diffs), 4)
 
 
+class BandedCompareTests(unittest.TestCase):
+    """``compare`` must only hold the registry to the band in force."""
+
+    def _report(self, vmlinux_probe: dict) -> dict:
+        """A report for one release: only that band's fields are present."""
+        return vmlinux_probe
+
+    def _report_for(
+        self, version: tuple[int, ...], config: dict[str, str] | None = None,
+    ) -> dict:
+        """Build the report a real probe of *version* would return.
+
+        Only bands that match *version* contribute, because a probe reads
+        the live debug info: a field declared by an older band simply is
+        not there.  ``layouts.offset`` is deliberately not used -- it
+        falls back to a non-matching band on purpose, which is right for
+        a live lookup and wrong for modelling a probe.
+        """
+        report: dict = {}
+        for entry in layouts.entries():
+            fields: dict[str, int] = {}
+            # First matching variant wins per path, the same precedence
+            # `StructLayout.resolved_field` uses (bpf_map's two bands are
+            # CONFIG_SECURITY gates, so merging them would be wrong).
+            for variant in entry.variants:
+                if not variant.matches(version, config):
+                    continue
+                for path, value in variant.fields.items():
+                    fields.setdefault(path, value)
+            if not fields:
+                continue
+            item: dict = {"fields": fields}
+            size = layouts.sizeof(entry.type_name, version, config)
+            if size is not None:
+                item["sizeof"] = size
+            report[entry.type_name] = item
+        return report
+
+    def test_a_field_only_one_band_declares_is_not_required(self) -> None:
+        # `cpu_slab` is a 5.x-6.19 member; a 7.0 probe legitimately lacks it.
+        report = self._report_for((7, 0, 0))
+        diffs = gen_layouts.compare(report, (7, 0, 0))
+        self.assertEqual(diffs, [])
+
+    def test_a_struct_no_band_covers_is_not_required(self) -> None:
+        # `struct kmem_cache_cpu` is gone at 7.0, so a 7.0 probe is silent.
+        report = self._report_for((7, 0, 0))
+        self.assertNotIn("struct kmem_cache_cpu", report)
+        diffs = gen_layouts.compare(report, (7, 0, 0))
+        self.assertEqual(diffs, [])
+
+    def test_a_covered_struct_still_must_be_present(self) -> None:
+        # 6.1 does have kmem_cache_cpu, so a probe that omits it is a diff.
+        report = self._report_for((6, 1, 134))
+        del report["struct kmem_cache_cpu"]
+        diffs = gen_layouts.compare(report, (6, 1, 134))
+        self.assertTrue(
+            any("struct kmem_cache_cpu: not found" in d for d in diffs)
+        )
+
+    def test_without_a_version_every_band_is_claimed(self) -> None:
+        # No version means the registry cannot narrow itself, so it must
+        # be strict -- otherwise a drifted table would pass silently.
+        report = self._report_for((7, 0, 0))
+        diffs = gen_layouts.compare(report)
+        self.assertTrue(any("cpu_slab" in d for d in diffs))
+
+    def test_a_banded_value_is_checked_inside_its_band(self) -> None:
+        report = self._report_for((6, 1, 134))
+        report["struct kmem_cache"]["fields"]["name"] = 0x58
+        diffs = gen_layouts.compare(report, (6, 1, 134))
+        self.assertTrue(
+            any("kmem_cache.name" in d for d in diffs),
+        )
+
+
 class RenderTests(unittest.TestCase):
     def test_renders_fields_and_size(self) -> None:
         report = {
