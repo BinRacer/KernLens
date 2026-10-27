@@ -92,6 +92,29 @@ def build_spec() -> dict[str, list[str]]:
     return spec
 
 
+def _band_paths(
+    layout: layouts.StructLayout,
+    version: layouts.Version | None,
+    config: dict[str, str] | None,
+) -> set[str] | None:
+    """Return the field paths the registry claims for this build.
+
+    A struct can carry one band per ABI era, and a band only speaks for
+    the releases it covers: `struct kmem_cache.cpu_slab` exists through
+    6.19 and is gone afterwards, so a 7.0 probe must not be told that
+    field is missing.  ``None`` means "every path in every band", which
+    is what an unknown version has to fall back to -- assuming the
+    newest band there would let a drifted table pass silently.
+    """
+    if version is None:
+        return None
+    paths: set[str] = set()
+    for variant in layout.variants:
+        if variant.matches(version, config):
+            paths.update(variant.fields)
+    return paths
+
+
 def compare(
     report: dict[str, Any],
     version: layouts.Version | None = None,
@@ -101,20 +124,26 @@ def compare(
 
     Each string is ``"<location>: registry <a> != actual <b>"``; an empty
     list means the registry still matches the probed kernel for every
-    struct it declares.  A struct the registry declares but the probe did
-    not return is itself a difference, so an incomplete probe can never
-    pass silently.
+    struct it declares for that release.  A struct the registry declares
+    but the probe did not return is itself a difference, so an incomplete
+    probe can never pass silently -- unless no band covers the probed
+    version, in which case the registry makes no claim about it.
     """
     diffs: list[str] = []
     for layout in layouts.entries():
         type_name = layout.type_name
+        claimed = _band_paths(layout, version, config)
+        if claimed is not None and not claimed:
+            # No band covers this release, so the registry is silent.
+            continue
         entry = report.get(type_name)
         if entry is None:
             diffs.append(f"{type_name}: not found in the probed kernel")
             continue
-        for path in sorted(
-            {path for v in layout.variants for path in v.fields}
-        ):
+        paths = claimed if claimed is not None else {
+            path for v in layout.variants for path in v.fields
+        }
+        for path in sorted(paths):
             if path not in entry.get("fields", {}):
                 diffs.append(f"{type_name}.{path}: not found in the probe")
                 continue

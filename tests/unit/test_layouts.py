@@ -125,6 +125,57 @@ class VerifiedValueTests(unittest.TestCase):
                 version,
             )
 
+    def test_kmem_cache_cpu_slab_band(self) -> None:
+        # slub.py reads this slot to reach the per-CPU area; it is the
+        # first member through 6.19 and gone at 7.0.
+        for version in ((5, 19, 0), (6, 1, 134), (6, 17, 0), (6, 19, 0)):
+            self.assertEqual(
+                layouts.offset("struct kmem_cache", "cpu_slab", version),
+                0x00, version,
+            )
+        self.assertIsNone(
+            layouts.offset("struct kmem_cache", "cpu_slab", (7, 0, 0)),
+        )
+
+    def test_kmem_cache_cpu_band(self) -> None:
+        # 6.1.134 DWARF; `slab` and `freelist` held those slots all through
+        # 5.17-6.19, so the two bands differ only in provenance.
+        for version in ((6, 1, 134), (6, 12, 0), (6, 19, 0)):
+            self.assertEqual(
+                layouts.offset("struct kmem_cache_cpu", "slab", version),
+                0x10, version,
+            )
+            self.assertEqual(
+                layouts.offset("struct kmem_cache_cpu", "freelist", version),
+                0x00, version,
+            )
+        self.assertIsNone(
+            layouts.offset("struct kmem_cache_cpu", "slab", (7, 0, 0)),
+        )
+
+    def test_kmem_cache_node_band(self) -> None:
+        # 6.1.134 DWARF and 7.0 host BTF agree on both offsets.
+        for version in ((6, 1, 134), (7, 0, 0)):
+            self.assertEqual(
+                layouts.offset(
+                    "struct kmem_cache_node", "nr_partial", version,
+                ),
+                0x08, version,
+            )
+            self.assertEqual(
+                layouts.offset("struct kmem_cache_node", "partial", version),
+                0x10, version,
+            )
+
+    def test_node_row_needs_slub(self) -> None:
+        # The SLUB branch of a dual CONFIG_SLAB/CONFIG_SLUB definition.
+        self.assertIsNone(
+            layouts.offset(
+                "struct kmem_cache_node", "partial", (6, 1, 134),
+                {"CONFIG_SLUB": "n"},
+            ),
+        )
+
     def test_dma_buf(self) -> None:
         entry = layouts.lookup("struct dma_buf")
         assert entry is not None
