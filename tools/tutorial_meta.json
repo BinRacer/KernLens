@@ -7,8 +7,6 @@
   "category": "help",
   "summary": "Lists every KernLens command, or explains one in detail.",
   "usage": "kernlens-help [-h] [COMMAND]",
-  "examples": "kl-help\n  list every command\nkl-help kl-slab\n  explain kl-slab",
-  "notes": "The argument must be namespaced: ``kl-help kl-slab`` or ``kl-help kernlens-slab``.  A bare ``kl-help slab`` is rejected, because KernLens commands live in their own namespace and a bare name would read like a query about a GDB command.",
   "options": [
    {
     "flags": [
@@ -41,8 +39,6 @@
   "category": "memory & symbols",
   "summary": "Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.",
   "usage": "kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]\n                      [--limit LIMIT]\n                      [command ...]",
-  "examples": "kl-buddy list -o 10\nkl-buddy info 0xffff8880032a1000\nkl-buddy info pfn:0x7400 -v\nkl-buddy freelist -o 10 -m Movable -v",
-  "notes": "`inf`o` accepts a virtual address, a physical address, a `struct page` address, or a `pfn:`/`phys:`/`page:`/`virt:` prefixed value.  The order comes from the block head's `private` field, which the kernel only maintains while a block is free; an allocated page reports `Order: -`.",
   "options": [
    {
     "flags": [
@@ -146,8 +142,6 @@
   "category": "kernel base & KASLR",
   "summary": "Selects the runtime kernel text base and KASLR slide.",
   "usage": "kernlens-base [-h]",
-  "examples": "kl-base\n  auto-detect and apply the runtime text base",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -171,8 +165,6 @@
   "category": "kernel base & KASLR",
   "summary": "Finds the kernel virtual base address.",
   "usage": "kernlens-kbase [-h] [-r] [-v]",
-  "examples": "kl-kbase\nkl-kbase --verbose\nkl-kbase --rebase",
-  "notes": "KernLens extras (hidden from --help): ``-s/--set`` applies the derived KASLR slide to the session, ``-i/--idt [count]`` dumps the interrupt descriptor table, and ``--text <addr>`` / ``--offset <slide>`` set the slide here (the equivalents of ``kl-kaslr`` and ``kl-kaslr-offset``), which is convenient because the report above already prints ``kaslr=+0x...``.",
   "options": [
    {
     "flags": [
@@ -278,8 +270,6 @@
   "category": "kernel base & KASLR",
   "summary": "Sets the KASLR slide from a runtime _text address.",
   "usage": "kernlens-kaslr [-h] runtime_text",
-  "examples": "kl-kaslr 0xffffffff83000000",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -312,8 +302,6 @@
   "category": "kernel base & KASLR",
   "summary": "Sets the KASLR slide directly.",
   "usage": "kernlens-kaslr-offset [-h] offset",
-  "examples": "kl-kaslr-offset 0x18e00000\nkl-kaslr-offset 0",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -346,8 +334,6 @@
   "category": "CPU topology",
   "summary": "Displays CPU topology, the online mask, and per-CPU offsets.",
   "usage": "kernlens-cpu [-h] [cpu]",
-  "examples": "kl-cpu\nkl-cpu 3",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -380,8 +366,6 @@
   "category": "CPU topology",
   "summary": "Resolves a per-CPU symbol to its runtime address for a CPU.",
   "usage": "kernlens-percpu [-h] symbol [cpu]",
-  "examples": "kl-percpu current_task\nkl-percpu current_task 2",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -423,8 +407,6 @@
   "category": "CPU topology",
   "summary": "Reads or writes x86_64 model-specific registers (via GDB).",
   "usage": "kernlens-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]",
-  "examples": "kl-msr --list\nkl-msr MSR_LSTAR\nkl-msr 0xc0000082\nkl-msr MSR_TSC_AUX --write 0x1\nkl-msr --range 0xc0000080-0xc0000103",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -493,8 +475,6 @@
   "category": "output",
   "summary": "Enable, disable, or toggle ANSI color output.",
   "usage": "kernlens-color [-h] [{on,off,toggle}]",
-  "examples": "kl-color on\nkl-color off\nkl-color toggle",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -532,8 +512,6 @@
   "category": "memory & symbols",
   "summary": "Prints information about the linux kernel's slab allocator SLUB.",
   "usage": "kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r]\n                     [--reclaim] [--ctor]\n                     [command ...]",
-  "examples": "kl-slab list\nkl-slab list kmalloc\nkl-slab info kmalloc-1k -v\nkl-slab contains 0xffff8880032a1c40\nkl-slab details 0xffff8880032a1c40 -c 0\nkl-slab 0xffff8880032a1c40            # legacy bare-address form",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -684,8 +662,6 @@
   "category": "memory & symbols",
   "summary": "Resolves an address to a symbol and source location.",
   "usage": "kernlens-sym [-h] address",
-  "examples": "kl-sym $pc\nkl-sym 0xffffffff81000000",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -718,8 +694,6 @@
   "category": "memory & symbols",
   "summary": "Prints a formatted kernel backtrace.",
   "usage": "kernlens-bt [-h] [--chain] [depth]",
-  "examples": "kl-bt\nkl-bt 24\nkl-bt 24 --chain",
-  "notes": "``--chain`` selects the ``kl-chain`` presentation, so the compact view is reachable from the backtrace command itself.",
   "options": [
    {
     "flags": [
@@ -763,8 +737,6 @@
   "category": "memory & symbols",
   "summary": "Prints a compact caller <- callee call chain.",
   "usage": "kernlens-chain [-h] [depth]",
-  "examples": "kl-chain\nkl-chain 12",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -797,8 +769,6 @@
   "category": "memory & symbols",
   "summary": "Dumps kernel memory as 64-bit words with symbol annotations.",
   "usage": "kernlens-read [-h] [-m {ascii}] address [count]",
-  "examples": "kl-read 0xffff8880032a1c40\nkl-read $rsp 16\nkl-read 0xffff8880032a1c40 64 --mode ascii",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -854,8 +824,6 @@
   "category": "memory & symbols",
   "summary": "Reads a KASLR-aware kernel global variable.",
   "usage": "kernlens-kvar [-h] symbol",
-  "examples": "kl-kvar jiffies\nkl-kvar &init_task",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -888,8 +856,6 @@
   "category": "memory & symbols",
   "summary": "Reads a struct field (including nested paths) as an integer.",
   "usage": "kernlens-read-field [-h] address type path",
-  "examples": "kl-read-field 0xffffea0000a1c000 'struct slab' slab_cache",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -940,8 +906,6 @@
   "category": "memory & symbols",
   "summary": "Prints information about the linux kernel bpf progs and maps.",
   "usage": "kernlens-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]",
-  "examples": "kl-kbpf\nkl-kbpf -p -v\nkl-kbpf -m --values\nkl-kbpf -b 0",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1024,8 +988,6 @@
   "category": "memory & symbols",
   "summary": "Displays metadata and freelists of the buddy allocator.",
   "usage": "kernlens-buddydump [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-p] [-c CPU]\n                          [-n NODE] [-f FIND] [--MIGRATE_TYPES MIGRATE_TYPES]",
-  "examples": "kl-buddydump\nkl-buddydump -z Normal -o 0",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1144,8 +1106,6 @@
   "category": "memory & symbols",
   "summary": "Prints DMA buf info.",
   "usage": "kernlens-kdmabuf [-h]",
-  "examples": "kl-kdmabuf",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1169,8 +1129,6 @@
   "category": "kernel metadata",
   "summary": "Return the kernel command line (/proc/cmdline).",
   "usage": "kernlens-kcmdline [-h]",
-  "examples": "kl-kcmdline\n  print the boot command line",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1194,8 +1152,6 @@
   "category": "kernel metadata",
   "summary": "Outputs the kernel version (/proc/version).",
   "usage": "kernlens-kversion [-h]",
-  "examples": "kl-kversion\n  print the banner and the parsed release",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1219,8 +1175,6 @@
   "category": "kernel metadata",
   "summary": "Outputs the kernel config (/proc/config.gz).",
   "usage": "kernlens-kconfig [-h] [-l FILE_PATH] [config_name]",
-  "examples": "kl-kconfig\n  dump every CONFIG_* option\nkl-kconfig RANDOMIZE_BASE\n  look up one option\nkl-kconfig --load /boot/config-$(uname -r)\n  merge a config file",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1265,8 +1219,6 @@
   "category": "kernel metadata",
   "summary": "Checks for kernel hardening configuration options.",
   "usage": "kernlens-kchecksec [-h]",
-  "examples": "kl-kchecksec\n  audit the hardening CONFIG_* options",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1290,8 +1242,6 @@
   "category": "kernel metadata",
   "summary": "Displays the loaded Linux kernel modules.",
   "usage": "kernlens-kmod [-h] [-l PATH] [module_name]",
-  "examples": "kl-kmod\n  list every module\nkl-kmod nf_tables\n  filter by name",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1336,8 +1286,6 @@
   "category": "kernel metadata",
   "summary": "Displays the Linux syscall table, including names and addresses of syscalls.",
   "usage": "kernlens-ksyscalls [-h] [syscall_name]",
-  "examples": "kl-ksyscalls\n  list the whole table\nkl-ksyscalls open",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1370,8 +1318,6 @@
   "category": "kernel metadata",
   "summary": "Displays the kernel ring buffer (dmesg) contents.",
   "usage": "kernlens-kdmesg [-h] [-T]",
-  "examples": "kl-kdmesg\n  print the ring buffer\nkl-kdmesg --ctime",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1409,8 +1355,6 @@
   "category": "kernel metadata",
   "summary": "Lookup kernel symbols",
   "usage": "kernlens-klookup [-h] [-a] [symbol]",
-  "examples": "kl-klookup commit_creds\nkl-klookup 0xffffffff81000000",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1455,8 +1399,6 @@
   "category": "overview",
   "summary": "Shows the KernLens version, color mode, KASLR slide, and layout.",
   "usage": "kernlens-status [-h]",
-  "examples": "kl-status",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1480,8 +1422,6 @@
   "category": "addresses & page tables",
   "summary": "Prints a full KAddr analysis of an address.",
   "usage": "kernlens-addr [-h] address [tag_mask]",
-  "examples": "kl-addr 0xffff888000001234\nkl-addr 0xffff888000001234 0xfff",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1523,8 +1463,6 @@
   "category": "addresses & page tables",
   "summary": "Classifies an address and translates direct-map addresses.",
   "usage": "kernlens-page [-h] [-v] address",
-  "examples": "kl-page 0xffff888000001000\nkl-page 0xffff888000001000 --verbose",
-  "notes": "``-v/--verbose`` delegates to the ``kl-addr`` analysis, so the full breakdown is available without knowing which of the two commands reports more.",
   "options": [
    {
     "flags": [
@@ -1569,8 +1507,6 @@
   "category": "addresses & page tables",
   "summary": "Decodes page-table entry flags and leaf translations.",
   "usage": "kernlens-pte [-h] entry [va]",
-  "examples": "kl-pte 0x8000000000123067\nkl-pte 0x8000000000123067 0xffff888000001234",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1612,8 +1548,6 @@
   "category": "addresses & page tables",
   "summary": "Shows 4-level/5-level page-table indices for an address.",
   "usage": "kernlens-pt [-h] va",
-  "examples": "kl-pt 0xffff888000001234",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1646,8 +1580,6 @@
   "category": "addresses & page tables",
   "summary": "Walks the live page tables and decodes every level.",
   "usage": "kernlens-walk [-h] [-p ROOT] va [{4,5}]",
-  "examples": "kl-walk 0xffff888000001234\nkl-walk 0xffff800000201234 5\nkl-walk 0xffff888000001234 --pgd 0x10000",
-  "notes": "``-p/--pgd`` walks a table other than the live CR3 -- a saved or foreign root, so a page table of another task can be followed without switching to it.",
   "options": [
    {
     "flags": [
@@ -1704,8 +1636,6 @@
   "category": "addresses & page tables",
   "summary": "Walks the page tables in pwndbg's pagewalk format.",
   "usage": "kernlens-pagewalk [-h] [-p ENTRY] vaddr",
-  "examples": "kl-pagewalk 0xffff888000001234\nkl-pagewalk 0xffff888000001234 --pgd 0x10000",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1750,8 +1680,6 @@
   "category": "addresses & page tables",
   "summary": "Translates a physical address to virtual + struct page.",
   "usage": "kernlens-p2v [-h] paddr",
-  "examples": "kl-p2v 0x1000",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1784,8 +1712,6 @@
   "category": "addresses & page tables",
   "summary": "Translates a virtual address (live page tables) to physical.",
   "usage": "kernlens-v2p [-h] vaddr",
-  "examples": "kl-v2p 0xffff888000001234",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1818,8 +1744,6 @@
   "category": "addresses & page tables",
   "summary": "Translates a struct page to virtual and physical addresses.",
   "usage": "kernlens-pageinfo [-h] page",
-  "examples": "kl-pageinfo 0xffffea0000000040",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1852,8 +1776,6 @@
   "category": "bit & integer primitives",
   "summary": "Inspects a 64-bit value; optionally test/set/clear a bit.",
   "usage": "kernlens-bits [-h] value [bit]",
-  "examples": "kl-bits 0xff\nkl-bits 0xff 3",
-  "notes": "",
   "options": [
    {
     "flags": [
@@ -1895,8 +1817,6 @@
   "category": "bit & integer primitives",
   "summary": "Shows signed/unsigned and LE/BE integer views.",
   "usage": "kernlens-int [-h] value [width]",
-  "examples": "kl-int 0x1234 16\nkl-int -1 32",
-  "notes": "",
   "options": [
    {
     "flags": [

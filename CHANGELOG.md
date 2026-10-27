@@ -464,6 +464,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`tools/tutorial_meta.json` no longer carries `examples` or `notes`.**
+  The snapshot is a dump of each command's parser, and the renderer reads
+  exactly six fields from it: `name`, `aliases`, `category`, `summary`,
+  `usage`, `options`.  The other two were copies of strings that live in
+  the command modules and are rendered from there, so nothing read the
+  copies and nothing could notice them going stale -- and they had.
+  Six commands disagreed with their own source.  `kernlens-buddy`'s copy
+  still read ``` `inf`o` accepts a virtual address ``` where the module
+  says `` `kl-buddy info` ``, and carried its notes block as one
+  unwrapped line where the module has five.  A reader who opened the
+  snapshot to ask "what does this command say?" got a different answer
+  from a reader who opened the command -- and the snapshot is the file
+  that looks authoritative, being a generated-looking JSON dump.
+  Three and a half kilobytes of duplication removed; the 40 tutorial
+  pages render identically without it, which is the proof they never
+  consumed it.
+  `TutorialTests.test_metadata_carries_only_what_the_renderer_reads`
+  pins the field set, so the next person who thinks a copy would be
+  convenient gets a failure instead of a slow drift.  Verified by adding
+  `notes` back to one entry: the test names both the command and the
+  field.
 - **The README is a front page again.**  927 lines -> 266, in both
   languages, organised around what the tool does rather than how it is
   built:

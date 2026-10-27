@@ -3003,6 +3003,30 @@ class TutorialTests(unittest.TestCase):
                     with self.subTest(page=page.name, line=number):
                         self.assertEqual(count, columns, line)
 
+    def test_metadata_carries_only_what_the_renderer_reads(self) -> None:
+        """The snapshot must not duplicate text the renderer never uses.
+
+        ``tutorial_meta.json`` is a hand-refreshed dump of each command's
+        parser.  It once also carried ``examples`` and ``notes`` -- copies
+        of strings that live in the command modules and are rendered from
+        there.  Nothing read those copies, so nothing could notice them
+        going stale, and they did: six commands disagreed with their own
+        source, one of them still containing the typo ``inf`o`` and a
+        notes block with its newlines flattened.  Reading the snapshot to
+        answer "what does this command say?" gave a different answer from
+        reading the command.
+    """
+        #: Exactly the fields ``render_page`` consumes.
+        used = {"name", "aliases", "category", "summary", "usage", "options"}
+        for entry in json.loads(self.META.read_text(encoding="utf-8")):
+            with self.subTest(command=entry.get("name")):
+                self.assertEqual(
+                    set(entry), used,
+                    "tutorial_meta.json may only carry what the renderer "
+                    "reads; text duplicated from the command modules goes "
+                    "stale silently because nothing compares it",
+                )
+
 
 class TutorialPlaceholderTests(unittest.TestCase):
     """The tutorial must be regenerable on a *different* boot.
