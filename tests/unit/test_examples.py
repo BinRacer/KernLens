@@ -18,6 +18,7 @@ page was hand-edited.
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import io
 import pathlib
 import re
@@ -429,6 +430,122 @@ class ReportTests(unittest.TestCase):
         uninvoked = set(check_examples.uninvoked_commands())
         self.assertEqual(covered | uninvoked, set(CANONICAL_COMMANDS))
         self.assertEqual(covered & uninvoked, set())
+
+
+class PureTourTests(unittest.TestCase):
+    """The three pure-Python tours must run, and agree with the library.
+
+    These are the only examples that run in full on the host, which makes
+    them the only ones whose *output* can be asserted rather than merely
+    their presence.  Testing the arithmetic against the library is worth
+    more than checking that the file imports: the tours exist to show the
+    real semantics, so if the library changes behaviour the tour must
+    change with it, and this is what notices.
+    """
+
+    #: Entry point each tour exposes, by module name.  The modules guard
+    #: their main with ``if __name__ == "__main__"``, which is false when
+    #: imported, so the test calls the function rather than relying on
+    #: the guard -- that also keeps the test from depending on how the
+    #: script is invoked.
+    ENTRY: dict[str, str] = {
+        "intcodec_tour": "icodec",
+        "intfmt_tour": "ifmt",
+        "bitops_tour": "btour",
+    }
+
+    def _run(self, module: str) -> str:
+        """Execute a tour's entry point and capture what it printed."""
+        path = pathlib.Path(check_examples._ROOT) / "examples" / "api" / f"{module}.py"
+        spec = importlib.util.spec_from_file_location(f"tour_{module}", path)
+        assert spec is not None and spec.loader is not None
+        loaded = importlib.util.module_from_spec(spec)
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            spec.loader.exec_module(loaded)
+            getattr(loaded, self.ENTRY[module])()
+        return buffer.getvalue()
+
+    def test_intcodec_tour_runs(self) -> None:
+        output = self._run("intcodec_tour")
+        for heading in (
+            "unsigned round trip",
+            "signed round trip",
+            "range checks",
+            "arrays",
+            "offsets into one buffer",
+        ):
+            self.assertIn(heading, output)
+
+    def test_intcodec_tour_reports_the_round_trip_closes(self) -> None:
+        output = self._run("intcodec_tour")
+        self.assertIn("closed : True", output)
+
+    def test_intcodec_tour_shows_sign_extension(self) -> None:
+        """i8 -0x55 read back as unsigned is 171, which is the point."""
+        output = self._run("intcodec_tour")
+        self.assertIn("as unsigned=", output)
+        self.assertIn("171", output)
+
+    def test_intfmt_tour_runs(self) -> None:
+        output = self._run("intfmt_tour")
+        for heading in ("addresses", "sizes", "the same buffer", "time"):
+            self.assertIn(heading, output)
+
+    def test_intfmt_tour_sizes_are_human(self) -> None:
+        output = self._run("intfmt_tour")
+        self.assertIn("1K", output)
+        self.assertIn("1.5K", output)
+
+    def test_bitops_tour_runs(self) -> None:
+        output = self._run("bitops_tour")
+        for heading in (
+            "alignment and orders",
+            "field packing",
+            "single bits",
+            "CPU masks",
+            "sign and width",
+        ):
+            self.assertIn(heading, output)
+
+    def test_bitops_tour_unpacks_the_real_slab_word(self) -> None:
+        """The packed counters must decode to what kl-slab details prints."""
+        from kernlens.core import BitOps
+
+        counters = (16 << 17) | (16 << 2) | 1
+        self.assertEqual(BitOps.extract_bits(counters, 17, 16), 16)
+        self.assertEqual(BitOps.extract_bits(counters, 2, 15), 16)
+        self.assertEqual(BitOps.extract_bits(counters, 0, 1), 1)
+
+    def test_bitops_tour_round_trip_closes(self) -> None:
+        output = self._run("bitops_tour")
+        self.assertIn("round trip closes : True", output)
+
+    def test_bitops_tour_sign_extends(self) -> None:
+        output = self._run("bitops_tour")
+        self.assertIn("sign_extend(0x1f, 5) : -1", output)
+
+
+class CoreSurfaceCoverageTests(unittest.TestCase):
+    """The three primitives are covered completely, and stay that way."""
+
+    def test_bitops_is_fully_covered(self) -> None:
+        covered = check_examples.covered_surface()
+        groups = check_examples.surface_groups()["BitOps"]
+        missing = sorted(c for c, sp in groups.items() if not (sp & covered))
+        self.assertEqual(missing, [], f"BitOps uncovered: {missing}")
+
+    def test_intcodec_is_fully_covered(self) -> None:
+        covered = check_examples.covered_surface()
+        groups = check_examples.surface_groups()["IntCodec"]
+        missing = sorted(c for c, sp in groups.items() if not (sp & covered))
+        self.assertEqual(missing, [], f"IntCodec uncovered: {missing}")
+
+    def test_intfmt_is_fully_covered(self) -> None:
+        covered = check_examples.covered_surface()
+        groups = check_examples.surface_groups()["IntFmt"]
+        missing = sorted(c for c, sp in groups.items() if not (sp & covered))
+        self.assertEqual(missing, [], f"IntFmt uncovered: {missing}")
 
 
 class CliTests(unittest.TestCase):
