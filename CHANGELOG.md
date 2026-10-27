@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `docs/readme-redesign-plan.md` -- a measured plan for rewriting the
+  front page.  The current README is accurate but organised for someone
+  who has already decided to adopt the tool: it opens with the order the
+  modules were built in, puts the 40-line repository tree second, and
+  contains **zero** captured command output in 927 lines.  The plan
+  records the measurements, proposes an eight-section structure at about
+  a fifth of the length, says where each removed section goes, and
+  sketches a banner that carries the 40-command surface and a real
+  output fragment instead of a bare gradient wordmark.
+
 ### Fixed
 
 - `docs/architecture.md` listed `api/trace.py`, which the rename in the
