@@ -82,15 +82,20 @@ _MODIFIER_KINDS = frozenset({
 class BTF:
     """A parsed BTF type database, queried by struct name and field path."""
 
-    __slots__: tuple[str, ...] = ("_types", "_strings", "_struct_ids")
+    __slots__: tuple[str, ...] = (
+        "_types", "_strings", "_struct_ids", "_enums", "_member_index",
+    )
 
     def __init__(
         self,
         types: dict[int, tuple[int, str, int, tuple[tuple[str, int, int], ...]]],
         strings: bytes,
+        enums: dict[str, tuple[tuple[str, int], ...]] | None = None,
     ) -> None:
         self._types = types
         self._strings = strings
+        self._enums = enums or {}
+        self._member_index: dict[str, str] | None = None
         self._struct_ids: dict[str, int] = {}
         for type_id, (kind, name, _size, _members) in types.items():
             if kind in (_KIND_STRUCT, _KIND_UNION) and name:
@@ -135,6 +140,48 @@ class BTF:
     def has(self, type_name: str) -> bool:
         """Whether the blob defines *type_name* as a struct or union."""
         return self._find(type_name) is not None
+
+    def has_enum(self, enum_name: str) -> bool:
+        """Whether the blob defines *enum_name*.
+
+        Used as an ABI probe: ``enum page_type`` exists from Linux 7.0
+        onwards and is absent before it, so its presence identifies which
+        ``struct page`` type encoding the running kernel uses -- a fact
+        the layout alone cannot express.
+        """
+        return _bare_enum(enum_name) in self._enums
+
+    def enums(self) -> tuple[str, ...]:
+        """Return every enum name the blob defines, in blob order."""
+        return tuple(self._enums)
+
+    def enum_members(self, enum_name: str) -> dict[str, int] | None:
+        """Return ``{member: value}`` for *enum_name*, or ``None``.
+
+        Enum values are what the kernel actually compiled against, so
+        they must be read rather than assumed: ``PG_slab`` is bit 9 in
+        6.1 but has moved by 7.0, and ``MIGRATE_TYPES`` (the count of
+        free-area lists) depends on ``CONFIG_CMA`` / ``CONFIG_MEMORY_ISOLATION``.
+        """
+        members = self._enums.get(_bare_enum(enum_name))
+        return dict(members) if members is not None else None
+
+    def enum_with_member(self, member: str) -> str | None:
+        """Return the name of the enum that defines *member*, or ``None``.
+
+        The ABI probe has to be by *member*, not by enum name: the enum
+        that carries ``PGTY_buddy`` is declared anonymously and BTF/
+        DWARF name it after the fact (``pagetype`` on one kernel, nothing
+        on another), so looking it up as ``page_type`` misses.  Asking
+        "which enum defines ``PGTY_buddy``" is stable across kernels.
+        """
+        if self._member_index is None:
+            index: dict[str, str] = {}
+            for name, entries in self._enums.items():
+                for entry, _value in entries:
+                    index.setdefault(entry, name)
+            self._member_index = index
+        return self._member_index.get(member)
 
     def sizeof(self, type_name: str) -> int | None:
         """Return ``sizeof(type_name)`` in bytes, or ``None``."""
@@ -216,19 +263,38 @@ def parse(data: bytes) -> BTF | None:
         return None
     strings = data[str_start:str_start + str_len]
     try:
-        types = _parse_types(data, type_start, type_start + type_len, strings)
+        types, enums = _parse_types(
+            data, type_start, type_start + type_len, strings,
+        )
     except (struct.error, IndexError, KeyError, ValueError):
         return None
     if not types:
         return None
-    return BTF(types, strings)
+    return BTF(types, strings, enums)
+
+
+#: Prefixes a caller may use when naming an enum.
+_ENUM_PREFIX = "enum "
+
+
+def _bare_enum(name: str) -> str:
+    """Strip an ``enum `` prefix so both spellings resolve."""
+    return name.removeprefix(_ENUM_PREFIX).strip()
 
 
 def _parse_types(
     data: bytes, cursor: int, end: int, strings: bytes,
-) -> dict[int, tuple[int, str, int, tuple[tuple[str, int, int], ...]]]:
-    """Walk the type section, returning ``{id: (kind, name, size, members)}``."""
+) -> "tuple[dict[int, tuple[int, str, int, tuple[tuple[str, int, int], ...]]], dict[str, tuple[tuple[str, int], ...]]]":
+    """Walk the type section.
+
+    Returns ``{id: (kind, name, size, members)}`` plus a separate
+    ``{enum_name: ((member, value), ...)}`` map.  Enums are kept apart
+    because their layout is a member list, not a struct one, and because
+    their *values* are what callers need (the type-id sequence still
+    records every enum so the ids stay in sync).
+    """
     types: dict[int, tuple[int, str, int, tuple[tuple[str, int, int], ...]]] = {}
+    enums: dict[str, tuple[tuple[str, int], ...]] = {}
     type_id = 1
     while cursor < end:
         name_off, info, size = struct.unpack_from("<III", data, cursor)
@@ -244,11 +310,24 @@ def _parse_types(
                 cursor += 12
                 bit_offset = (m_off & 0xFFFFFF) if kind_flag else m_off
                 members.append((_decode(strings, m_name), m_type, bit_offset))
+        elif kind in (_KIND_ENUM, _KIND_ENUM64):
+            entries: list[tuple[str, int]] = []
+            for _ in range(vlen):
+                if kind == _KIND_ENUM:
+                    e_name, e_value = struct.unpack_from("<Ii", data, cursor)
+                    cursor += 8
+                else:
+                    e_name, e_lo, e_hi = struct.unpack_from("<III", data, cursor)
+                    e_value = e_lo | (e_hi << 32)
+                    cursor += 12
+                entries.append((_decode(strings, e_name), e_value))
+            if name:
+                enums[name] = tuple(entries)
         else:
             cursor += _extra(kind, vlen)
         types[type_id] = (kind, name, size, tuple(members))
         type_id += 1
-    return types
+    return types, enums
 
 
 def _extra(kind: int, vlen: int) -> int:

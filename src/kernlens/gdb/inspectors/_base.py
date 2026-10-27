@@ -109,7 +109,9 @@ class InspectorBase:
     adds its own methods.
     """
 
-    __slots__: tuple[str, ...] = ("_reader", "_offsets", "_fallbacks", "_btf")
+    __slots__: tuple[str, ...] = (
+        "_reader", "_offsets", "_fallbacks", "_btf",
+    )
 
     _reader: MemoryReader
 
@@ -121,6 +123,183 @@ class InspectorBase:
 
     #: Lazily loaded BTF database; ``False`` means "not looked up yet".
     _btf: "btf.BTF | None | bool"
+
+    # --- version hints ------------------------------------------
+
+    def has_type(self, type_name: str) -> bool:
+        """Whether the loaded debug info defines *type_name*.
+
+        DWARF is asked first (an objfile's type table is exact), then
+        BTF.  A type that is absent from both is simply unknown to this
+        session, which callers must handle rather than assume a layout.
+        """
+        try:
+            gdb.lookup_type(type_name)
+            return True
+        except (gdb.error, AttributeError, TypeError, ValueError):
+            pass
+        database = self._btf_database()
+        return bool(database and database.has(type_name))
+
+    def has_enum(self, enum_name: str) -> bool:
+        """Whether the loaded debug info defines *enum_name*.
+
+        An enum *name* is the weakest available signal -- the enum
+        behind ``PGTY_buddy`` is declared anonymously and only named
+        after the fact -- so prefer :meth:`has_constant` for ABI probes.
+        """
+        if self._lookup_enum(enum_name) is not None:
+            return True
+        database = self._btf_database()
+        return bool(database and database.has_enum(enum_name))
+
+    def enum_value(
+        self, enum_or_member: str, member: str | None = None,
+    ) -> int | None:
+        """Return the value of an enumerator, or ``None`` when unknown.
+
+        Call it as ``enum_value("PG_buddy")`` (find the enum by the
+        member name, the spelling the kernel source guarantees) or as
+        ``enum_value("pageflags", "PG_buddy")`` when the enum is already
+        known.  The value comes from the running kernel's own
+        enumeration -- DWARF first, then BTF -- because these numbers are
+        compiled in and do move between builds: ``PG_slab`` is bit 9 in
+        6.1, and 7.0's ``PGTY_*`` values are byte constants rather than
+        bits.
+        """
+        if member is None:
+            member = enum_or_member
+            dwarf = self._dwarf_constant(member)
+            if dwarf is not None:
+                return dwarf
+            found = self._dwarf_member_in_enums(member)
+            return found if found is not None else self._btf_constant(member)
+        members = self.enum_members(enum_or_member)
+        return members.get(member) if members else None
+
+    #: Enums a bare member name is looked up in when the debug info does
+    #: not expose it as a global symbol.  Deliberately short: it is a
+    #: fallback for the constants this package asks about, not a search
+    #: of every enum in the kernel (which would cost thousands of type
+    #: lookups on the first use).
+    _ENUM_SEARCH: tuple[str, ...] = (
+        "pageflags", "pagetype", "page_type", "migratetype", "zone_type",
+    )
+
+    def _dwarf_member_in_enums(self, member: str) -> int | None:
+        """Find *member* in one of :attr:`_ENUM_SEARCH`'s enums.
+
+        ``gdb.parse_and_eval`` resolves an enumerator only when its enum
+        was emitted into the enclosing scope; for a type-enumerated
+        build the member is reachable through the enum type instead, so
+        the type is consulted directly.
+        """
+        for enum_name in self._ENUM_SEARCH:
+            members = self._dwarf_enum_members(enum_name)
+            if members and member in members:
+                return members[member]
+        return None
+
+    def has_constant(self, member: str) -> bool:
+        """Whether an enumerator called *member* exists in this kernel.
+
+        This, not an enum name, is the dependable ABI probe: 6.1 has no
+        ``PGTY_*`` enumerator at all while 7.0 has one per page type, so
+        the presence of ``PGTY_buddy`` separates the two encodings
+        unconditionally.
+        """
+        return self.enum_value(member) is not None
+
+    def enum_members(self, enum_name: str) -> "dict[str, int] | None":
+        """Return ``{member: value}`` for *enum_name*, or ``None``.
+
+        DWARF is read first (exact for the debuggable build); BTF
+        answers when there is no debug info, so a stripped kernel still
+        gets real values rather than a table.  A missing enum yields
+        ``None`` -- never a guess.
+        """
+        members = self._dwarf_enum_members(enum_name)
+        if members is not None:
+            return members
+        database = self._btf_database()
+        return database.enum_members(enum_name) if database else None
+
+    def enum_of_member(self, member: str) -> str | None:
+        """Return the BTF enum that defines *member*, or ``None``.
+
+        Only BTF answers this cheaply: DWARF resolves an enumerator to
+        its value but not to its owning enum, and recovering the name
+        would mean walking every enum in the debug info.  The probe is
+        by member on purpose -- see :meth:`has_constant`.
+        """
+        database = self._btf_database()
+        return database.enum_with_member(member) if database else None
+
+    def enum_names(self) -> tuple[str, ...]:
+        """Return every enum name BTF knows, or ``()`` when there is none."""
+        database = self._btf_database()
+        return database.enums() if database else ()
+
+    @staticmethod
+    def _dwarf_constant(member: str) -> int | None:
+        """Evaluate one enumerator against the loaded debug info."""
+        try:
+            value = int(cast(_IntConvertible, gdb.parse_and_eval(member)))
+        except (gdb.error, TypeError, ValueError, AttributeError):
+            return None
+        return value
+
+    def _btf_constant(self, member: str) -> int | None:
+        """Look one enumerator up in BTF, or ``None``."""
+        enum_name = self.enum_of_member(member)
+        if enum_name is None:
+            return None
+        members = self.enum_members(enum_name)
+        return members.get(member) if members else None
+
+    def _dwarf_enum_members(self, enum_name: str) -> "dict[str, int] | None":
+        """Read an enum's enumerators from DWARF, or ``None``.
+
+        Both spellings resolve (``pageflags`` and ``enum pageflags``).
+        The members are taken from the type the debug info carries, so
+        the numbers match the kernel being debugged even when the host
+        headers disagree.
+        """
+        enum_type = self._lookup_enum(enum_name)
+        if enum_type is None:
+            return None
+        fields = getattr(enum_type, "fields", None)
+        if not fields:
+            return None
+        members: dict[str, int] = {}
+        for field in fields():
+            if field.name is None:
+                continue
+            # GDB exposes an enumerator's value as ``enumval``; ``bitpos``
+            # is the struct-member attribute and is absent here.  Both are
+            # tried so the reader works across GDB versions that set one
+            # or the other.
+            value = getattr(field, "enumval", None)
+            if value is None:
+                value = getattr(field, "bitpos", None)
+            if value is None:
+                continue
+            members[field.name] = int(value)
+        return members or None
+
+    @staticmethod
+    def _lookup_enum(enum_name: str) -> "gdb.Type | None":
+        """Resolve *enum_name* to its DWARF type, or ``None``."""
+        bare = enum_name.removeprefix("enum ").strip()
+        code_enum = getattr(gdb, "TYPE_CODE_ENUM", None)
+        for spelling in (bare, f"enum {bare}"):
+            try:
+                found = gdb.lookup_type(spelling)
+            except (gdb.error, AttributeError, TypeError, ValueError):
+                continue
+            if getattr(found, "code", None) == code_enum:
+                return found
+        return None
 
     # --- struct offsets -------------------------------------------------
 
@@ -173,6 +352,26 @@ class InspectorBase:
             )
             return int(cast(_IntConvertible, value))
         except (gdb.error, TypeError, ValueError, AttributeError):
+            return None
+
+    @staticmethod
+    def _array_length(type_name: str, path: str) -> int | None:
+        """Return how many elements the array member *path* holds.
+
+        Read from the type's layout rather than a constant, because
+        several kernel arrays are sized by a ``CONFIG_*`` knob that is
+        invisible to symbols and enums -- ``struct zone.free_area`` has
+        one entry per ``MAX_ORDER``, which ``CONFIG_ARCH_FORCE_MAX_ORDER``
+        can move.  Returns ``None`` when the member is absent or is not
+        an array.
+        """
+        size = f"sizeof((({type_name} *)0)->{path})"
+        try:
+            value = gdb.parse_and_eval(
+                f"{size} / sizeof((({type_name} *)0)->{path}[0])"
+            )
+            return int(cast(_IntConvertible, value))
+        except (gdb.error, TypeError, ValueError, AttributeError, ZeroDivisionError):
             return None
 
     def _sizeof(
