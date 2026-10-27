@@ -148,7 +148,7 @@ source /path/to/KernLens/gdbinit.py
 ```
 
 ```python
-# trace.py
+# my_script.py -- any file you source afterwards
 print(byte_swap64(0x1122334455667788))
 print(popcount(0xFF))
 print(split_4(0xFFFF888000001234))
@@ -158,8 +158,11 @@ print(read_kvar("jiffies"))
 ```
 
 ```gdb
-(gdb) source /path/to/trace.py
+(gdb) source /path/to/my_script.py
 ```
+
+[`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py)
+is a working version of that file.
 
 For names that could collide, prefer the class-qualified form:
 

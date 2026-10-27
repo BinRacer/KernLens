@@ -98,33 +98,37 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── tests/
 │   ├── contract_spec.py  # frozen external-contract constants
 │   ├── unit/             # pure-Python tests
-│   └── integration/      # adapter + gdbinit tests with fake modules
+│   └── integration/      # adapter, gdbinit and host-runnable examples
 ├── docs/
 │   ├── architecture.md   # layout, API map, and design notes
-│   └── naming.md         # command and Python naming rules
+│   ├── naming.md         # command, example and Python naming rules
+│   └── tutorial/         # one generated page per command (40)
 ├── gdbinit.py            # thin bootstrap sourced by GDB
 ├── examples/
 │   ├── api/                          # scripting the API
-│   │   ├── hello_sample.py                  # minimal script: names + fallback
-│   │   ├── slab_snapshot.py          # pure-Python report
-│   │   ├── trace.py                  # script sourced after gdbinit.py
-│   │   ├── kernel_facts_tour.py           # `kfacts`  -- establish the target
-│   │   ├── address_tour.py           # `atour`   -- nine page-table views
-│   │   ├── slab_tour.py              # `stour`   -- cache down to one object
-│   │   ├── symbols_tour.py           # `ytour`   -- resolve, read, decode
-│   │   ├── freelist_walk.py          # `flwalk`  -- decode the freelist
-│   │   ├── intcodec_tour.py          # `icodec`  -- every width, both orders
-│   │   ├── intfmt_tour.py            # `ifmt`    -- format by value kind
-│   │   ├── bitops_tour.py            # `btour`   -- decode real bitfields
-│   │   └── gdbinit.example           # sample ~/.gdbinit
+│   │   ├── README.md                 # what each of these is for
+│   │   ├── hello_sample.py           # `_sample`  the minimum that works
+│   │   ├── installed_api_tour.py     # `_tour`    names gdbinit.py installs
+│   │   ├── kernel_facts_tour.py      # `_tour`    `kfacts`  -- the target
+│   │   ├── address_tour.py           # `_tour`    `atour`   -- nine views
+│   │   ├── slab_tour.py              # `_tour`    `stour`   -- cache down
+│   │   ├── symbols_tour.py           # `_tour`    `ytour`   -- resolve/read
+│   │   ├── intcodec_tour.py          # `_tour`    `icodec`  -- every width
+│   │   ├── intfmt_tour.py            # `_tour`    `ifmt`    -- format by kind
+│   │   ├── bitops_tour.py            # `_tour`    `btour`   -- bitfields
+│   │   ├── freelist_walk.py          # `_walk`    `flwalk`  -- SLUB chain
+│   │   ├── slab_snapshot.py          # `_snapshot` report, no target
+│   │   └── gdbinit.example           # sample ~/.gdbinit (not a script)
 │   ├── tracing/                      # breakpoints that log and continue
-│   │   ├── gdb_tracer.py             # GDB breakpoint / command example
-│   │   ├── cve_2025_38616_tracer.py   # CVE-specific KTLS tracer
-│   │   └── kaslr_retarget_tour.py         # `retarget` -- fix the base, then go
+│   │   ├── README.md
+│   │   ├── gdb_tracer.py             # `_tracer`  generic, env-configured
+│   │   ├── cve_2025_38616_tracer.py  # `_tracer`  one CVE's UAF chain
+│   │   └── kaslr_retarget_tour.py    # `_tour`    `retarget` -- fix the base
 │   └── breakpoints/                  # breakpoints whose purpose is to stop
-│       ├── conditional_bp.py            # break only on one object
-│       ├── watchfield_bp.py             # watch a field reach a value
-│       └── per_cpu_bp.py                # `pbreak`   -- the right CPU's copy
+│       ├── README.md
+│       ├── conditional_bp.py         # `_bp`      `kbp-object`
+│       ├── watchfield_bp.py          # `_bp`      `kwatch-field`
+│       └── per_cpu_bp.py             # `_bp`      `pbreak`
 ├── images/banner.svg
 ├── pyproject.toml
 ├── tools/                            # generators and the example contract
@@ -133,7 +137,10 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── run_examples_gdb.py           # replays the GDB-only examples
 │   ├── check_example_capture.py      # checks that record against the tree
 │   ├── gen_examples_readme.py        # renders the README coverage block
-│   └── ...                           # tutorial, layouts, ABI generation
+│   ├── gen_tutorial.py               # renders docs/tutorial/ from the capture
+│   ├── gen_tutorial_index.py         # renders docs/tutorial/README.md
+│   ├── gen_layouts.py                # verifies struct layouts against BTF
+│   └── abi_ranges.py                 # struct-drift survey across releases
 ├── uv.lock
 └── CHANGELOG.md
 ```
@@ -489,7 +496,7 @@ them grouped by category and `kl-help kl-<command>` (or
 
 It also calls `kernlens.gdb.api.install_public_api()` with its own
 globals.  GDB sources Python files into `__main__`, so a later
-`source trace.py` can use `KAddr`, `KPageTable`, `IntFmt`, `kdbg`,
+`source anything.py` can use `KAddr`, `KPageTable`, `IntFmt`, `kdbg`,
 `read_kvar`, `walk`, `sym`, `head_to_page`, `print_slab`, `find_kbase`,
 and the other names in `FACADE_FUNCTIONS` without imports.  Stateless
 core methods are also exported as free functions (`byte_swap64`,

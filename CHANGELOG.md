@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `docs/architecture.md` listed `api/trace.py`, which the rename in the
+  previous commit had removed, and its tree block had lost its column
+  alignment.  The tree also omitted `docs/example-coverage-plan.md`,
+  `docs/tutorial/`, and the three READMEs under `examples/`.  Rewritten
+  against the real tree and re-aligned.
+- `docs/architecture.md` and both root READMEs told a reader to
+  `source trace.py`, a file that no longer exists.  The snippets now name
+  a file the reader creates (`my_script.py`) and point at
+  `examples/api/installed_api_tour.py` for a working version -- which is
+  what the snippet was always illustrating: any file sourced after
+  `gdbinit.py` inherits the installed names.
+- `docs/example-coverage-plan.md` claimed `tests/unit/test_examples.py`
+  had 63 tests in two places; it had grown to 85.
+
+### Added
+
+- `DocumentationTrackingTests` in `tests/unit/test_structure.py` (3
+  tests).  The architecture tree drifted twice -- once when the examples
+  were regrouped, once when they were renamed -- and both times the
+  failure was silent, because a stale filename in prose reads exactly
+  like a current one.  The tests check that every name in the tree block
+  exists, that every example is listed, and that no document cites a
+  rooted path the repository does not have.  `CHANGELOG.md` and
+  `CREDITS.md` are exempt: the first is a record of what was once true,
+  the second names pwndbg's own files as licence provenance.
+
 ### Changed
 
 - **Every example filename is now `<subject>_<kind>.py`.**  The tree had
