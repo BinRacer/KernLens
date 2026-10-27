@@ -226,7 +226,7 @@ try   : kl-help kl-walk  (detailed help and examples)
 | ---------------------------------- | ----------------- | --------------------------------------------- |
 | `kernlens-help [command]`          | `kl-help`         | 列出命令，或查看某个命令的详细帮助            |
 | `kernlens-status`                  | `kl-status`       | 版本、颜色、KASLR、`_text`、布局基址、拓扑    |
-| `kernlens-slab <list\|info\|contains\|details> [arg] [--verbose] [--cpu <id>] [--node <id>] [--partial] [--active]` | `kl-slab` | SLUB cache：`list` / `info` / `contains`（pwndbg 形式）、`details` 细粒度 inspector；直接跟地址则打印该 slab |
+| `kernlens-slab <list\|info\|contains\|details> [arg] [--verbose] [--cpu <id>] [--node <id>] [--partial] [--active] [--inuse] [--random] [--reclaim] [--ctor]` | `kl-slab` | SLUB cache：`list` / `info` / `contains`（pwndbg 形式）、`details` 细粒度 inspector；直接跟地址则打印该 slab |
 | `kernlens-page <address> [--verbose]` | `kl-page`      | 地址分类；直接映射地址还会翻译物理地址和 page |
 | `kernlens-pte <page-table-entry> [virtual-address]` | `kl-pte` | 解码 PTE 标志；按 4K/2M/1G 三种 leaf 给出翻译 |
 | `kernlens-sym <address>`           | `kl-sym`          | 将地址解析为符号和源码位置                    |
@@ -257,7 +257,9 @@ try   : kl-help kl-walk  (detailed help and examples)
 | `kernlens-ksyscalls [name]`        | `kl-ksyscalls`    | 列出系统调用表                                |
 | `kernlens-kdmesg [--ctime]`        | `kl-kdmesg`       | 打印内核环形缓冲区（dmesg）                  |
 | `kernlens-klookup [symbol] [--apply]` | `kl-klookup`      | 从 kallsyms 符号表查找内核符号                |
-| `kernlens-kbpf [--verbose] [--break n] [--progs] [--maps] [--values]` | `kl-kbpf` | 列出 BPF 程序与映射 || `kernlens-buddy {list\|info\|freelist} [addr] [--zone z] [--order n] [--mtype m] [--node n] [--verbose]` | `kl-buddy` | 定位地址在 buddy 分配器中的位置：zone、所属空闲块、块内偏移 || `kernlens-buddydump [--zone z] [--order n] [--mtype m] [--pcp-only] [--cpu c] [--node n] [--find a]` | `kl-buddydump` | buddy 分配器空闲链表 |
+| `kernlens-kbpf [--verbose] [--break n] [--progs] [--maps] [--values]` | `kl-kbpf` | 列出 BPF 程序与映射 |
+| `kernlens-buddy {list\|info\|freelist} [addr] [--zone z] [--order n] [--mtype m] [--node n] [--verbose]` | `kl-buddy` | 定位地址在 buddy 分配器中的位置：zone、所属空闲块、块内偏移 |
+| `kernlens-buddydump [--zone z] [--order n] [--mtype m] [--pcp-only] [--cpu c] [--node n] [--find a]` | `kl-buddydump` | buddy 分配器空闲链表 |
 | `kernlens-kdmabuf`                 | `kl-kdmabuf`      | 列出 dma-buf 及其 scatterlist 链             |
 | `kernlens-kaslr <runtime-text-address>` | `kl-kaslr`   | 用运行时 `_text` 设置 KASLR slide             |
 | `kernlens-kaslr-offset <offset>`   | `kl-kaslr-offset` | 直接设置 KASLR slide                          |
