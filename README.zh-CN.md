@@ -135,7 +135,7 @@ Python API，但不会在加载时安装任何断点，可以在 `file vmlinux` 
 `walk`、`sym`、`head_to_page`、`print_slab`、`find_kbase` 等 facade
 自由函数，以及
 `byte_swap64`、`popcount`、`pack_u16`、`virt_to_phys`、`split_4` 等
-无状态核心工具函数安装到该命名空间。之后 `source trace.py` 可以直接
+无状态核心工具函数安装到该命名空间。之后 `source` 任何脚本都可以直接
 调用这些名字，不需要再写 `from kernlens import ...`：
 
 ```gdb
@@ -144,7 +144,7 @@ source /path/to/KernLens/gdbinit.py
 ```
 
 ```python
-# trace.py
+# my_script.py —— 之后 source 的任意文件
 print(byte_swap64(0x1122334455667788))
 print(popcount(0xFF))
 print(split_4(0xFFFF888000001234))
@@ -154,8 +154,11 @@ print(read_kvar("jiffies"))
 ```
 
 ```gdb
-(gdb) source /path/to/trace.py
+(gdb) source /path/to/my_script.py
 ```
+
+可直接运行的版本见
+[`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py)。
 
 为避免重名，推荐优先使用类名限定形式：
 

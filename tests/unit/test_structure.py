@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import io
 import pathlib
+import re
 import tokenize
 import unittest
 
@@ -348,6 +349,85 @@ class ToolsLayoutTests(unittest.TestCase):
                 continue
             pieces.append(token.string)
         return " ".join(pieces)
+
+
+class DocumentationTrackingTests(unittest.TestCase):
+    """The repository tree in the docs must describe the real tree.
+
+    ``docs/architecture.md`` carries a hand-drawn tree, and it drifted
+    twice: once when the examples were regrouped and again when they were
+    renamed.  Both times the failure was silent -- a stale name in
+    passive-voice documentation looks exactly like a current one -- and
+    both times a reader following it got a file-not-found.
+
+    These tests are cheap because the check is narrow: every filename the
+    tree block lists must exist somewhere in the repository, and every
+    example must appear in it.  They do not attempt to verify the prose.
+    """
+
+    #: Files listed inside a code fence in architecture.md that are not
+    #: repository paths: illustrative names in examples and the like.
+    ILLUSTRATIVE = frozenset({"anything.py"})
+
+    def _tree_block(self) -> str:
+        text = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+        start = text.index("```\n")
+        end = text.index("```", start + 4)
+        return text[start:end]
+
+    def test_every_name_in_the_tree_exists(self) -> None:
+        block = self._tree_block()
+        missing = []
+        # Anchored at a word boundary start so a hyphenated long name
+        # (`example-coverage-plan.md`) is matched whole rather than from
+        # its last segment.
+        for match in re.finditer(
+            r"(?<![\w.-])[\w.]+\.(?:py|md|svg|example|toml|lock)", block,
+        ):
+            name = match.group(0)
+            if name in self.ILLUSTRATIVE:
+                continue
+            if not list(ROOT.rglob(name)):
+                missing.append(name)
+        self.assertEqual(sorted(set(missing)), [])
+
+    def test_every_example_appears_in_the_tree(self) -> None:
+        """A new example must be listed, or the tree is already wrong.
+
+        The reverse direction -- nothing listed that is not real -- is the
+        test above; this one stops the tree from quietly omitting a whole
+        directory's worth of files.
+        """
+        block = self._tree_block()
+        absent = []
+        for path in sorted((ROOT / "examples").rglob("*.py")):
+            if path.name not in block:
+                absent.append(str(path.relative_to(ROOT)))
+        self.assertEqual(absent, [])
+
+    def test_doc_paths_name_real_files(self) -> None:
+        """No document may cite a path that the tree does not have.
+
+        Scoped to paths that look rooted (``examples/``, ``tools/``,
+        ``src/``, ...) because a bare ``foo.py`` is usually an
+        illustrative name, while a rooted one is a claim about this
+        repository.  CHANGELOG is exempt: it is a record of what was once
+        true, so its historical paths must be allowed to dangle.
+        """
+        roots = ("src/", "tests/", "tools/", "examples/", "docs/", ".github/")
+        stale = []
+        for doc in ROOT.rglob("*.md"):
+            if doc.name in {"CHANGELOG.md", "CREDITS.md"}:
+                continue
+            if any(part in {".git", ".tmp", ".venv"} for part in doc.parts):
+                continue
+            text = doc.read_text(encoding="utf-8", errors="replace")
+            for token in re.findall(r"[\w./-]+\.(?:py|md|json|yml|toml)", text):
+                if not token.startswith(roots):
+                    continue
+                if not (ROOT / token).exists():
+                    stale.append(f"{doc.relative_to(ROOT)}: {token}")
+        self.assertEqual(sorted(set(stale)), [])
 
 
 if __name__ == "__main__":
