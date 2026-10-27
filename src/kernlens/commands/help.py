@@ -30,6 +30,12 @@ from .framework import (
     registry,
 )
 
+#: The canonical namespace every command name carries.
+_CANONICAL_PREFIX = "kernlens-"
+
+#: The short alias namespace.
+_ALIAS_PREFIX = "kl-"
+
 #: Display order for the ``kl-help`` overview.
 GROUP_ORDER: tuple[CommandCategory, ...] = (
     CommandCategory.OVERVIEW,
@@ -51,7 +57,7 @@ def render_overview(definitions: Iterable[CommandDefinition]) -> str:
         style("KernLens", colors.BOLD)
         + f" {__version__} — command reference",
         "  type "
-        + style("kl-help <command>", colors.LABEL)
+        + style("kl-help kl-<command>", colors.LABEL)
         + " for usage, options, and examples",
         "",
     ]
@@ -88,7 +94,7 @@ _help_parser = argparse.ArgumentParser(
 )
 _help_parser.add_argument(
     "command", nargs="?", default=None, metavar="COMMAND",
-    help="canonical or kl- alias name to describe (default: list all)",
+    help="kernlens-* name or kl-* alias to describe (default: list all)",
 )
 
 
@@ -96,7 +102,18 @@ _help_parser.add_argument(
     _help_parser,
     category=CommandCategory.HELP,
     aliases=["kl-help"],
-    examples="kl-help\n  list every command\nkl-help slab\n  explain kl-slab",
+    examples=(
+        "kl-help\n"
+        "  list every command\n"
+        "kl-help kl-slab\n"
+        "  explain kl-slab"
+    ),
+    notes=(
+        "The argument must be namespaced: ``kl-help kl-slab`` or "
+        "``kl-help kernlens-slab``.  A bare ``kl-help slab`` is rejected, "
+        "because KernLens commands live in their own namespace and a bare "
+        "name would read like a query about a GDB command."
+    ),
 )
 def kernlens_help(command: str | None = None) -> None:
     """List the commands, or print the detailed help for one."""
@@ -108,8 +125,8 @@ def kernlens_help(command: str | None = None) -> None:
     if definition is None:
         print(
             style(
-                f"kernlens-help: no command matches {command!r}; "
-                "run 'kl-help' for the full list",
+                f"kernlens-help: no command matches {command!r}"
+                f"{_hint(command)}; run 'kl-help' for the full list",
                 colors.MISSING,
             )
         )
@@ -118,16 +135,45 @@ def kernlens_help(command: str | None = None) -> None:
         writeln(line)
 
 
+def _hint(query: str) -> str:
+    """Suggest the namespaced spelling for a rejected query."""
+    suggestion = suggested_name(query)
+    if suggestion is None:
+        return ""
+    return f" -- names are namespaced, so try {suggestion!r}"
+
+
+def suggested_name(query: str) -> str | None:
+    """The ``kl-`` spelling to try for *query*, when one exists.
+
+    Turns "no command matches 'walk'" into a message that names the form
+    that does work.
+    """
+    name = query.strip().lstrip("-").strip()
+    if not name or name.startswith(_CANONICAL_PREFIX):
+        return None
+    candidate = f"{_ALIAS_PREFIX}{name}"
+    return candidate if candidate in aliases() else None
+
+
 def resolve_command(query: str) -> CommandDefinition | None:
-    """Resolve a canonical name or ``kl-`` alias to its definition."""
+    """Resolve a ``kernlens-*`` name or a ``kl-*`` alias to its definition.
+
+    The query must be namespaced.  A bare name is rejected on purpose:
+    KernLens registers ``kernlens-*`` and ``kl-*`` only, precisely so that
+    its commands never collide with GDB's own, and accepting ``slab``
+    here would undo that in the help text -- ``kl-help slab`` reads like a
+    question about GDB, and ``kl-help print`` would have to answer "no
+    command matches" while GDB's own ``help print`` works.
+    """
     name = query.strip().lstrip("-").strip()
     if not name:
         return None
     lookup = aliases()
     if name in lookup:
         name = lookup[name]
-    elif not name.startswith("kernlens-"):
-        name = f"kernlens-{name}"
+    elif not name.startswith(_CANONICAL_PREFIX):
+        return None
     for definition in registry():
         if definition.command_name == name:
             return definition
@@ -140,4 +186,5 @@ __all__ = [
     "render_command_help",
     "render_overview",
     "resolve_command",
+    "suggested_name",
 ]

@@ -210,17 +210,22 @@ Every command supports discovery from inside GDB:
 
 ```gdb
 (gdb) kl-help            # list every command, grouped by category
-(gdb) kl-help walk       # usage, options, and examples for one command
+(gdb) kl-help kl-walk    # usage, options, and examples for one command
 (gdb) kl-walk --help     # the same detail; -h, help, and ? also work
 ```
+
+The argument is namespaced: ``kl-help kl-walk`` or ``kl-help
+kernlens-walk``.  A bare ``kl-help walk`` is rejected with a hint,
+because KernLens deliberately lives in its own ``kl-``/``kernlens-``
+namespace -- a bare name would read like a query about a GDB command.
 
 Invalid arguments print a guided message instead of a bare usage line:
 
 ```gdb
 (gdb) kl-walk
-kl-walk: invalid arguments
-usage : kl-walk <virtual-address> [4|5]
-try   : kl-help walk   (detailed help and examples)
+kl-walk: error: the following arguments are required: va
+usage : kernlens-walk [-h] [-p ROOT] va [{4,5}]
+try   : kl-help kl-walk  (detailed help and examples)
 ```
 
 `help kl-walk` (GDB's native help) shows the same summary, usage,

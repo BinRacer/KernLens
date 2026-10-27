@@ -458,7 +458,8 @@ not.
 registers the `kernlens-*` commands and their `kl-*` aliases, then calls
 `register_all()`.  The complete command table, aliases, and invocation
 examples live in the [project README](../README.md); `kl-help` lists
-them grouped by category and `kl-help <command>` shows one in detail.
+them grouped by category and `kl-help kl-<command>` (or
+`kl-help kernlens-<command>`) shows one in detail.
 
 It also calls `kernlens.gdb.api.install_public_api()` with its own
 globals.  GDB sources Python files into `__main__`, so a later

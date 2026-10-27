@@ -202,17 +202,21 @@ local_config = KERNLENS_CLASSES["DebugConfig"]()
 
 ```gdb
 (gdb) kl-help            # 按类别列出所有命令
-(gdb) kl-help walk       # 查看单个命令的用法、参数与示例
+(gdb) kl-help kl-walk    # 查看单个命令的用法、参数与示例
 (gdb) kl-walk --help     # 等效写法；-h、help、? 同样可用
 ```
 
-参数错误不再只打印一行 `usage`，而是给出引导信息：
+参数必须带命名空间：`kl-help kl-walk` 或 `kl-help kernlens-walk`。
+裸名 `kl-help walk` 会被拒绝并给出提示——KernLens 刻意使用自己的
+`kl-` / `kernlens-` 命名空间，裸名会让人误以为在查询 GDB 命令。
+
+参数错误会给出引导信息，而不是一行 `usage`：
 
 ```gdb
 (gdb) kl-walk
-kl-walk: invalid arguments
-usage : kl-walk <virtual-address> [4|5]
-try   : kl-help walk   (detailed help and examples)
+kl-walk: error: the following arguments are required: va
+usage : kernlens-walk [-h] [-p ROOT] va [{4,5}]
+try   : kl-help kl-walk  (detailed help and examples)
 ```
 
 `help kl-walk`（GDB 原生帮助）会显示同样的摘要、用法、参数与示例。

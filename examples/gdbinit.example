@@ -10,7 +10,7 @@
 #
 # Commands are available as both `kernlens-*` and `kl-*`, for example:
 #   kl-help                 # list every command, grouped by category
-#   kl-help <command>       # usage, options, and examples for one
+#   kl-help kl-<command>    # usage, options, and examples for one
 #   kl-status
 #   kl-slab <list|info|contains|details> [arg]
 #   kl-page <address>
