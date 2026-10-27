@@ -2901,5 +2901,88 @@ class TutorialTests(unittest.TestCase):
                         self.assertEqual(count, columns, line)
 
 
+class TutorialPlaceholderTests(unittest.TestCase):
+    """The tutorial must be regenerable on a *different* boot.
+
+    The prose is hand-written but the addresses it invokes are not
+    constants: the KASLR slide, ``page_offset_base`` and ``vmemmap_base``
+    all change on every boot.  Twenty-five invocations were typed as
+    literals, so re-running the capture on a new boot produced a file
+    that no longer matched the prose and the generator refused to write
+    anything at all -- the tutorial could only be rebuilt on the machine
+    that first produced it, which is the same thing as not being
+    rebuildable.
+
+    Invocations now name those values as ``{placeholders}`` filled from
+    the capture's own context block.  These tests pin that: no literal
+    may reappear, and every placeholder must resolve.
+    """
+
+    ROOT = GDBINIT_PATH.parent
+    PROSE = ROOT / "tools" / "tutorial_prose.py"
+    CAPTURE = ROOT / "tools" / "tutorial_capture.json"
+
+    def _prose(self):
+        sys.path.insert(0, str(self.ROOT))
+        try:
+            return importlib.import_module("tools.tutorial_prose")
+        finally:
+            sys.path.pop(0)
+
+    def _context(self) -> dict:
+        return json.loads(
+            self.CAPTURE.read_text(encoding="utf-8")
+        )["context"]
+
+    def test_no_invocation_hardcodes_a_boot_value(self) -> None:
+        context = self._context()
+        # Only the values that actually move between boots; struct
+        # offsets and physical addresses are stable for a build.
+        boot_values = {
+            f"{context[key]:#x}"
+            for key in ("slide", "direct", "text", "text_addr",
+                        "text_sym", "vmemmap_page", "slab_object")
+            if key in context
+        }
+        offenders = []
+        for name, page in self._prose().PAGES.items():
+            for section in page.get("sections", []):
+                invocation = section.get("invocation") or ""
+                for value in boot_values:
+                    if value in invocation:
+                        offenders.append(
+                            f"{name}: {section.get('heading')!r} "
+                            f"hardcodes {value}"
+                        )
+        self.assertEqual(offenders, [])
+
+    def test_every_placeholder_resolves(self) -> None:
+        # A typo would otherwise surface as a SystemExit during a capture
+        # that takes a live kernel to reproduce.
+        context = self._context()
+        unknown = []
+        for name, page in self._prose().PAGES.items():
+            for section in page.get("sections", []):
+                invocation = section.get("invocation") or ""
+                for key in re.findall(r"\{([a-z_]+)\}", invocation):
+                    if key not in context:
+                        unknown.append(f"{name}: {{{key}}}")
+        self.assertEqual(unknown, [])
+
+    def test_the_context_carries_every_placeholder(self) -> None:
+        # The reverse direction: a key the prose never uses is dead
+        # weight, and a key that disappears from the capture breaks a
+        # page.  Both are worth seeing in one place.
+        context = self._context()
+        used = set()
+        for page in self._prose().PAGES.values():
+            for section in page.get("sections", []):
+                used |= set(re.findall(
+                    r"\{([a-z_]+)\}", section.get("invocation") or "",
+                ))
+        self.assertTrue(used, "no placeholders found; the test is inert")
+        self.assertLessEqual(used, set(context))
+
+
 if __name__ == "__main__":
     unittest.main()

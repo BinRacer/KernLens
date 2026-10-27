@@ -34,23 +34,23 @@ kernlens-buddydump
 
 ```text
 zone: all order=None mtype=all
-    - [0x00] 0xffff8cb880120000 [page: 0xffffd0a1c0004800, phys: 0x120000]
-    - [0x01] 0xffff8cb880140000 [page: 0xffffd0a1c0005000, phys: 0x140000]
-    - [0x02] 0xffff8cb880180000 [page: 0xffffd0a1c0006000, phys: 0x180000]
-    - [0x03] 0xffff8cb880200000 [page: 0xffffd0a1c0008000, phys: 0x200000]
-    - [0x04] 0xffff8cb880400000 [page: 0xffffd0a1c0010000, phys: 0x400000]
-    - [0x05] 0xffff8cb880800000 [page: 0xffffd0a1c0020000, phys: 0x800000]
-    - [0x06] 0xffff8cb880c00000 [page: 0xffffd0a1c0030000, phys: 0xc00000]
-    - [0x07] 0xffff8cb886d43000 [page: 0xffffd0a1c01b50c0, phys: 0x6d43000]
-    - [0x08] 0xffff8cb886a1c000 [page: 0xffffd0a1c01a8700, phys: 0x6a1c000]
-    - [0x09] 0xffff8cb886d13000 [page: 0xffffd0a1c01b44c0, phys: 0x6d13000]
-    - [0x0a] 0xffff8cb886d15000 [page: 0xffffd0a1c01b4540, phys: 0x6d15000]
-    - [0x0b] 0xffff8cb886d21000 [page: 0xffffd0a1c01b4840, phys: 0x6d21000]
-    - [0x0c] 0xffff8cb886d97000 [page: 0xffffd0a1c01b65c0, phys: 0x6d97000]
-    - [0x0d] 0xffff8cb886d56000 [page: 0xffffd0a1c01b5580, phys: 0x6d56000]
-    - [0x0e] 0xffff8cb886b81000 [page: 0xffffd0a1c01ae040, phys: 0x6b81000]
-    - [0x0f] 0xffff8cb886cc8000 [page: 0xffffd0a1c01b3200, phys: 0x6cc8000]
-... (truncated, 203 page(s) total)
+    - [0x00] 0xffff992880120000 [page: 0xffffd62040004800, phys: 0x120000]
+    - [0x01] 0xffff992880140000 [page: 0xffffd62040005000, phys: 0x140000]
+    - [0x02] 0xffff992880180000 [page: 0xffffd62040006000, phys: 0x180000]
+    - [0x03] 0xffff992880200000 [page: 0xffffd62040008000, phys: 0x200000]
+    - [0x04] 0xffff992880400000 [page: 0xffffd62040010000, phys: 0x400000]
+    - [0x05] 0xffff992880800000 [page: 0xffffd62040020000, phys: 0x800000]
+    - [0x06] 0xffff992880c00000 [page: 0xffffd62040030000, phys: 0xc00000]
+    - [0x07] 0xffff992887167000 [page: 0xffffd620401c59c0, phys: 0x7167000]
+    - [0x08] 0xffff992886495000 [page: 0xffffd62040192540, phys: 0x6495000]
+    - [0x09] 0xffff99288710d000 [page: 0xffffd620401c4340, phys: 0x710d000]
+    - [0x0a] 0xffff9928869ab000 [page: 0xffffd620401a6ac0, phys: 0x69ab000]
+    - [0x0b] 0xffff992886952000 [page: 0xffffd620401a5480, phys: 0x6952000]
+    - [0x0c] 0xffff99288690d000 [page: 0xffffd620401a4340, phys: 0x690d000]
+    - [0x0d] 0xffff992887118000 [page: 0xffffd620401c4600, phys: 0x7118000]
+    - [0x0e] 0xffff992886b37000 [page: 0xffffd620401acdc0, phys: 0x6b37000]
+    - [0x0f] 0xffff992887015000 [page: 0xffffd620401c0540, phys: 0x7015000]
+... (truncated, 222 page(s) total)
 ... (1 more line(s), 19 total)
 ```
 
@@ -72,13 +72,13 @@ kernlens-buddydump -z DMA
 
 ```text
 zone: DMA order=None mtype=all
-    - [0x00] 0xffff8cb880120000 [page: 0xffffd0a1c0004800, phys: 0x120000]
-    - [0x01] 0xffff8cb880140000 [page: 0xffffd0a1c0005000, phys: 0x140000]
-    - [0x02] 0xffff8cb880180000 [page: 0xffffd0a1c0006000, phys: 0x180000]
-    - [0x03] 0xffff8cb880200000 [page: 0xffffd0a1c0008000, phys: 0x200000]
-    - [0x04] 0xffff8cb880400000 [page: 0xffffd0a1c0010000, phys: 0x400000]
-    - [0x05] 0xffff8cb880800000 [page: 0xffffd0a1c0020000, phys: 0x800000]
-    - [0x06] 0xffff8cb880c00000 [page: 0xffffd0a1c0030000, phys: 0xc00000]
+    - [0x00] 0xffff992880120000 [page: 0xffffd62040004800, phys: 0x120000]
+    - [0x01] 0xffff992880140000 [page: 0xffffd62040005000, phys: 0x140000]
+    - [0x02] 0xffff992880180000 [page: 0xffffd62040006000, phys: 0x180000]
+    - [0x03] 0xffff992880200000 [page: 0xffffd62040008000, phys: 0x200000]
+    - [0x04] 0xffff992880400000 [page: 0xffffd62040010000, phys: 0x400000]
+    - [0x05] 0xffff992880800000 [page: 0xffffd62040020000, phys: 0x800000]
+    - [0x06] 0xffff992880c00000 [page: 0xffffd62040030000, phys: 0xc00000]
 7 free page(s)
 ```
 
@@ -91,14 +91,14 @@ The DMA zone here is small and its blocks are the largest ones, so the first row
 ### Invocation
 
 ```gdb
-kernlens-buddydump -f 0xffff8cb880400000
+kernlens-buddydump -f 0xffff992880400000
 ```
 
 ### Output
 
 ```text
 zone: all order=None mtype=all
-    - [0x04] 0xffff8cb880400000 [page: 0xffffd0a1c0010000, phys: 0x400000]
+    - [0x04] 0xffff992880400000 [page: 0xffffd62040010000, phys: 0x400000]
 1 free page(s)
 ```
 
@@ -118,24 +118,24 @@ kernlens-buddydump --MIGRATE_TYPES 5
 
 ```text
 zone: all order=None mtype=all
-    - [0x00] 0xffff8cb880120000 [page: 0xffffd0a1c0004800, phys: 0x120000]
-    - [0x01] 0xffff8cb880140000 [page: 0xffffd0a1c0005000, phys: 0x140000]
-    - [0x02] 0xffff8cb880180000 [page: 0xffffd0a1c0006000, phys: 0x180000]
-    - [0x03] 0xffff8cb880200000 [page: 0xffffd0a1c0008000, phys: 0x200000]
-    - [0x04] 0xffff8cb880400000 [page: 0xffffd0a1c0010000, phys: 0x400000]
-    - [0x05] 0xffff8cb880800000 [page: 0xffffd0a1c0020000, phys: 0x800000]
-    - [0x06] 0xffff8cb880c00000 [page: 0xffffd0a1c0030000, phys: 0xc00000]
-    - [0x07] 0xffff8cb886d43000 [page: 0xffffd0a1c01b50c0, phys: 0x6d43000]
-    - [0x08] 0xffff8cb886a1c000 [page: 0xffffd0a1c01a8700, phys: 0x6a1c000]
-    - [0x09] 0xffff8cb886d13000 [page: 0xffffd0a1c01b44c0, phys: 0x6d13000]
-    - [0x0a] 0xffff8cb886d15000 [page: 0xffffd0a1c01b4540, phys: 0x6d15000]
-    - [0x0b] 0xffff8cb886d21000 [page: 0xffffd0a1c01b4840, phys: 0x6d21000]
-    - [0x0c] 0xffff8cb886d97000 [page: 0xffffd0a1c01b65c0, phys: 0x6d97000]
-    - [0x0d] 0xffff8cb886d56000 [page: 0xffffd0a1c01b5580, phys: 0x6d56000]
-    - [0x0e] 0xffff8cb886b81000 [page: 0xffffd0a1c01ae040, phys: 0x6b81000]
-    - [0x0f] 0xffff8cb886cc8000 [page: 0xffffd0a1c01b3200, phys: 0x6cc8000]
-... (truncated, 203 page(s) total)
-203 free page(s)
+    - [0x00] 0xffff992880120000 [page: 0xffffd62040004800, phys: 0x120000]
+    - [0x01] 0xffff992880140000 [page: 0xffffd62040005000, phys: 0x140000]
+    - [0x02] 0xffff992880180000 [page: 0xffffd62040006000, phys: 0x180000]
+    - [0x03] 0xffff992880200000 [page: 0xffffd62040008000, phys: 0x200000]
+    - [0x04] 0xffff992880400000 [page: 0xffffd62040010000, phys: 0x400000]
+    - [0x05] 0xffff992880800000 [page: 0xffffd62040020000, phys: 0x800000]
+    - [0x06] 0xffff992880c00000 [page: 0xffffd62040030000, phys: 0xc00000]
+    - [0x07] 0xffff992887167000 [page: 0xffffd620401c59c0, phys: 0x7167000]
+    - [0x08] 0xffff992886495000 [page: 0xffffd62040192540, phys: 0x6495000]
+    - [0x09] 0xffff99288710d000 [page: 0xffffd620401c4340, phys: 0x710d000]
+    - [0x0a] 0xffff9928869ab000 [page: 0xffffd620401a6ac0, phys: 0x69ab000]
+    - [0x0b] 0xffff992886952000 [page: 0xffffd620401a5480, phys: 0x6952000]
+    - [0x0c] 0xffff99288690d000 [page: 0xffffd620401a4340, phys: 0x690d000]
+    - [0x0d] 0xffff992887118000 [page: 0xffffd620401c4600, phys: 0x7118000]
+    - [0x0e] 0xffff992886b37000 [page: 0xffffd620401acdc0, phys: 0x6b37000]
+    - [0x0f] 0xffff992887015000 [page: 0xffffd620401c0540, phys: 0x7015000]
+... (truncated, 222 page(s) total)
+222 free page(s)
 ```
 
 ### Reading it

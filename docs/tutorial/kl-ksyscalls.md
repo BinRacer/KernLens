@@ -25,26 +25,26 @@ kernlens-ksyscalls
 ### Output
 
 ```text
-Syscall table address with 451 entries found at 0xffffffff93400300.
+Syscall table address with 451 entries found at 0xffffffff99c00300.
 
                 Address Symbol
-   0 0xffffffff920ee280 __x64_sys_read
-   1 0xffffffff920ee3e0 __x64_sys_write
-   2 0xffffffff920e9d30 __x64_sys_open
-   3 0xffffffff920e7030 __x64_sys_close
-   4 0xffffffff920f52a0 __x64_sys_newstat
-   5 0xffffffff920f4fa0 __x64_sys_newfstat
-   6 0xffffffff920f54f0 __x64_sys_newlstat
-   7 0xffffffff9210d660 __x64_sys_poll
-   8 0xffffffff920eaa20 __x64_sys_lseek
-   9 0xffffffff91c52960 __x64_sys_mmap
-  10 0xffffffff92050510 __x64_sys_mprotect
-  11 0xffffffff9204aa90 __x64_sys_munmap
-  12 0xffffffff9204ba90 __x64_sys_brk
-  13 0xffffffff91dc1ca0 __x64_sys_rt_sigaction
-  14 0xffffffff91dbaeb0 __x64_sys_rt_sigprocmask
-  15 0xffffffff91c4a580 __x64_sys_rt_sigreturn
-  16 0xffffffff92109c10 __x64_sys_ioctl
+   0 0xffffffff988ee280 __x64_sys_read
+   1 0xffffffff988ee3e0 __x64_sys_write
+   2 0xffffffff988e9d30 __x64_sys_open
+   3 0xffffffff988e7030 __x64_sys_close
+   4 0xffffffff988f52a0 __x64_sys_newstat
+   5 0xffffffff988f4fa0 __x64_sys_newfstat
+   6 0xffffffff988f54f0 __x64_sys_newlstat
+   7 0xffffffff9890d660 __x64_sys_poll
+   8 0xffffffff988eaa20 __x64_sys_lseek
+   9 0xffffffff98452960 __x64_sys_mmap
+  10 0xffffffff98850510 __x64_sys_mprotect
+  11 0xffffffff9884aa90 __x64_sys_munmap
+  12 0xffffffff9884ba90 __x64_sys_brk
+  13 0xffffffff985c1ca0 __x64_sys_rt_sigaction
+  14 0xffffffff985baeb0 __x64_sys_rt_sigprocmask
+  15 0xffffffff9844a580 __x64_sys_rt_sigreturn
+  16 0xffffffff98909c10 __x64_sys_ioctl
 ... (434 more line(s), 454 total)
 ```
 
@@ -65,18 +65,18 @@ kernlens-ksyscalls read
 ### Output
 
 ```text
-Syscall table address with 451 entries found at 0xffffffff93400300.
+Syscall table address with 451 entries found at 0xffffffff99c00300.
 
                 Address Symbol
-   0 0xffffffff920ee280 __x64_sys_read
-  17 0xffffffff920ed5d0 __x64_sys_pread64
-  19 0xffffffff920eb320 __x64_sys_readv
-  89 0xffffffff920f4820 __x64_sys_readlink
- 187 0xffffffff91ff2e30 __x64_sys_readahead
- 267 0xffffffff920f47c0 __x64_sys_readlinkat
- 295 0xffffffff920eb720 __x64_sys_preadv
- 310 0xffffffff920629b0 __x64_sys_process_vm_readv
- 327 0xffffffff920eb540 __x64_sys_preadv2
+   0 0xffffffff988ee280 __x64_sys_read
+  17 0xffffffff988ed5d0 __x64_sys_pread64
+  19 0xffffffff988eb320 __x64_sys_readv
+  89 0xffffffff988f4820 __x64_sys_readlink
+ 187 0xffffffff987f2e30 __x64_sys_readahead
+ 267 0xffffffff988f47c0 __x64_sys_readlinkat
+ 295 0xffffffff988eb720 __x64_sys_preadv
+ 310 0xffffffff988629b0 __x64_sys_process_vm_readv
+ 327 0xffffffff988eb540 __x64_sys_preadv2
 ```
 
 ### Reading it

@@ -19,15 +19,15 @@ The reverse direction: given a `struct page` pointer, prints the virtual address
 ### Invocation
 
 ```gdb
-kernlens-pageinfo 0xffffd0a1c0010000
+kernlens-pageinfo 0xffffd62040010000
 ```
 
 ### Output
 
 ```text
-Virtual: 0xffff8cb880400000
+Virtual: 0xffff992880400000
 Physical: 0x400000
-page: 0xffffd0a1c0010000
+page: 0xffffd62040010000
 PFN: 1024  type: buddy
 refcount: 0
 ```

@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Added
+
+- **The tutorial can be regenerated on a different boot.**  The prose
+  named twenty-five invocations with literal addresses, while its own
+  docstring said the values "change between boots".  Both statements
+  could not hold: re-running `tools/tutorial_capture.py` on a new boot
+  produced a capture the prose no longer matched, and
+  `gen_tutorial.py` refused to write anything -- so the tutorial could
+  only be rebuilt on the machine that first produced it, which is the
+  same thing as not being rebuildable.
+
+  Invocations now name boot-dependent values as `{placeholders}`
+  (`{direct}`, `{text_addr}`, `{slide}`, `{vmemmap_page}`,
+  `{slab_object}`, ...) filled from the capture's own context block.
+  `TutorialPlaceholderTests` (3) pin it in both directions: no literal
+  may reappear, and no placeholder may name a key the capture lacks.
+  Verified by rebooting -- slide `0x14000000` -> `0x17400000`, direct
+  map `0xffff8fe6c0400000` -> `0xffff992880400000` -- and regenerating
+  all 40 pages without a source edit.
+
 - **The README is a front page again.**  927 lines -> 266, in both
   languages, organised around what the tool does rather than how it is
   built:

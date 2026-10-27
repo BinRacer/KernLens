@@ -21,13 +21,13 @@ Reads one field out of a struct at a given address, following a dotted path into
 ### Invocation
 
 ```gdb
-kernlens-read-field 0xffffd0a1c0010000 'struct page' _refcount.counter
+kernlens-read-field 0xffffd62040010000 'struct page' _refcount.counter
 ```
 
 ### Output
 
 ```text
-field: ((struct page *)0xffffd0a1c0010000)->_refcount.counter
+field: ((struct page *)0xffffd62040010000)->_refcount.counter
 value: 0x0
 ```
 

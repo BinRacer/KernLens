@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kernlens"
-version = "0.2.0"
+version = "0.3.0"
 description = "KernLens: pure-Python Linux kernel introspection for GDB, including x86_64 page-table math, SLUB inspection, symbol/KASLR helpers, and ANSI diagnostics."
 readme = "README.md"
 requires-python = ">=3.10"
