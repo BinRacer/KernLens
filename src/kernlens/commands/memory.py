@@ -328,15 +328,36 @@ def _slabs_info_cmd(
     indent = IndentContextManager()
     indent.print(indent.prefix("Slab Cache") + " @ " + indent.addr_hex(cache.address))
     with indent:
+        # The row order and labels below follow pwndbg's `slab info`, so
+        # a user moving between the two tools reads the same block.
+        # KernLens-only rows are appended after them.
         indent.print(indent.prefix("Name") + f": {message.notice(cache.name)}")
         flags = " | ".join(cache.flags) if cache.flags else "(none)"
         indent.print(indent.prefix("Flags") + f": {flags}")
         indent.print(indent.prefix("Offset") + ": " + indent.aux_hex(cache.offset))
-        indent.print(indent.prefix("Size") + ": " + indent.aux_hex(cache.size))
+        indent.print(
+            indent.prefix("Slab size") + ": " + indent.aux_hex(cache.slab_size)
+        )
+        indent.print(
+            indent.prefix("Size (including metadata)")
+            + ": " + indent.aux_hex(cache.size)
+        )
+        indent.print(indent.prefix("Align") + ": " + indent.aux_hex(cache.align))
         indent.print(
             indent.prefix("Object Size") + ": " + indent.aux_hex(cache.object_size)
         )
-        indent.print(indent.prefix("Align") + ": " + indent.aux_hex(cache.align))
+        # pwndbg prints these only when the build carries the fields
+        # (CONFIG_HARDENED_USERCOPY); so do we.
+        if cache.useroffset is not None and cache.usersize is not None:
+            indent.print(
+                indent.prefix("Usercopy region offset")
+                + f": {cache.useroffset}"
+            )
+            indent.print(
+                indent.prefix("Usercopy region size") + f": {cache.usersize}"
+            )
+        # KernLens only: the raw packed order/objects word, which pwndbg
+        # stopped displaying.
         indent.print(
             indent.prefix("oo_order") + f": {cache.oo_order}"
             + f"  oo_objects={cache.oo_objects}"

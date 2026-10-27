@@ -412,12 +412,21 @@ class FakeKdbg:
                 oo_order=KMALLOC_1K_ORDER, oo_objects=KMALLOC_1K_OBJECTS,
                 align=KMALLOC_1K_SIZE,
                 flags=(),
+                # PAGE_SIZE << order = 0x1000 << 2, read from the 6.1.134
+                # test VM.  A plain kmalloc cache has no dedicated usercopy
+                # window, which the kernel records as the WHOLE object
+                # (useroffset=0, usersize=object_size) -- `usersize=0`
+                # would mean "nothing is copyable".
+                slab_size=0x4000, inuse=KMALLOC_1K_SIZE,
+                useroffset=0, usersize=KMALLOC_1K_SIZE,
             ),
             SimpleNamespace(
                 address=KMALLOC_64_ADDR, name="kmalloc-64",
                 size=KMALLOC_64_SIZE, object_size=KMALLOC_64_SIZE,
                 offset=0x20, oo_order=0, oo_objects=64, align=KMALLOC_64_SIZE,
                 flags=(),
+                slab_size=0x1000, inuse=KMALLOC_64_SIZE,
+                useroffset=0, usersize=KMALLOC_64_SIZE,
             ),
         ]
         self.slab_object_value: SimpleNamespace | None = SimpleNamespace(
@@ -1196,6 +1205,32 @@ class MemoryTests(GdbinitTestBase):
         out = self.invoke("kl-slab", "info kmalloc-1k")
         self.assertIn("Slab Cache", out)
         self.assertIn("kmalloc-1k", out)
+
+    def test_slabs_info_matches_the_pwndbg_rows(self) -> None:
+        # pwndbg's `slab info` prints these exact labels, in this order;
+        # `Slab size` (= PAGE_SIZE << oo_order) used to be missing.
+        out = self.invoke("kl-slab", "info kmalloc-1k")
+        labels = [
+            "Name", "Flags", "Offset", "Slab size",
+            "Size (including metadata)", "Align", "Object Size",
+        ]
+        positions = [out.find(label) for label in labels]
+        for label, pos in zip(labels, positions):
+            with self.subTest(label=label):
+                self.assertNotEqual(pos, -1, label)
+        self.assertEqual(positions, sorted(positions))
+
+    def test_slabs_info_slab_size_is_pagesize_shifted_by_order(self) -> None:
+        # kmalloc-1k is order 2, so one slab spans 0x1000 << 2 = 0x4000.
+        out = self.invoke("kl-slab", "info kmalloc-1k")
+        self.assertIn("Slab size: 0x4000", out)
+        out = self.invoke("kl-slab", "info kmalloc-64")
+        self.assertIn("Slab size: 0x1000", out)
+
+    def test_slabs_info_prints_the_usercopy_window(self) -> None:
+        out = self.invoke("kl-slab", "info kmalloc-1k")
+        self.assertIn("Usercopy region offset: 0", out)
+        self.assertIn(f"Usercopy region size: {KMALLOC_1K_SIZE}", out)
 
     def test_slabs_contains(self) -> None:
         out = self.invoke("kl-slab", f"contains {KMALLOC_1K_ADDR:#x}")

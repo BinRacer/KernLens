@@ -19,8 +19,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ...core.addr import KAddr
+from ...core.constants import PAGE_SIZE
 from ._base import InspectorBase
-
 #: ``open(O_CREAT) | O_EXCL`` flag used for recoverability probing.
 OO_SHIFT = 16
 OO_MASK = (1 << OO_SHIFT) - 1
@@ -68,6 +68,28 @@ class SlabCache:
     oo_objects: int
     align: int
     flags: tuple[str, ...]
+    #: ``inuse`` -- the object stride including metadata (0 when the
+    #: field is absent, which happens on very old builds).
+    inuse: int = 0
+    #: ``useroffset`` / ``usersize`` -- the window
+    #: hardened-usercopy allows ``copy_{to,from}_user`` to touch.
+    #: ``None`` when the build has no ``CONFIG_HARDENED_USERCOPY``.
+    #: A cache with no dedicated window stores the whole object here
+    #: (``useroffset=0, usersize=object_size``), not ``0`` -- the
+    #: kernel's check would reject every access if ``usersize`` were 0.
+    useroffset: int | None = None
+    usersize: int | None = None
+
+    @property
+    def slab_size(self) -> int:
+        """Return the bytes one slab spans: ``PAGE_SIZE << oo_order``.
+
+        Not to be confused with :attr:`size` (the per-object stride) or
+        with ``sizeof(struct page)``.  The kernel's ``PAGE_SIZE`` is a
+        macro and so is invisible to DWARF, but this project is
+        x86_64-only, where it is always 4096.
+        """
+        return PAGE_SIZE << self.oo_order
 
 
 class SlabCacheInspector(InspectorBase):
@@ -205,7 +227,23 @@ class SlabCacheInspector(InspectorBase):
             oo_objects=(oo_x or 0) & OO_MASK,
             align=align or 0,
             flags=tuple(flag for flag, mask in SLAB_FLAGS if flags & mask),
+            inuse=self._optional_u32(obj, "inuse") or 0,
+            useroffset=self._optional_u32(obj, "useroffset"),
+            usersize=self._optional_u32(obj, "usersize"),
         )
+
+    def _optional_u32(self, obj: int, field: str) -> int | None:
+        """Read an optional ``u32`` member, or ``None`` when absent.
+
+        ``inuse`` exists everywhere SLUB does, but ``useroffset`` and
+        ``usersize`` only appear with ``CONFIG_HARDENED_USERCOPY``, and
+        older releases lack both -- so the field has to be probed rather
+        than assumed.
+        """
+        offset = self._layout_offset("struct kmem_cache", field)
+        if offset is None:
+            return None
+        return self._read_u32(obj + offset, signed=False)
 
 
 __all__ = [
