@@ -683,7 +683,7 @@ _bt_parser.add_argument(
     aliases=["kl-bt"],
     examples="kl-bt\nkl-bt 24\nkl-bt 24 --chain",
     notes=(
-        "``--chain`` selects the ``kl-chain`` presentation, so the compact "
+        "``--chain`` selects the ``kl-chain`` presentation, so the compact\n"
         "view is reachable from the backtrace command itself."
     ),
 )

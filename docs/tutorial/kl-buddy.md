@@ -41,16 +41,16 @@ DMA    0     6      1        64
 DMA    0     7      1        128
 DMA    0     9      1        512
 DMA    0     10     3        3072
-DMA32  0     0      117      117
-DMA32  0     1      59       118
-DMA32  0     2      16       64
-DMA32  0     3      10       80
-DMA32  0     4      4        64
-DMA32  0     5      3        96
+DMA32  0     0      159      159
+DMA32  0     1      81       162
+DMA32  0     2      32       128
+DMA32  0     3      12       96
+DMA32  0     4      5        80
+DMA32  0     5      6        192
 DMA32  0     6      2        128
-DMA32  0     8      1        256
+DMA32  0     7      2        256
+DMA32  0     8      3        768
 DMA32  0     9      2        1024
-DMA32  0     10     1        1024
 15 non-empty order(s)
 ```
 
@@ -97,11 +97,11 @@ kernlens-buddy info pfn:1024
 ```text
 Input: pfn:1024
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd62040010000
+Page: 0xffffee5d00010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd62040010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffee5d00010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 ```
@@ -115,19 +115,19 @@ Own block head: order 10  (this pfn is aligned to its own block)
 ### Invocation
 
 ```gdb
-kernlens-buddy info 0xffff992880400000
+kernlens-buddy info 0xffff975280400000
 ```
 
 ### Output
 
 ```text
-Input: 0xffff992880400000
+Input: 0xffff975280400000
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd62040010000
+Page: 0xffffee5d00010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd62040010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffee5d00010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 ```
@@ -149,11 +149,11 @@ kernlens-buddy info pfn:1024 -v
 ```text
 Input: pfn:1024
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd62040010000
+Page: 0xffffee5d00010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd62040010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffee5d00010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 Block span: pfn 0x400-0x7ff  phys 0x400000-0x7fffff
@@ -199,9 +199,9 @@ kernlens-buddy freelist -z DMA -o 10 -m Movable -v
 
 ```text
 free_area[order 10]  mtype=Movable  zone=DMA  node=0  nr_free=3  pages=3072
-    - #0 pfn=0x400 phys=0x400000 virt=0xffff992880400000
-    - #1 pfn=0x800 phys=0x800000 virt=0xffff992880800000
-    - #2 pfn=0xc00 phys=0xc00000 virt=0xffff992880c00000
+    - #0 pfn=0x400 phys=0x400000 virt=0xffff975280400000
+    - #1 pfn=0x800 phys=0x800000 virt=0xffff975280800000
+    - #2 pfn=0xc00 phys=0xc00000 virt=0xffff975280c00000
 ```
 
 ### Reading it

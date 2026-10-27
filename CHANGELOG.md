@@ -802,6 +802,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`kl-help <command>` collapsed the examples into one line.**
+  ``argparse`` re-wraps ``epilog`` as running prose by default, so the four
+  invocations written for `kl-buddy` came out as two lines that break in the
+  middle of a command name (`kl-` at end of line, `buddy info` at the start
+  of the next), and the blank line separating `Notes:` from `Examples:`
+  disappeared entirely.  Every command carrying examples or notes was
+  affected, which is 30 of the 40.
+  ``Command`` now installs a ``_CommandHelpFormatter`` that returns
+  ``description`` and ``epilog`` verbatim while still wrapping option help,
+  so the shape the author wrote is the shape the user reads.  The notes
+  blocks lost their implicit wrapping at the same time; they carry explicit
+  line breaks now.
+- ``kl-buddy``'s notes said ``` `inf`o` ``` where it meant ``kl-buddy info``:
+  a backtick pair opened inside another, so the rendered text was the literal
+  string with a stray backtick in it.
+- **Three tests were order-dependent and passed only by accident.**
+  ``message.notice`` colourises the ``Examples:`` / ``Notes:`` / ``Alias:``
+  labels, so the raw epilog is a string with an SGR sequence wrapped around
+  ``Alias:``.  The assertions compared that against plain text, which worked
+  when an earlier test had switched colour off for the whole process and
+  failed whenever the class ran alone -- ``pytest -k FrameworkHelperTests``
+  was red on a tree that ``pytest`` called green.  A module-level ``plain()``
+  strips SGR sequences, and the four epilog assertions use it.
+- ``HelpRenderingTests`` (5) render the parser and read the resulting lines,
+  which is what the existing ``assertIn`` checks could not do: every string
+  was present in the epilog while the rendered help was unusable.  Removing
+  the formatter fails 4 of them.  The tutorial was re-captured on the test VM,
+  so `docs/tutorial/kl-help.md` shows the real layout rather than the one
+  the prose described.
 - **`SECURITY.md` claimed the tool was read-only; one command writes.**
   ``kl-msr --write`` runs ``gdb.execute("set $reg = ...")``, which changes
   the target.  The claim was load-bearing -- it was the sentence defining

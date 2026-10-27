@@ -59,12 +59,8 @@ addresses & page tables
   kernlens-pageinfo [-h] page         Translates a struct page to virtual and physical addresses.
 
 memory & symbols
-  kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]
-                      [--limit LIMIT]
-                      [command ...]  Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.
-  kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r]
-                     [--reclaim] [--ctor]
-                     [command ...]  Prints information about the linux kernel's slab allocator SLUB.
+  kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v] [--limit LIMIT] [command ...]  Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.
+  kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r] [--reclaim] [--ctor] [command ...]  Prints information about the linux kernel's slab allocator SLUB.
   kernlens-sym [-h] address           Resolves an address to a symbol and source location.
   kernlens-bt [-h] [--chain] [depth]  Prints a formatted kernel backtrace.
   kernlens-chain [-h] [depth]         Prints a compact caller <- callee call chain.
@@ -72,8 +68,8 @@ memory & symbols
   kernlens-kvar [-h] symbol           Reads a KASLR-aware kernel global variable.
   kernlens-read-field [-h] address type path  Reads a struct field (including nested paths) as an integer.
   kernlens-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]  Prints information about the linux kernel bpf progs and maps.
-  kernlens-buddydump [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-p] [-c CPU]
-                          [-n NODE] [-f FIND] [--MIGRATE_TYPES MIGRATE_TYPES]  Displays metadata and freelists of the buddy allocator.
+  kernlens-buddydump [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-p] [-c CPU] [-n NODE] [-f FIND]
+                          [--MIGRATE_TYPES MIGRATE_TYPES]  Displays metadata and freelists of the buddy allocator.
   kernlens-kdmabuf [-h]               Prints DMA buf info.
 
 CPU topology
@@ -119,10 +115,17 @@ options:
   -h, --help           show this help message and exit
   -p ROOT, --pgd ROOT  top-level table to start from (default: the live CR3)
 
-[35mExamples:[0m kl-walk 0xffff888000001234 kl-walk 0xffff800000201234 5 kl-
-walk 0xffff888000001234 --pgd 0x10000 [35mNotes:[0m ``-p/--pgd`` walks a
-table other than the live CR3 -- a saved or foreign root, so a page table of
-another task can be followed without switching to it. [35mAlias:[0m kl-walk
+[35mExamples:[0m
+kl-walk 0xffff888000001234
+kl-walk 0xffff800000201234 5
+kl-walk 0xffff888000001234 --pgd 0x10000
+
+[35mNotes:[0m
+``-p/--pgd`` walks a table other than the live CR3 -- a saved or
+foreign root, so a page table of another task can be followed
+without switching to it.
+
+[35mAlias:[0m kl-walk
 ```
 
 ### Reading it
@@ -140,15 +143,12 @@ kernlens-help kernlens-slab
 ### Output
 
 ```text
-usage: kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r]
-                     [--reclaim] [--ctor]
-                     [command ...]
+usage: kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r] [--reclaim] [--ctor] [command ...]
 
 Prints information about the linux kernel's slab allocator SLUB.
 
 positional arguments:
-  command               list [filter] | info <name>... | contains <addr>... |
-                        details <addr>... | <addr>
+  command               list [filter] | info <name>... | contains <addr>... | details <addr>... | <addr>
 
 options:
   -h, --help            show this help message and exit
@@ -157,17 +157,20 @@ options:
   -n NODE, --node NODE
   -p, --partial         displays partial lists
   -a, --active          displays the active list
-  -i, --inuse           also show the object stride including metadata (with
-                        `info`)
+  -i, --inuse           also show the object stride including metadata (with `info`)
   -r, --random          also show the freelist randomisation key (with `info`)
-  --reclaim             also show whether SLAB_RECLAIM_ACCOUNT is set (with
-                        `info`)
+  --reclaim             also show whether SLAB_RECLAIM_ACCOUNT is set (with `info`)
   --ctor                also show the cache's constructor symbol (with `info`)
 
-[35mExamples:[0m kl-slab list kl-slab list kmalloc kl-slab info kmalloc-1k
--v kl-slab contains 0xffff8880032a1c40 kl-slab details 0xffff8880032a1c40 -c 0
-kl-slab 0xffff8880032a1c40 # legacy bare-address form [35mAliases:[0m kl-
-slab, kl-slabs
+[35mExamples:[0m
+kl-slab list
+kl-slab list kmalloc
+kl-slab info kmalloc-1k -v
+kl-slab contains 0xffff8880032a1c40
+kl-slab details 0xffff8880032a1c40 -c 0
+kl-slab 0xffff8880032a1c40            # legacy bare-address form
+
+[35mAliases:[0m kl-slab, kl-slabs
 ```
 
 ### Reading it

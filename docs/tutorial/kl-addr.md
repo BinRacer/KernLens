@@ -20,19 +20,19 @@ Classifies a 64-bit value as an address: canonical or not, which region it falls
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffff992880400000
+kernlens-addr 0xffff975280400000
 ```
 
 ### Output
 
 ```text
-Address: 0xffff992880400000
+Address: 0xffff975280400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff992880400000 up=0xffff992880400000
+Alignment: down=0xffff975280400000 up=0xffff975280400000
 Physical: 0x400000  pfn=1024
-page: 0xffffd62040010000
+page: 0xffffee5d00010000
 ```
 
 ### Reading it
@@ -44,17 +44,17 @@ page: 0xffffd62040010000
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffffffff98500000
+kernlens-addr 0xffffffffadd00000
 ```
 
 ### Output
 
 ```text
-Address: 0xffffffff98500000
+Address: 0xffffffffadd00000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=False vmemmap=False vmalloc=False module=False text=True
 ERR_PTR: no
-Alignment: down=0xffffffff98500000 up=0xffffffff98500000
+Alignment: down=0xffffffffadd00000 up=0xffffffffadd00000
 ```
 
 ### Reading it
@@ -88,20 +88,20 @@ Alignment: down=0x0 up=0x1000
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffff992880400000 0xfff
+kernlens-addr 0xffff975280400000 0xfff
 ```
 
 ### Output
 
 ```text
-Address: 0xffff992880400000
+Address: 0xffff975280400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff992880400000 up=0xffff992880400000
-Tags: mask=0xfff tag=0x0 stripped=0xffff992880400000
+Alignment: down=0xffff975280400000 up=0xffff975280400000
+Tags: mask=0xfff tag=0x0 stripped=0xffff975280400000
 Physical: 0x400000  pfn=1024
-page: 0xffffd62040010000
+page: 0xffffee5d00010000
 ```
 
 ### Reading it

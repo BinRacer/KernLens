@@ -40,7 +40,7 @@ Physical: 0x120000  pfn=288
 ### Invocation
 
 ```gdb
-kernlens-pte 0x8000000000120063 0xffff992880400000
+kernlens-pte 0x8000000000120063 0xffff975280400000
 ```
 
 ### Output
@@ -49,7 +49,7 @@ kernlens-pte 0x8000000000120063 0xffff992880400000
 PTE: 0x8000000000120063 present=True bit7=PS/PAT
 Flags: P RW A D NX
 Physical: 0x120000  pfn=288
-VA: 0xffff992880400000
+VA: 0xffff975280400000
 4k leaf: 0x120000
 2m leaf: 0x0
 1g leaf: 0x400000
