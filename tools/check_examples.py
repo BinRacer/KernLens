@@ -21,8 +21,8 @@ This tool makes it falsifiable.  It has three jobs:
 
 ``--report``
     Print the coverage table -- per file and per component -- so the
-    numbers in ``docs/example-coverage-plan.md`` can be regenerated
-    instead of trusted.
+    numbers behind ``examples/README.md`` can be regenerated instead of
+    trusted.
 
 ``--list-commands``
     Print the commands no example invokes yet.  This is the work list

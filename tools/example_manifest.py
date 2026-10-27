@@ -34,9 +34,8 @@ Two honest limits, both written down rather than left implicit:
   would be transcribing a table.  :func:`tools.check_examples.is_surface_name`
   filters them out by their ``UPPER_CASE`` spelling.
 * **``REQUIRED_COMMAND_COVERAGE`` is a ratchet.**  It records how many
-  commands the examples cover today and may only ever increase.  Phase 1
-  of ``docs/example-coverage-plan.md`` raises it from 0 to 40; nothing
-  lowers it.
+  commands the examples cover today and may only ever increase; nothing
+  lowers it.  Raising it is a code change plus the example that earns it.
 """
 
 from __future__ import annotations

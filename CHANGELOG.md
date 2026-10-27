@@ -94,15 +94,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shell's), and a feature template that asks what the command must
   *refuse*.  Plus a PR template whose checklist includes "the tutorial
   was regenerated, not hand-edited".
-- `docs/readme-redesign-plan.md` -- a measured plan for rewriting the
-  front page.  The current README is accurate but organised for someone
-  who has already decided to adopt the tool: it opens with the order the
-  modules were built in, puts the 40-line repository tree second, and
-  contains **zero** captured command output in 927 lines.  The plan
-  records the measurements, proposes an eight-section structure at about
-  a fifth of the length, says where each removed section goes, and
-  sketches a banner that carries the 40-command surface and a real
-  output fragment instead of a bare gradient wordmark.
+- The front page was rewritten around measurements rather than layout: it
+  opened with the order the modules were built in, put the 40-line
+  repository tree second, and contained **zero** captured command output
+  in 927 lines.  It now runs to about a fifth of that length, opens with
+  real command output, and reaches reference material in `docs/api.md`
+  rather than carrying it.  The banner states the 40-command surface and
+  a real output fragment instead of a bare gradient wordmark.  The
+  figures behind these choices are reproducible with
+  `tools/check_examples.py --report`; the reading rules that keep the
+  front page short are enforced by `ReadmeStructureTests`.
 - `DocumentationTrackingTests` in `tests/unit/test_structure.py` (3
   tests).  The architecture tree drifted twice -- once when the examples
   were regrouped, once when they were renamed -- and both times the
@@ -164,9 +165,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     by side.
   - `print_slab()` takes an *object* address and walks to the slab
     internally; passing a `struct page` yields `<cannot translate head>`.
-- `docs/example-coverage-plan.md` records Phase 2 as done with the
-  measured numbers, and notes where execution diverged from the plan:
-  `slab_tour.py` was not extended, because splitting the ten extra
+- The worked examples record the measured numbers next to the code that
+  produces them, and note where execution diverged from the intended
+  shape: `slab_tour.py` was not extended, because splitting the ten extra
   bindings across two files would have meant assembling one model from
   two places.
 - `UNCOVERED_COMMANDS` reasons for `kernlens-bits` / `kernlens-int`
@@ -189,7 +190,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `BitOps` 2/44 -> **44/44**.
 - `KAddr` (5/25) and `KPageTable` (5/38) are deliberately not covered yet:
   both need real page-table state to demonstrate honestly, and both are
-  recorded as deferred in `docs/example-coverage-plan.md`.
+  declared as deferred in `UNCOVERED_COMMANDS` so the gap is visible in
+  the measurement rather than in prose.
 - The examples' failure modes are now tested, which forced three fixes:
   - The tours guard command registration with `hasattr(gdb, "Command")`.
     The test suite installs a stub `gdb` that imports but has no
@@ -802,6 +804,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The two guards over `docs/architecture.md` were blind in three
+  separate ways, and each one was found only by deleting a file.**
+  `test_every_name_in_the_tree_exists` checks that every filename the
+  tree block lists really exists; `test_doc_paths_name_real_files` does
+  the same for rooted paths in the prose.  Both reported success while
+  checking almost nothing.
+  1. The pattern was ``[\w.]+\.(?:py|md|...)``.  A hyphen is not in
+     ``\w``, so a hyphenated name matched nothing at all, and
+     ``py.typed`` was skipped for its second dot.  The comment above it
+     claimed the opposite -- "anchored at a word boundary start so a
+     hyphenated long name is matched whole rather than from its last
+     segment" -- which described an intent the code never implemented.
+  2. Removing the hyphen problem by whitelisting extensions still could
+     not match ``py.typed`` or ``gdbinit.example``, whose tails are not
+     extensions.  And leaving the slash out of the class meant the
+     rooted-path guard matched nothing, because every path it looks for
+     starts with ``src/`` or ``docs/``.
+  3. With the pattern fixed, the bare-name search went through
+     ``Path.rglob`` over the whole checkout -- including ``.venv``, which
+     ships ``py.typed`` for six of its own packages.  Deleting the real
+     ``src/kernlens/py.typed`` therefore failed no test, because six
+     other files by that name still resolved.
+  Measured at each stage, deleting one file at a time: before, removing
+  ``docs/naming.md`` failed two tests while removing two other documents
+  the tree listed as current failed none.  After, deleting ``py.typed``,
+  ``docs/naming.md`` and ``docs/api.md`` each fails, and restoring them
+  passes.
+  Both guards now share ``doc_filenames()`` (one pattern, with the
+  hyphen, the slash and a free-form tail) and ``path_exists()``, which
+  skips ``.venv``/``build``/``__pycache__``.  The pattern errs wide on
+  purpose: a false positive fails a test that runs on every commit, while
+  a false negative passes forever.  The one token that legitimately names
+  nothing in this repository, ``~/.gdbinit``, is listed by name.
+  Still deliberately unchecked: a *bare* name shared by more than one
+  real file.  Deleting the root ``README.md`` fails no test because
+  ``examples/README.md`` and four others are real, and the tree block
+  does not say which directory it meant.  The guard cannot resolve that
+  without a directory column in a hand-drawn tree; it is a limit, not a
+  bug, and it is why ``test_every_example_appears_in_the_tree`` exists as
+  the narrow counterpart.
 - **`kl-help <command>` collapsed the examples into one line.**
   ``argparse`` re-wraps ``epilog`` as running prose by default, so the four
   invocations written for `kl-buddy` came out as two lines that break in the
@@ -844,17 +886,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   write path, the policy must name it, and neither README may drop it.
 - `docs/architecture.md` listed `api/trace.py`, which the rename in the
   previous commit had removed, and its tree block had lost its column
-  alignment.  The tree also omitted `docs/example-coverage-plan.md`,
-  `docs/tutorial/`, and the three READMEs under `examples/`.  Rewritten
-  against the real tree and re-aligned.
+  alignment.  The tree also omitted `docs/tutorial/` and the three
+  READMEs under `examples/`.  Rewritten against the real tree and
+  re-aligned.
 - `docs/architecture.md` and both root READMEs told a reader to
   `source trace.py`, a file that no longer exists.  The snippets now name
   a file the reader creates (`my_script.py`) and point at
   `examples/api/installed_api_tour.py` for a working version -- which is
   what the snippet was always illustrating: any file sourced after
   `gdbinit.py` inherits the installed names.
-- `docs/example-coverage-plan.md` claimed `tests/unit/test_examples.py`
-  had 63 tests in two places; it had grown to 85.
+- The coverage prose claimed `tests/unit/test_examples.py` had 63 tests
+  in two places; it had grown to 85.  Those counts now live in the test
+  file itself, where they cannot outlive it.
 - `tools/run_examples_gdb.py` reported a false mismatch across boots.
   Its shape digest hashed section headings verbatim, so
   `kernel identity (slide +0x16200000)` differed on the next boot --
