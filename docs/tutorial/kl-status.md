@@ -20,10 +20,10 @@ kernlens-status
 
 ```text
 KernLens 0.3.0 — color: off
-    KASLR slide: +0x17400000
-    _text: link=0xffffffff81000000 runtime=0xffffffff98400000
-    page_offset: 0xffff992880000000
-    vmemmap: 0xffffd62040000000
+    KASLR slide: +0x2cc00000
+    _text: link=0xffffffff81000000 runtime=0xffffffffadc00000
+    page_offset: 0xffff975280000000
+    vmemmap: 0xffffee5d00000000
     topology: nr_cpus=4 nr_nodes=1
 
 kl-help lists every command, kl-help kl-<command> explains one

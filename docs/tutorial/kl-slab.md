@@ -116,7 +116,7 @@ kernlens-slab info dentry
 ### Output
 
 ```text
-Slab Cache @ 0xffff992884e1b400
+Slab Cache @ 0xffff975284e1bc00
     Name: dentry
     Flags: SLAB_RECLAIM_ACCOUNT | SLAB_PANIC
     Offset: 0x60
@@ -127,12 +127,12 @@ Slab Cache @ 0xffff992884e1b400
     Usercopy region offset: 56
     Usercopy region size: 32
     oo_order: 0  oo_objects=21
-    cpu 0: active=0xffffd62040140600 freelist=0xffff9928850186c0
-    cpu 1: active=0xffffd620401b2640 freelist=0xffff992886c99d80
-    cpu 2: active=0xffffd620401b1880 freelist=0xffff992886c62000
-    cpu 3: active=0xffffd6204018fe00 freelist=0xffff9928863f89c0
+    cpu 0: active=0xffffee5d001b15c0 freelist=0xffff975286c57840
+    cpu 1: active=0xffffee5d001b1740 freelist=0xffff975286c5de40
+    cpu 2: active=0xffffee5d001b06c0 freelist=0xffff975286c1b9c0
+    cpu 3: active=0xffffee5d001b2940 freelist=0xffff975286ca5540
     node 0: nr_partial=0x8/ min_partial=0x5
-    head: 0xffffd620401b19c0 freelist=0xffff992886c67c00
+    head: 0xffffee5d001b1500 freelist=0xffff975286c54a80
 ```
 
 ### Reading it
@@ -150,7 +150,7 @@ kernlens-slab info dentry -i -r --reclaim --ctor
 ### Output
 
 ```text
-Slab Cache @ 0xffff992884e1b400
+Slab Cache @ 0xffff975284e1bc00
     Name: dentry
     Flags: SLAB_RECLAIM_ACCOUNT | SLAB_PANIC
     Offset: 0x60
@@ -162,15 +162,15 @@ Slab Cache @ 0xffff992884e1b400
     Usercopy region size: 32
     oo_order: 0  oo_objects=21
     inuse: 192
-    random: 0xd23f4778f7d75831
+    random: 0xae939aafdb096690
     reclaim: set  (SLAB_RECLAIM_ACCOUNT)
     ctor: none
-    cpu 0: active=0xffffd62040140600 freelist=0xffff9928850186c0
-    cpu 1: active=0xffffd620401b2640 freelist=0xffff992886c99d80
-    cpu 2: active=0xffffd620401b1880 freelist=0xffff992886c62000
-    cpu 3: active=0xffffd6204018fe00 freelist=0xffff9928863f89c0
+    cpu 0: active=0xffffee5d001b15c0 freelist=0xffff975286c57840
+    cpu 1: active=0xffffee5d001b1740 freelist=0xffff975286c5de40
+    cpu 2: active=0xffffee5d001b06c0 freelist=0xffff975286c1b9c0
+    cpu 3: active=0xffffee5d001b2940 freelist=0xffff975286ca5540
     node 0: nr_partial=0x8/ min_partial=0x5
-    head: 0xffffd620401b19c0 freelist=0xffff992886c67c00
+    head: 0xffffee5d001b1500 freelist=0xffff975286c54a80
 ```
 
 ### Reading it
@@ -188,7 +188,7 @@ kernlens-slab info dentry -p
 ### Output
 
 ```text
-Slab Cache @ 0xffff992884e1b400
+Slab Cache @ 0xffff975284e1bc00
     Name: dentry
     Flags: SLAB_RECLAIM_ACCOUNT | SLAB_PANIC
     Offset: 0x60
@@ -200,7 +200,7 @@ Slab Cache @ 0xffff992884e1b400
     Usercopy region size: 32
     oo_order: 0  oo_objects=21
     node 0: nr_partial=0x8/ min_partial=0x5
-    head: 0xffffd620401b19c0 freelist=0xffff992886c67c00
+    head: 0xffffee5d001b1500 freelist=0xffff975286c54a80
 ```
 
 ### Reading it
@@ -218,7 +218,7 @@ kernlens-slab info dentry -a
 ### Output
 
 ```text
-Slab Cache @ 0xffff992884e1b400
+Slab Cache @ 0xffff975284e1bc00
     Name: dentry
     Flags: SLAB_RECLAIM_ACCOUNT | SLAB_PANIC
     Offset: 0x60
@@ -229,10 +229,10 @@ Slab Cache @ 0xffff992884e1b400
     Usercopy region offset: 56
     Usercopy region size: 32
     oo_order: 0  oo_objects=21
-    cpu 0: active=0xffffd62040140600 freelist=0xffff9928850186c0
-    cpu 1: active=0xffffd620401b2640 freelist=0xffff992886c99d80
-    cpu 2: active=0xffffd620401b1880 freelist=0xffff992886c62000
-    cpu 3: active=0xffffd6204018fe00 freelist=0xffff9928863f89c0
+    cpu 0: active=0xffffee5d001b15c0 freelist=0xffff975286c57840
+    cpu 1: active=0xffffee5d001b1740 freelist=0xffff975286c5de40
+    cpu 2: active=0xffffee5d001b06c0 freelist=0xffff975286c1b9c0
+    cpu 3: active=0xffffee5d001b2940 freelist=0xffff975286ca5540
 ```
 
 ### Reading it
@@ -244,13 +244,13 @@ Just the per-CPU active slab and freelist.  `active` is a `struct page` pointer;
 ### Invocation
 
 ```gdb
-kernlens-slab contains 0xffff9928850186c0
+kernlens-slab contains 0xffff975286c57840
 ```
 
 ### Output
 
 ```text
-0xffff9928850186c0 @ dentry  size=192 object_size=192
+0xffff975286c57840 @ dentry  size=192 object_size=192
 ```
 
 ### Reading it
@@ -262,25 +262,25 @@ Given an object address, reports the cache it belongs to and the cache's object 
 ### Invocation
 
 ```gdb
-kernlens-slab details 0xffff9928850186c0
+kernlens-slab details 0xffff975286c57840
 ```
 
 ### Output
 
 ```text
-Slab @ 0xffff9928850186c0 page: 0xffffd62040140600
-    cache: 0xffff992884e1b400 dentry  page_bytes=64
-    freeptr: offset=96 random=0xd23f4778f7d75831
-    freelist: 0xffff992885018b40
+Slab @ 0xffff975286c57840 page: 0xffffee5d001b15c0
+    cache: 0xffff975284e1bc00 dentry  page_bytes=64
+    freeptr: offset=96 random=0xae939aafdb096690
+    freelist: 0xffff975286c57c00
     objects: 21  inuse=19  frozen=1
     state: frozen
     slab_size: 0x1000
-    next: 0x8d4bdfd55a4f270e decoded=0xffff9928850180c0
-    cpu 0: active=0xffffd62040140600 freelist=0xffff9928850186c0
-    cpu 1: active=0xffffd620401b2640 freelist=0xffff992886c99d80
-    cpu 2: active=0xffffd620401b1880 freelist=0xffff992886c62000
-    cpu 3: active=0xffffd6204018fe00 freelist=0xffff9928863f89c0
-    node 0: partial=8 head=0xffffd620401b19c0 in_partial=False
+    next: 0x3110c87b0f5be96f decoded=0xffff975286c57000
+    cpu 0: active=0xffffee5d001b15c0 freelist=0xffff975286c57840
+    cpu 1: active=0xffffee5d001b1740 freelist=0xffff975286c5de40
+    cpu 2: active=0xffffee5d001b06c0 freelist=0xffff975286c1b9c0
+    cpu 3: active=0xffffee5d001b2940 freelist=0xffff975286ca5540
+    node 0: partial=8 head=0xffffee5d001b1500 in_partial=False
 ```
 
 ### Reading it

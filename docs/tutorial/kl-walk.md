@@ -21,16 +21,16 @@ Follows the live tables from CR3 down to the leaf, decoding each entry.  This is
 ### Invocation
 
 ```gdb
-kernlens-walk 0xffff992880400000
+kernlens-walk 0xffff975280400000
 ```
 
 ### Output
 
 ```text
-VA: 0xffff992880400000
+VA: 0xffff975280400000
 Paging: 4-level  root=0x3010000
-pgd      : idx=0x132 entry=0x3010990 value=0x4a01067 -> 0x4a01000
-pud      : idx=0xa2 entry=0x4a01510 value=0x4a02067 -> 0x4a02000
+pgd      : idx=0x12e entry=0x3010970 value=0x4a01067 -> 0x4a01000
+pud      : idx=0x14a entry=0x4a01a50 value=0x4a02067 -> 0x4a02000
 pmd      : idx=0x2 entry=0x4a02010 value=0x80000000004000e3 (huge leaf)
 Leaf: 2 MiB huge pa=0x400000 offset=0x0
 Flags: P RW A D PAT PS NX
@@ -45,16 +45,16 @@ Each level row is `name: idx= entry= value=`, so the entry's address and content
 ### Invocation
 
 ```gdb
-kernlens-walk 0xffff992880400000 5
+kernlens-walk 0xffff975280400000 5
 ```
 
 ### Output
 
 ```text
-VA: 0xffff992880400000
+VA: 0xffff975280400000
 Paging: 5-level  root=0x3010000
 pgd      : idx=0x1ff entry=0x3010ff8 value=0x3015067 -> 0x3015000
-p4d      : idx=0x132 entry=0x3015990 value=0x0
+p4d      : idx=0x12e entry=0x3015970 value=0x0
 Note: p4d entry is not present
 ```
 

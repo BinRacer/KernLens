@@ -190,11 +190,11 @@ _buddy_parser_obj = _buddy_parser()
         "kl-buddy freelist -o 10 -m Movable -v"
     ),
     notes=(
-        "`inf`o` accepts a virtual address, a physical address, a "
-        "`struct page` address, or a `pfn:`/`phys:`/`page:`/`virt:` "
-        "prefixed value.  The order comes from the block head's "
-        "`private` field, which the kernel only maintains while a block "
-        "is free; an allocated page reports `Order: -`."
+        "`kl-buddy info` accepts a virtual address, a physical address, a\n"
+        "`struct page` address, or a `pfn:`/`phys:`/`page:`/`virt:` prefixed\n"
+        "value.  The order comes from the block head's `private` field, which\n"
+        "the kernel only maintains while a block is free; an allocated page\n"
+        "reports `Order: -`."
     ),
 )
 def kernlens_buddy(

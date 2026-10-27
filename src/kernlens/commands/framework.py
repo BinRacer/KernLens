@@ -423,6 +423,25 @@ class CommandDefinition:
         self.parser.print_help()
 
 
+class _CommandHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    """Preserve the newlines in examples and notes, wrap nothing else.
+
+    ``RawDescriptionHelpFormatter`` keeps both ``description`` and
+    ``epilog`` verbatim, which is what the examples need -- but it also
+    stops the help text of each option from wrapping, so a long `--help`
+    string would run off the terminal edge.  Overriding ``_fill_text``
+    (used for description and epilog) and leaving ``_split_lines`` (used
+    for option help) alone gives the combination the commands actually
+    want.
+    """
+
+    def _fill_text(self, text: str, width: int, indent: str) -> str:
+        return "".join(
+            indent + line if line.strip() else line
+            for line in text.splitlines(keepends=True)
+        )
+
+
 class Command:
     """Decorator binding a parser and metadata to a command function."""
 
@@ -439,6 +458,15 @@ class Command:
         self.aliases = list(aliases or [])
         self.examples = examples
         self.notes = notes
+        # The epilog is built from ``examples`` and ``notes``, both of
+        # which are written with real newlines -- one invocation per line,
+        # and blank lines between the sections.  argparse's default
+        # formatter re-wraps the epilog as running prose, which turned a
+        # four-line example list into "kl-buddy list -o 10 kl-buddy info
+        # 0xffff... kl-buddy info pfn:..." and dropped the blank line that
+        # separated the notes.  Arguments and options keep their own
+        # formatting, so only the description carries verbatim text.
+        parser.formatter_class = _CommandHelpFormatter
 
     def __call__(self, function: Callable[..., Any]) -> Callable[..., Any]:
         definition = CommandDefinition(

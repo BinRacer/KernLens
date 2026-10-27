@@ -43,6 +43,24 @@ from contract_spec import CANONICAL_COMMANDS
 GDBINIT_PATH = Path(__file__).resolve().parents[2] / "gdbinit.py"
 
 
+#: Matches one SGR sequence: ``ESC [ params m``.
+_SGR = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain(text: str | None) -> str:
+    """Strip ANSI colour from *text*, so assertions can name real words.
+
+    ``message.notice`` colourises the ``Examples:`` / ``Notes:`` / ``Alias:``
+    labels, which means the raw epilog is ``"\x1b[35mNotes:\x1b[0m ..."``.
+    Three assertions in this file compared that against plain strings and
+    only passed when an earlier test had switched colour off for the whole
+    process -- they failed whenever the class ran on its own, which is how
+    a suite quietly becomes order-dependent.  Stripping first makes each
+    test independent of whatever ran before it.
+    """
+    return _SGR.sub("", text or "")
+
+
 # =========================================================================
 # Real-environment parameters
 # =========================================================================
@@ -2402,7 +2420,7 @@ class FrameworkHelperTests(GdbinitTestBase):
 
     def test_epilog_folds_examples_and_aliases(self) -> None:
         definition = help_module.resolve_command("kernlens-help")
-        epilog = definition.parser.epilog
+        epilog = plain(definition.parser.epilog)
         self.assertIn("Examples:", epilog)
         self.assertIn("kl-help", epilog)
 
@@ -2412,7 +2430,7 @@ class FrameworkHelperTests(GdbinitTestBase):
             lambda: None, parser, framework.CommandCategory.HELP,
             ["kl-stub"], "", "",
         )
-        self.assertIn("Alias: kl-stub", definition.parser.epilog)
+        self.assertIn("Alias: kl-stub", plain(definition.parser.epilog))
 
     def test_no_metadata_leaves_the_epilog_empty(self) -> None:
         parser = argparse.ArgumentParser(description="stub")
@@ -2454,8 +2472,9 @@ class FrameworkHelperTests(GdbinitTestBase):
             lambda: None, parser, framework.CommandCategory.HELP,
             [], "", "see the docs",
         )
-        self.assertIn("Notes:", definition.parser.epilog)
-        self.assertIn("see the docs", definition.parser.epilog)
+        epilog = plain(definition.parser.epilog)
+        self.assertIn("Notes:", epilog)
+        self.assertIn("see the docs", epilog)
 
     def test_print_help_writes_the_parser(self) -> None:
         definition = help_module.resolve_command("kl-slab")
@@ -2464,13 +2483,97 @@ class FrameworkHelperTests(GdbinitTestBase):
             definition.print_help()
         self.assertIn("usage:", out.getvalue())
 
+
+class HelpRenderingTests(unittest.TestCase):
+    """The help a user reads must keep the shape its author wrote.
+
+    Every assertion above checks that a string is *present* in the epilog,
+    and all of them passed while the rendered help was wrong.  ``argparse``
+    re-wraps ``epilog`` as running prose by default, so four example lines
+    came out as one:
+
+        Examples: kl-buddy list -o 10 kl-buddy info 0xffff8880032a1000 ...
+
+    and the blank line separating ``Notes:`` from the examples was gone.
+    The strings were all there; the output was unusable.  These tests
+    render the parser and read the text, which is the only way to see it.
+    """
+
+    @staticmethod
+    def _rendered(definition: framework.CommandDefinition) -> list[str]:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            definition.print_help()
+        # The section labels are emitted through ``message.notice``, which
+        # colourises them, so a rendered line can be "\x1b[35mNotes:\x1b[0m".
+        # Strip escapes before asserting on text, or the test fails on the
+        # colour rather than on the formatting it is meant to check.
+        return plain(out.getvalue()).splitlines()
+
+    def test_examples_keep_one_line_per_invocation(self) -> None:
+        # `kl-buddy` has the longest example block, so it is the one that
+        # exposes the collapse most clearly.
+        definition = help_module.resolve_command("kl-buddy")
+        lines = self._rendered(definition)
+        self.assertIn("Examples:", lines)
+        expected = [
+            "kl-buddy list -o 10",
+            "kl-buddy info 0xffff8880032a1000",
+            "kl-buddy info pfn:0x7400 -v",
+            "kl-buddy freelist -o 10 -m Movable -v",
+        ]
+        for invocation in expected:
+            with self.subTest(invocation=invocation):
+                self.assertIn(invocation, lines)
+
+    def test_no_line_joins_two_invocations(self) -> None:
+        # The specific symptom: two `kl-buddy` invocations on one line.
+        for definition in framework.registry():
+            if not definition.examples:
+                continue
+            with self.subTest(command=definition.command_name):
+                for line in self._rendered(definition):
+                    body = line.strip()
+                    if not body.startswith(definition.prog):
+                        continue
+                    self.assertLessEqual(
+                        body.count(definition.prog), 1, line,
+                    )
+
+    def test_notes_block_is_separated_from_examples(self) -> None:
+        # A blank line before `Notes:` is what makes the two sections
+        # distinguishable; without it the label reads as one more example.
+        for name in ("kl-buddy", "kl-kbase", "kl-help"):
+            with self.subTest(command=name):
+                definition = help_module.resolve_command(name)
+                lines = self._rendered(definition)
+                notes_at = lines.index("Notes:") if "Notes:" in lines else -1
+                self.assertGreater(notes_at, 0, "\n".join(lines))
+                self.assertEqual(lines[notes_at - 1], "")
+
+    def test_an_option_help_still_wraps(self) -> None:
+        # Preserving the epilog must not turn into "never wrap": a long
+        # `--help` string has to stay inside the terminal.
+        definition = help_module.resolve_command("kl-buddy")
+        lines = self._rendered(definition)
+        help_lines = [
+            i for i, line in enumerate(lines) if "--limit LIMIT" in line
+        ]
+        self.assertTrue(help_lines, "\n".join(lines))
+        index = help_lines[0]
+        self.assertLess(index + 1, len(lines))
+        self.assertTrue(
+            lines[index + 1].startswith(" " * 10),
+            f"option help did not wrap or indent: {lines[index + 1]!r}",
+        )
+
     def test_full_help_uses_the_plural_alias_label(self) -> None:
         parser = argparse.ArgumentParser(description="stub")
         definition = framework.CommandDefinition(
             lambda: None, parser, framework.CommandCategory.HELP,
             ["kl-a", "kl-b"], "", "",
         )
-        self.assertIn("Aliases: kl-a, kl-b", definition.parser.epilog)
+        self.assertIn("Aliases: kl-a, kl-b", plain(definition.parser.epilog))
 
 
 class FormattingHelperTests(GdbinitTestBase):

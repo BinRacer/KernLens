@@ -27,14 +27,14 @@ kernlens-bt
 
 ```text
 bt:
-                   #0  0xffffffff9961263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
-                   #1  0xffffffff9961248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #2  0xffffffff9961248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #3  0xffffffff9845a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
-                   #4  0xffffffff996127aa  default_idle_call  at ./arch/x86/include/asm/paravirt.h:699
-                   #5  0xffffffff986119bf  do_idle  at kernel/sched/idle.c:192
-                   #6  0xffffffff986119bf  do_idle  at kernel/sched/idle.c:192
-                   #7  0xffffffff98611c1a  cpu_startup_entry  at kernel/sched/idle.c:400
+                   #0  0xffffffffaee1263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
+                   #1  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #2  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #3  0xffffffffadc5a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
+                   #4  0xffffffffaee127aa  default_idle_call  at ./arch/x86/include/asm/paravirt.h:699
+                   #5  0xffffffffade119bf  do_idle  at kernel/sched/idle.c:192
+                   #6  0xffffffffade119bf  do_idle  at kernel/sched/idle.c:192
+                   #7  0xffffffffade11c1a  cpu_startup_entry  at kernel/sched/idle.c:400
 ```
 
 ### Reading it
@@ -53,10 +53,10 @@ kernlens-bt 4
 
 ```text
 bt:
-                   #0  0xffffffff9961263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
-                   #1  0xffffffff9961248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #2  0xffffffff9961248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #3  0xffffffff9845a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
+                   #0  0xffffffffaee1263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
+                   #1  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #2  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #3  0xffffffffadc5a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
 ```
 
 ### Reading it

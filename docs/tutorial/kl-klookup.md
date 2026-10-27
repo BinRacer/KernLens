@@ -26,8 +26,8 @@ kernlens-klookup commit_creds
 ### Output
 
 ```text
-0xffffffff985dd800 T commit_creds
-0xffffffff9a1e942c r __ksymtab_commit_creds
+0xffffffffadddd800 T commit_creds
+0xffffffffaf9e942c r __ksymtab_commit_creds
 2 symbol(s) found
 ```
 
@@ -46,8 +46,8 @@ kernlens-klookup page_offset_base
 ### Output
 
 ```text
-0xffffffff9a1893a8 D page_offset_base
-0xffffffff9a1f0620 r __ksymtab_page_offset_base
+0xffffffffaf9893a8 D page_offset_base
+0xffffffffaf9f0620 r __ksymtab_page_offset_base
 2 symbol(s) found
 ```
 

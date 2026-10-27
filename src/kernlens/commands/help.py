@@ -109,9 +109,9 @@ _help_parser.add_argument(
         "  explain kl-slab"
     ),
     notes=(
-        "The argument must be namespaced: ``kl-help kl-slab`` or "
-        "``kl-help kernlens-slab``.  A bare ``kl-help slab`` is rejected, "
-        "because KernLens commands live in their own namespace and a bare "
+        "The argument must be namespaced: ``kl-help kl-slab`` or\n"
+        "``kl-help kernlens-slab``.  A bare ``kl-help slab`` is rejected,\n"
+        "because KernLens commands live in their own namespace and a bare\n"
         "name would read like a query about a GDB command."
     ),
 )

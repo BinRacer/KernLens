@@ -19,18 +19,18 @@ Shows the index extracted at each level for a virtual address, in both 4-level a
 ### Invocation
 
 ```gdb
-kernlens-pt 0xffff992880400000
+kernlens-pt 0xffff975280400000
 ```
 
 ### Output
 
 ```text
-VA: 0xffff992880400000
-4-level: pgd=306 pud=162 pmd=2 pte=0 off=0x0
-5-level: pgd=511 p4d=306 pud=162 pmd=2 pte=0 off=0x0
-huge: 2m_base=0xffff992880400000 1g_base=0xffff992880000000
+VA: 0xffff975280400000
+4-level: pgd=302 pud=330 pmd=2 pte=0 off=0x0
+5-level: pgd=511 p4d=302 pud=330 pmd=2 pte=0 off=0x0
+huge: 2m_base=0xffff975280400000 1g_base=0xffff975280000000
 aligned: 2m=True 1g=False page_offset=0x0
-canonical: 4-level=0xffff992880400000 5-level=0xffff992880400000
+canonical: 4-level=0xffff975280400000 5-level=0xffff975280400000
 ```
 
 ### Reading it
@@ -42,18 +42,18 @@ The 4-level row shows five entries (pgd/pud/pmd/pte/off) and the 5-level row six
 ### Invocation
 
 ```gdb
-kernlens-pt 0xffffffff98500000
+kernlens-pt 0xffffffffadd00000
 ```
 
 ### Output
 
 ```text
-VA: 0xffffffff98500000
-4-level: pgd=511 pud=510 pmd=194 pte=256 off=0x0
-5-level: pgd=511 p4d=511 pud=510 pmd=194 pte=256 off=0x0
-huge: 2m_base=0xffffffff98400000 1g_base=0xffffffff80000000
+VA: 0xffffffffadd00000
+4-level: pgd=511 pud=510 pmd=366 pte=256 off=0x0
+5-level: pgd=511 p4d=511 pud=510 pmd=366 pte=256 off=0x0
+huge: 2m_base=0xffffffffadc00000 1g_base=0xffffffff80000000
 aligned: 2m=False 1g=False page_offset=0x0
-canonical: 4-level=0xffffffff98500000 5-level=0xffffffff98500000
+canonical: 4-level=0xffffffffadd00000 5-level=0xffffffffadd00000
 ```
 
 ### Reading it

@@ -143,11 +143,11 @@ hide(_kbase_apply.add_argument(
         "kl-kbase --rebase"
     ),
     notes=(
-        "KernLens extras (hidden from --help): ``-s/--set`` applies the "
-        "derived KASLR slide to the session, ``-i/--idt [count]`` dumps "
-        "the interrupt descriptor table, and ``--text <addr>`` / "
-        "``--offset <slide>`` set the slide here (the equivalents of "
-        "``kl-kaslr`` and ``kl-kaslr-offset``), which is convenient "
+        "KernLens extras (hidden from --help): ``-s/--set`` applies the\n"
+        "derived KASLR slide to the session, ``-i/--idt [count]`` dumps\n"
+        "the interrupt descriptor table, and ``--text <addr>`` /\n"
+        "``--offset <slide>`` set the slide here (the equivalents of\n"
+        "``kl-kaslr`` and ``kl-kaslr-offset``), which is convenient\n"
         "because the report above already prints ``kaslr=+0x...``."
     ),
 )

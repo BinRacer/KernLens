@@ -20,16 +20,16 @@ The same walk as `kl-walk`, printed in pwndbg's `pagewalk` layout: leaf first, r
 ### Invocation
 
 ```gdb
-kernlens-pagewalk 0xffff992880400000
+kernlens-pagewalk 0xffff975280400000
 ```
 
 ### Output
 
 ```text
 pmd    @ 0x4a02010 [002] pmde: 0x80000000004000e3  P RW A D PAT PS NX (huge)
-pud    @ 0x4a01510 [0a2] pude: 0x4a02067 -> 0x4a02000  P RW US A D
-pgd    @ 0x3010990 [132] pgde: 0x4a01067 -> 0x4a01000  P RW US A D
-pagewalk result: 0xffff992880400000 [phys: 0x400000]
+pud    @ 0x4a01a50 [14a] pude: 0x4a02067 -> 0x4a02000  P RW US A D
+pgd    @ 0x3010970 [12e] pgde: 0x4a01067 -> 0x4a01000  P RW US A D
+pagewalk result: 0xffff975280400000 [phys: 0x400000]
 ```
 
 ### Reading it

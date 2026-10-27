@@ -19,14 +19,14 @@ Sets the KASLR slide from a runtime `_text` you already have -- from a leak, fro
 ### Invocation
 
 ```gdb
-kernlens-kaslr 0xffffffff98400000
+kernlens-kaslr 0xffffffffadc00000
 ```
 
 ### Output
 
 ```text
-KASLR offset: +0x17400000
-link _text: 0xffffffff81000000 runtime _text: 0xffffffff98400000
+KASLR offset: +0x2cc00000
+link _text: 0xffffffff81000000 runtime _text: 0xffffffffadc00000
 ```
 
 ### Reading it

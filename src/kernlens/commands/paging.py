@@ -147,8 +147,8 @@ _page_parser.add_argument(
     aliases=["kl-page"],
     examples="kl-page 0xffff888000001000\nkl-page 0xffff888000001000 --verbose",
     notes=(
-        "``-v/--verbose`` delegates to the ``kl-addr`` analysis, so the "
-        "full breakdown is available without knowing which of the two "
+        "``-v/--verbose`` delegates to the ``kl-addr`` analysis, so the\n"
+        "full breakdown is available without knowing which of the two\n"
         "commands reports more."
     ),
 )
@@ -323,8 +323,8 @@ _walk_parser.add_argument(
         "kl-walk 0xffff888000001234 --pgd 0x10000"
     ),
     notes=(
-        "``-p/--pgd`` walks a table other than the live CR3 -- a saved or "
-        "foreign root, so a page table of another task can be followed "
+        "``-p/--pgd`` walks a table other than the live CR3 -- a saved or\n"
+        "foreign root, so a page table of another task can be followed\n"
         "without switching to it."
     ),
 )

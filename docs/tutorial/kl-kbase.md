@@ -26,11 +26,11 @@ kernlens-kbase
 ### Output
 
 ```text
-text base: 0xffffffff98400000
-method: symbol  handler=0xffffffff99800990
+text base: 0xffffffffadc00000
+method: symbol  handler=0xffffffffaf000990
 symbol: asm_exc_divide_error
 idt: base=0xfffffe0000000000 limit=0xfff source=monitor
-link _text: 0xffffffff81000000  kaslr=+0x17400000
+link _text: 0xffffffff81000000  kaslr=+0x2cc00000
 hint: kl-kbase --set applies this slide
 ```
 
@@ -49,11 +49,11 @@ kernlens-kbase -v
 ### Output
 
 ```text
-text base: 0xffffffff98400000
-method: symbol  handler=0xffffffff99800990
+text base: 0xffffffffadc00000
+method: symbol  handler=0xffffffffaf000990
 symbol: asm_exc_divide_error
 idt: base=0xfffffe0000000000 limit=0xfff source=monitor
-link _text: 0xffffffff81000000  kaslr=+0x17400000
+link _text: 0xffffffff81000000  kaslr=+0x2cc00000
 Physical: 0x1000000
 hint: kl-kbase --set applies this slide
 ```
@@ -74,10 +74,10 @@ kernlens-kbase -i 4
 
 ```text
 idt: base=0xfffffe0000000000 limit=0xfff count=256 source=monitor
-idt[0]: offset=0xffffffff99800990 sel=0x10 type=0xe ist=0 dpl=0 kernel
-idt[1]: offset=0xffffffff99800cd0 sel=0x10 type=0xe ist=3 dpl=0 kernel
-idt[2]: offset=0xffffffff998016f0 sel=0x10 type=0xe ist=2 dpl=0 kernel
-idt[3]: offset=0xffffffff99800ba0 sel=0x10 type=0xe ist=0 dpl=3 kernel
+idt[0]: offset=0xffffffffaf000990 sel=0x10 type=0xe ist=0 dpl=0 kernel
+idt[1]: offset=0xffffffffaf000cd0 sel=0x10 type=0xe ist=3 dpl=0 kernel
+idt[2]: offset=0xffffffffaf0016f0 sel=0x10 type=0xe ist=2 dpl=0 kernel
+idt[3]: offset=0xffffffffaf000ba0 sel=0x10 type=0xe ist=0 dpl=3 kernel
 ```
 
 ### Reading it
@@ -95,15 +95,15 @@ kernlens-kbase -r
 ### Output
 
 ```text
-text base: 0xffffffff98400000
-method: symbol  handler=0xffffffff99800990
+text base: 0xffffffffadc00000
+method: symbol  handler=0xffffffffaf000990
 symbol: asm_exc_divide_error
 idt: base=0xfffffe0000000000 limit=0xfff source=monitor
-link _text: 0xffffffff81000000  kaslr=+0x17400000
+link _text: 0xffffffff81000000  kaslr=+0x2cc00000
 hint: kl-kbase --set applies this slide
 add symbol table from file "/home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux" at
-	.text_addr = 0xffffffff98400000
-rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xffffffff98400000
+	.text_addr = 0xffffffffadc00000
+rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xffffffffadc00000
 ```
 
 ### Reading it
@@ -115,13 +115,13 @@ rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xfffffff
 ### Invocation
 
 ```gdb
-kernlens-kbase --offset 0x17400000
+kernlens-kbase --offset 0x2cc00000
 ```
 
 ### Output
 
 ```text
-KASLR offset: +0x17400000
+KASLR offset: +0x2cc00000
 ```
 
 ### Reading it
