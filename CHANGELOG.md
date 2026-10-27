@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The README is a front page again.**  927 lines -> 266, in both
+  languages, organised around what the tool does rather than how it is
+  built:
+  - it opens with two captured outputs instead of a module list -- a
+    2 MiB page walk that stops at `(huge leaf)`, and a SLUB freelist
+    decode showing the stored word and the XOR that relates it to the
+    pointer.  The old README contained 34 fenced blocks and **zero**
+    lines of command output.
+  - the command surface is stated.  "40" did not appear in the file
+    before; a reader could not tell what they were buying.  There is now
+    a table of all 40, grouped as `kl-help` groups them, generated from
+    the registry and the tutorial pages.
+  - quickstart is three commands: clone, one line in `~/.gdbinit`,
+    `kl-base`.  Contributor setup moved to `CONTRIBUTING.md`.
+  - the repository tree and dependency graph moved to
+    `docs/architecture.md`, where an equivalent tree already lived.
+- `docs/api.md` and `docs/api.zh-CN.md` hold the 317-line API reference
+  that was in the middle of the README; `CONTRIBUTING.md` and
+  `CONTRIBUTING.zh-CN.md` hold the 110 lines of development notes.  The
+  text is moved, not rewritten -- it was accurate.  The `Conventions`
+  list went with the API reference, being a set of behavioural
+  guarantees about the classes.
+
+### Added
+
+- `ReadmeStructureTests` (3 tests) pinning the three properties that
+  made the rewrite worth doing: the front page stays under a line
+  ceiling, it shows real captured output, and the material moved out of
+  it is still reachable from it.  Growing the README back is the easy
+  mistake -- appending one more table is always locally reasonable.
+
 ### Added
 
 - `docs/readme-redesign-plan.md` -- a measured plan for rewriting the
