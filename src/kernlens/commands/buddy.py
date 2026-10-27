@@ -51,14 +51,15 @@ def _size_text(size_pages: int) -> str:
     return text
 
 
-def _address_forms(address: int) -> list[tuple[str, int]]:
-    """Return ``[(kind, phys_or_page), ...]`` for one input address.
+def _address_forms(address: int) -> list[tuple[str, int | None]]:
+    """Return ``[(kind, value), ...]`` candidates for one input address.
 
     Mirrors :meth:`kernlens.gdb.slub.SlubInspector.head_to_page`: a
-    direct-map address is converted to a physical address, a vmemmap
-    address is recognised as a ``struct page``, and anything else is
-    treated as a physical address.  Guessing wrong would report a
-    plausible but unrelated page.
+    direct-map address yields a *physical* address, a vmemmap address
+    yields a *struct page*, and anything else is tried as a physical
+    address.  The first two are already resolved here, so callers must
+    use the returned value as-is -- re-applying the base would subtract
+    it twice and produce a negative physical address.
 
     The bases are read with :meth:`read_kvar`, not with a bare symbol:
     ``page_offset_base`` and ``vmemmap_base`` are kernel *variables* the
@@ -67,12 +68,16 @@ def _address_forms(address: int) -> list[tuple[str, int]]:
     """
     page_offset = kdbg.read_kvar("page_offset_base")
     vmemmap = kdbg.read_kvar("vmemmap_base")
-    forms: list[tuple[str, int]] = []
-    if page_offset and address >= page_offset:
-        forms.append(("virt", address - page_offset))
+    forms: list[tuple[str, int | None]] = []
+    # The vmemmap range sits *above* page_offset_base, so a ``struct
+    # page`` pointer also satisfies the direct-map test.  Try the
+    # narrower interpretation first, or a page address would be
+    # translated as a direct-map one and land on a bogus physical
+    # address that still looks plausible.
     if vmemmap and address >= vmemmap:
-        page_bytes = kdbg.page_bytes()
-        forms.append(("page", (address - vmemmap) // page_bytes))
+        forms.append(("page", address))
+    if page_offset and address >= page_offset:
+        forms.append(("phys", address - page_offset))
     forms.append(("phys", address))
     return forms
 
@@ -96,7 +101,8 @@ def _resolve_one(spec: str) -> BlockLocation | None:
         pfn = value if kind == "pfn" else value >> 12
         return kdbg.block_of_pfn(pfn, pfn << 12, spans=spans)
     if kind == "page":
-        # Reverse the vmemmap mapping without re-deriving the bases.
+        # ``value`` is the ``struct page`` address, not a pfn: reverse
+        # the vmemmap mapping without re-deriving the base.
         page_bytes = kdbg.page_bytes()
         vmemmap = kdbg.read_kvar("vmemmap_base")
         if vmemmap is None:
@@ -104,16 +110,16 @@ def _resolve_one(spec: str) -> BlockLocation | None:
         pfn = (value - vmemmap) // page_bytes
         return kdbg.block_of_pfn(pfn, pfn << 12, spans=spans)
     if kind == "virt":
+        # ``value`` is a direct-map virtual address.
         page_offset = kdbg.read_kvar("page_offset_base")
         if page_offset is None:
             return None
         phys = value - page_offset
         return kdbg.block_of_pfn(phys >> 12, phys, spans=spans)
-    for name, candidate in _address_forms(value):
-        if name == "page":
-            return _resolve_one(f"page:{candidate:#x}")
-        which = "pfn" if name == "phys" else name
-        location = _resolve_one(f"{which}:{candidate:#x}")
+    for kind, value in _address_forms(value):
+        if value is None:
+            continue
+        location = _resolve_one(f"{kind}:{value:#x}")
         if location is not None and _looks_like_memory(location):
             return location
     return None
@@ -123,9 +129,10 @@ def _looks_like_memory(location: BlockLocation) -> bool:
     """Whether a guess landed in memory any zone claims."""
     if location.managed:
         return True
-    # An unmanaged reading is only plausible when the value was a pfn
-    # to begin with; a wild physical address is rejected here.
-    return location.pfn < (1 << 40)
+    # An unmanaged reading is only plausible when the pfn is sane: a
+    # negative pfn means a base was applied twice, and a physical
+    # address above the direct map cannot be RAM.
+    return 0 <= location.pfn < (1 << 40)
 
 
 def _buddy_parser() -> argparse.ArgumentParser:

@@ -387,7 +387,7 @@ _color_parser = argparse.ArgumentParser(
     description="Enable, disable, or toggle ANSI color output."
 )
 _color_parser.add_argument(
-    "state", nargs="?", choices=["on", "off", "toggle"], default="",
+    "state", nargs="?", choices=["on", "off", "toggle"], default=None,
     help="explicit state; no argument prints the current state",
 )
 
@@ -398,7 +398,7 @@ _color_parser.add_argument(
     aliases=["kl-color"],
     examples="kl-color on\nkl-color off\nkl-color toggle",
 )
-def kernlens_color(state: str = "") -> None:
+def kernlens_color(state: str | None = None) -> None:
     if state == "on":
         kdbg.enable_color()
     elif state == "off":
