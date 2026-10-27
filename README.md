@@ -201,7 +201,9 @@ Two things the command list does not show. `kl-help <command>` gives usage
 and worked examples, and `--help` works on every command with a guided
 error message rather than a bare usage line. And the commands never
 `stop()` the debuggee: they read memory and return, so they compose inside
-a breakpoint handler.
+a breakpoint handler. `kl-msr --write` is the one exception -- it sets an
+MSR through GDB's register interface -- and it is opt-in, never taken as
+a side effect of a read.
 
 ## Use it as a library
 

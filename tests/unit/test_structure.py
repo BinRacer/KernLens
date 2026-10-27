@@ -629,5 +629,78 @@ class SourceOnlyDistributionTests(unittest.TestCase):
         self.assertNotIn("[project.entry-points", pyproject)
 
 
+class WriteAccessClaimTests(unittest.TestCase):
+    """A "read-only" claim is a promise; the code has one exception.
+
+    SECURITY.md said KernLens "is read-only by design".  It is not:
+    ``kl-msr --write`` runs ``gdb.execute("set $reg = ...")``, which
+    changes the target.  The claim was load-bearing -- it was the sentence
+    that defined what counts as unsafe behaviour against the target -- so
+    a reader deciding whether to trust the tool with a live kernel was
+    reading something false.
+
+    These tests do not forbid writing.  They require that the presence of
+    a write path and the documentation describing it cannot disagree,
+    which is the failure that actually happened.
+    """
+
+    ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+    #: Every command module, so a new write path is found wherever it lives.
+    def _writers(self) -> list[str]:
+        import ast
+
+        found: list[str] = []
+        for path in (self.ROOT / "src" / "kernlens").rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                name = getattr(func, "attr", None)
+                if name != "execute" or not node.args:
+                    continue
+                first = node.args[0]
+                if isinstance(first, ast.Constant) and isinstance(
+                    first.value, str,
+                ):
+                    command = first.value.strip()
+                elif isinstance(first, ast.JoinedStr):
+                    head = first.values[0] if first.values else None
+                    command = (
+                        head.value.strip()
+                        if isinstance(head, ast.Constant) else ""
+                    )
+                else:
+                    continue
+                # Only a `set` mutates the target; `info`, `p`, etc. read.
+                if command.split()[:1] == ["set"]:
+                    found.append(
+                        f"{path.relative_to(self.ROOT)}: {command[:40]}"
+                    )
+        return sorted(set(found))
+
+    def test_the_write_path_still_exists(self) -> None:
+        # If this fails, the exception is gone and the documents below
+        # should stop mentioning it -- change both together.
+        self.assertTrue(
+            self._writers(),
+            "no `gdb.execute('set ...')` found; if writing was removed, "
+            "drop the kl-msr --write exception from SECURITY.md and both "
+            "READMEs",
+        )
+
+    def test_security_policy_names_the_exception(self) -> None:
+        text = (self.ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        self.assertNotIn("KernLens is read-only", text)
+        self.assertIn("kl-msr --write", text)
+
+    def test_both_readmes_name_the_exception(self) -> None:
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                text = (self.ROOT / name).read_text(encoding="utf-8")
+                self.assertIn("kl-msr --write", text)
+
+
 if __name__ == "__main__":
     unittest.main()
