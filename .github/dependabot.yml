@@ -1,0 +1,26 @@
+# Keep the pinned CI actions and Python dependencies fresh.
+#
+# The workflow pins the action *and* bumps the whole matrix at once, so a
+# new major (and with it a new Node runtime) shows up as a reviewable PR
+# instead of as a deprecation warning on every run.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "build"
+    groups:
+      python:
+        patterns: ["*"]

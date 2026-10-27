@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The CI actions were bumped off the deprecated Node 20 runtime (GitHub
+  removed Node 20 from the runners on 2026-09-23, so every run warned
+  that `checkout@v4`, `setup-python@v5` and `setup-uv@v6` were being
+  forced onto Node 24): `actions/checkout@v7`,
+  `actions/setup-python@v7` and `astral-sh/setup-uv@v10.3.2`, all of
+  which declare `runs.using: node24`.
+  - `setup-uv` is pinned to an exact version on purpose: the project
+    stopped publishing rolling major aliases after `v7` (`@v10` does not
+    exist, and `@v7` would miss three majors of fixes).
+  - A `.github/dependabot.yml` now tracks the `github-actions` and `uv`
+    ecosystems weekly, so the next runtime migration arrives as a
+    reviewable PR instead of as a warning on every run.
+
 - Architecture refactor with no user-visible behaviour change (every
   command, alias, and public name is byte-for-byte the same):
   - `gdb/kernel.py` (previously a ~1.6k-line class) is now a thin
