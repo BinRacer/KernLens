@@ -118,6 +118,8 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   │   ├── intcodec_tour.py          # `_tour`    `icodec`  -- every width
 │   │   ├── intfmt_tour.py            # `_tour`    `ifmt`    -- format by kind
 │   │   ├── bitops_tour.py            # `_tour`    `btour`   -- bitfields
+│   │   ├── bits_tour.py              # `_tour`    `bittour` -- kl-bits
+│   │   ├── int_tour.py               # `_tour`    `inttour` -- kl-int
 │   │   ├── freelist_walk.py          # `_walk`    `flwalk`  -- SLUB chain
 │   │   ├── slab_snapshot.py          # `_snapshot` report, no target
 │   │   └── gdbinit.example           # sample ~/.gdbinit (not a script)

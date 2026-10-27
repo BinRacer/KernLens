@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`kl-bits` and `kl-int` have examples, so the coverage ratchet moves
+  from 35/40 to 37/40.**  Both were listed in `UNCOVERED_COMMANDS` with
+  the reason "covered as Python API by bitops_tour.py / intcodec_tour.py,
+  but the command form has no example of its own" -- which names the gap
+  without explaining it, since these are the two commands that need **no
+  debuggee at all**.  The barrier was never the missing target; nobody
+  had written the file.
+  `bits_tour.py` and `int_tour.py` run on the host as scripts and execute
+  the real command when sourced inside GDB, so the two paths are compared
+  rather than assumed equal.  They also document the conventions that
+  cost an afternoon to learn: `first_set`/`last_set` report **1-based**
+  bit numbers following the kernel's own `ffs`/`fls` (so `last_set` of 64
+  means bit 63), and `cpumask_next` takes the mask first and the CPU
+  second (reversing them returns -1 for a non-empty mask).
+  The three commands left have reasons that are actually about the
+  target: `kl-buddydump` needs free blocks at a known order,
+  `kl-kbpf` needs BPF programs loaded, `kl-kdmembuf` needs a DMA-buf
+  exporter, and nothing exports on an idle VM.
 - **`KernelStyler` has tests.**  The class produces the text of every
   SLUB and symbol line a user reads, and `src/kernlens/gdb/styler.py` sat
   at 27% coverage while its sibling `src/kernlens/output/styler.py` was
