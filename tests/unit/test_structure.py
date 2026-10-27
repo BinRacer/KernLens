@@ -24,6 +24,72 @@ from kernlens.output import Palette as OutputPalette
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "kernlens"
 
+#: Anything that looks like a filename: word characters, dots, hyphens,
+#: underscores and slashes, a dot, then an extension-ish tail.
+#:
+#: Three separate narrowings were tried here and all three were wrong in
+#: the same direction -- they matched less than they claimed:
+#:
+#: * ``[\w.]+`` cannot match a hyphenated name such as
+#:   ``some-long-name.md``, because a hyphen is not a word character;
+#: * adding the hyphen but keeping an extension *whitelist* still cannot
+#:   match ``py.typed`` or ``gdbinit.example``, whose tails are not in it;
+#: * leaving the slash out means the rooted-path guard matches nothing at
+#:   all, since every path it looks for starts with ``src/`` or ``docs/``.
+#:
+#: Measured: with the whitelist, deleting ``src/kernlens/py.typed`` -- a
+#: file ``docs/architecture.md`` lists as current -- failed no test.  Each
+#: version was verified by deleting the file it was supposed to guard, and
+#: every version except this one reported success.
+#:
+#: A false positive is caught immediately, because every token here is
+#: checked against the real tree in a test that runs on every commit; a
+#: false negative is not.  So the pattern errs wide.
+DOC_FILENAME = re.compile(r"[\w./-]+\.\w[\w-]*")
+
+#: Tokens that look like filenames but belong outside this repository.
+#: ``~/.gdbinit`` appears in the architecture tree as the path a reader
+#: sources KernLens *from*, so it is not a claim about our own tree.
+NOT_IN_REPO = frozenset({"/.gdbinit"})
+
+#: Directories that are not the repository's own content.  Excluded from
+#: the bare-name search because they contain copies of common filenames:
+#: ``.venv`` ships ``py.typed`` for six of its own packages, so every
+#: lookup for that name succeeded no matter what ``src/`` held, and
+#: deleting the real marker failed no test.  That is the third way this
+#: guard was silently blind (see ``DOC_FILENAME``), and the same shape as
+#: the first two: a search over more than the thing being guarded.
+VENDORED = frozenset({".git", ".tmp", ".venv", "build", "dist", "__pycache__", "node_modules"})
+
+
+def doc_filenames(text: str) -> list[str]:
+    """Return every filename *text* mentions, minus the known outsiders.
+
+    Both guards call this, so a path absent from the tree is spotted in
+    the architecture block and in the prose by the same rule.  They were
+    written separately once and drifted apart, which is how the two plan
+    documents went unnoticed.
+    """
+    return [name for name in DOC_FILENAME.findall(text) if name not in NOT_IN_REPO]
+
+
+def path_exists(token: str) -> bool:
+    """True when *token* names something in this checkout.
+
+    A token containing a slash is used as a path relative to the root.  A
+    bare name is searched for across the tree, because the architecture
+    block lists files without their directory -- but only outside
+    :data:`VENDORED`, else a name that any installed package also ships
+    (``py.typed``, ``__init__.py``) resolves to the copy in ``.venv``.
+    """
+    if "/" in token:
+        return (ROOT / token).exists()
+    return any(
+        not any(part in VENDORED for part in path.relative_to(ROOT).parts)
+        for path in ROOT.rglob(token)
+    )
+
+
 LEGACY_MODULES = (
     "BitOps.py",
     "IntCodec.py",
@@ -452,18 +518,10 @@ class DocumentationTrackingTests(unittest.TestCase):
 
     def test_every_name_in_the_tree_exists(self) -> None:
         block = self._tree_block()
-        missing = []
-        # Anchored at a word boundary start so a hyphenated long name
-        # (`example-coverage-plan.md`) is matched whole rather than from
-        # its last segment.
-        for match in re.finditer(
-            r"(?<![\w.-])[\w.]+\.(?:py|md|svg|example|toml|lock)", block,
-        ):
-            name = match.group(0)
-            if name in self.ILLUSTRATIVE:
-                continue
-            if not list(ROOT.rglob(name)):
-                missing.append(name)
+        missing = [
+            name for name in doc_filenames(block)
+            if name not in self.ILLUSTRATIVE and not path_exists(name)
+        ]
         self.assertEqual(sorted(set(missing)), [])
 
     def test_every_example_appears_in_the_tree(self) -> None:
@@ -497,10 +555,10 @@ class DocumentationTrackingTests(unittest.TestCase):
             if any(part in {".git", ".tmp", ".venv"} for part in doc.parts):
                 continue
             text = doc.read_text(encoding="utf-8", errors="replace")
-            for token in re.findall(r"[\w./-]+\.(?:py|md|json|yml|toml)", text):
+            for token in doc_filenames(text):
                 if not token.startswith(roots):
                     continue
-                if not (ROOT / token).exists():
+                if not path_exists(token):
                     stale.append(f"{doc.relative_to(ROOT)}: {token}")
         self.assertEqual(sorted(set(stale)), [])
 

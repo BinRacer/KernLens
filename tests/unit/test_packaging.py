@@ -16,10 +16,14 @@ class PyTypedMarkerTests(unittest.TestCase):
     def test_marker_marks_a_complete_package(self) -> None:
         marker = files("kernlens").joinpath("py.typed")
         content = marker.read_text(encoding="utf-8").strip()
+        # An empty marker means "every module in this distribution is
+        # typed".  ``partial`` is the PEP 561 spelling for a distribution
+        # whose inline types are incomplete -- it is not an error state and
+        # not a lesser marker, so the message must not imply either.
         self.assertEqual(
             content, "",
-            "py.typed must be empty for a fully typed package; "
-            "use 'partial' only for a partial distribution",
+            "py.typed must be empty while the package declares itself fully "
+            "typed; write 'partial' instead if that stops being true",
         )
 
     def test_version_is_exported(self) -> None:

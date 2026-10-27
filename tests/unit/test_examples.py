@@ -6,8 +6,8 @@ a build.  These tests therefore do two jobs:
 * pin the guarantees the checker makes (a claim without the code fails,
   a command that is only mentioned does not count as executed, the
   ratchet cannot be lowered silently), and
-* pin the numbers in ``docs/example-coverage-plan.md``, so that document
-  cannot drift from the tree the way hand-written coverage prose does.
+* pin the numbers that ``examples/README.md`` advertises, so the published
+  coverage cannot drift from the tree the way hand-written prose does.
 
 The negative tests are the important ones.  A checker that only ever
 passes is indistinguishable from one that does nothing -- the tutorial
