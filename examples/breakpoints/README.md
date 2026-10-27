@@ -6,17 +6,17 @@ streaming case see [`../tracing/`](../tracing/README.md).
 
 | File | Stops when |
 | --- | --- |
-| [`conditional.py`](conditional.py) | `kfree` is called on one specific object, and only then; it reports every other hit silently |
-| [`watchfield.py`](watchfield.py) | a struct field *becomes* a chosen value, e.g. a refcount reaches zero |
-| [`per_cpu.py`](per_cpu.py) | `schedule` runs on the CPU you asked for, and then reads *that* CPU's copy of a per-CPU variable |
+| [`conditional_bp.py`](conditional_bp.py) | `kfree` is called on one specific object, and only then; it reports every other hit silently |
+| [`watchfield_bp.py`](watchfield_bp.py) | a struct field *becomes* a chosen value, e.g. a refcount reaches zero |
+| [`per_cpu_bp.py`](per_cpu_bp.py) | `schedule` runs on the CPU you asked for, and then reads *that* CPU's copy of a per-CPU variable |
 
 All three are commands, so they are used after the file is sourced, not by
 sourcing alone.
 
-## `per_cpu.py` — a breakpoint has to know which CPU it landed on
+## `per_cpu_bp.py` — a breakpoint has to know which CPU it landed on
 
 ```gdb
-(gdb) source /path/to/KernLens/examples/breakpoints/per_cpu.py
+(gdb) source /path/to/KernLens/examples/breakpoints/per_cpu_bp.py
 (gdb) pbreak --cpu 2
 (gdb) continue
 ```
@@ -33,10 +33,10 @@ It also prints the three commands that make per-CPU addressing legible
 because `GS_BASE` and `TSC_AUX` are how the kernel finds the per-CPU area
 in the first place.
 
-## `conditional.py` — break, test, decide
+## `conditional_bp.py` — break, test, decide
 
 ```gdb
-(gdb) source /path/to/KernLens/examples/breakpoints/conditional.py
+(gdb) source /path/to/KernLens/examples/breakpoints/conditional_bp.py
 (gdb) kbp-object 0xffff9a0d44c42b00
 (gdb) continue
 ```
@@ -61,10 +61,10 @@ Two details that matter in practice:
 `kdbg.bp_spec("kfree")` is used rather than the bare symbol: under KASLR
 the bare name would be planted at its link-time address.
 
-## `watchfield.py` — field watchpoint with a value filter
+## `watchfield_bp.py` — field watchpoint with a value filter
 
 ```gdb
-(gdb) source /path/to/KernLens/examples/breakpoints/watchfield.py
+(gdb) source /path/to/KernLens/examples/breakpoints/watchfield_bp.py
 (gdb) kwatch-field 'struct page' _refcount.counter 0xffffea0000004800 --expect 0
 (gdb) continue
 ```
@@ -106,7 +106,7 @@ use a software breakpoint on the writing function instead
 
 That is the honest answer rather than a stack trace, and it names the
 workaround: a software breakpoint on the function that writes the field,
-filtered the way `conditional.py` does it.  On a target with debug
+filtered the way `conditional_bp.py` does it.  On a target with debug
 registers available (bare metal, KVM with gdbstub support, or a physical
 machine) the watchpoint works as written.
 
@@ -118,8 +118,8 @@ fields needs a different mechanism.
 
 | Question | Use |
 | --- | --- |
-| "is this object freed, and from where?" | `conditional.py` |
-| "when did this value change?" | `watchfield.py` |
+| "is this object freed, and from where?" | `conditional_bp.py` |
+| "when did this value change?" | `watchfield_bp.py` |
 | "what happens over the next thousand calls?" | a tracer from `../tracing/` |
 
 Hardware watchpoints are a scarce resource (four per CPU on x86), so

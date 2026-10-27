@@ -520,6 +520,74 @@ def check_coverage() -> list[Failure]:
     return []
 
 
+#: The classification every example filename must end with.  Each one
+#: answers "what kind of thing is this?" for a reader who has only a
+#: directory listing or a traceback frame.  See ``docs/naming.md``.
+EXAMPLE_KINDS: tuple[str, ...] = (
+    "_tour",
+    "_walk",
+    "_tracer",
+    "_bp",
+    "_snapshot",
+    "_sample",
+)
+
+#: Files under ``examples/`` that are not scripts, with the reason.  An
+#: exemption has to be *here*, not implied by the file's suffix, so a new
+#: non-script file is a deliberate act.
+NOT_SCRIPTS: dict[str, str] = {
+    "examples/api/gdbinit.example":
+        "a ~/.gdbinit fragment to copy, not a script",
+}
+
+
+def check_example_names(root: pathlib.Path | None = None) -> list[Failure]:
+    """Every example filename says what kind of example it is.
+
+    The test suite can tell that an example *runs*; nothing in it can tell
+    that the name describes the file, which is why this is a static check.
+    Before the rule existed the tree had four parallel conventions
+    (`_tour`, `_tracer` beside `_trace`, a bare `_walk`, and seven files
+    with no marker at all), and `trace.py` managed to name neither its
+    subject nor its kind.
+    """
+    base = root if root is not None else _ROOT
+    failures: list[Failure] = []
+    for path in sorted((base / "examples").rglob("*.py")):
+        relative = path.relative_to(base).as_posix()
+        if relative in NOT_SCRIPTS:
+            continue
+        stem = path.stem
+        if any(stem.endswith(kind) for kind in EXAMPLE_KINDS):
+            subject = stem
+            for kind in EXAMPLE_KINDS:
+                if stem.endswith(kind):
+                    subject = stem[: -len(kind)]
+                    break
+            if not subject:
+                failures.append(Failure(
+                    relative,
+                    "has a kind but no subject before it",
+                ))
+            continue
+        failures.append(Failure(
+            relative,
+            "does not end with a kind ("
+            + ", ".join(EXAMPLE_KINDS)
+            + "); see docs/naming.md",
+        ))
+    # An exemption that no longer names a file is stale, and a stale
+    # exemption silently weakens the rule for whatever takes its place.
+    # Only checked against the real tree: a scratch root in a test has no
+    # copy of those files and would report every exemption as stale.
+    for name, reason in (NOT_SCRIPTS.items() if root is None else ()):
+        if not (base / name).is_file():
+            failures.append(Failure(
+                name, f"exempted as {reason!r}, but the file is gone",
+            ))
+    return failures
+
+
 def _guarded_lines(tree: ast.AST) -> set[int]:
     """Line numbers inside a ``try`` that can absorb "no target attached".
 
@@ -655,6 +723,7 @@ def check_all() -> list[Failure]:
     failures += check_existence()
     failures += check_readme_links()
     failures += check_runner_declarations()
+    failures += check_example_names()
     failures += check_claims()
     failures += check_commands()
     failures += check_coverage()

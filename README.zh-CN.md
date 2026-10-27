@@ -198,8 +198,8 @@ local_config = KERNLENS_CLASSES["DebugConfig"]()
 `FACADE_FUNCTIONS` 列出 facade 自由函数，其余无状态别名来自
 `BitOps`、`IntCodec`、`KAddr`、`KPageTable` 和 `IntFmt`。`kdbg`
 仍是首选的面向对象入口。可运行的示例见
-[`examples/api/trace.py`](examples/api/trace.py)；最小起步脚本见
-[`examples/api/hello.py`](examples/api/hello.py)。
+[`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py)；最小起步脚本见
+[`examples/api/hello_sample.py`](examples/api/hello_sample.py)。
 
 ### 获取帮助
 
@@ -682,11 +682,11 @@ kdbg.disable_color()           # 同时关闭 logger 与 styler
 
 ### 写脚本
 
-- [`examples/api/hello.py`](examples/api/hello.py)：最小可用脚本，也是
+- [`examples/api/hello_sample.py`](examples/api/hello_sample.py)：最小可用脚本，也是
   最适合照抄的那一份。它展示了三件事：名字从哪里来（`gdbinit.py`
   安装进 `__main__`）、在 GDB 之外运行时如何回退、以及四个不需要目标
   的纯 Python 调用。两种环境下输出完全一致。
-- [`examples/api/trace.py`](examples/api/trace.py)：在 `gdbinit.py` 之后
+- [`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py)：在 `gdbinit.py` 之后
   `source`，直接使用已安装的公共 API，不写 `from kernlens import ...`。
 - [`examples/api/slab_snapshot.py`](examples/api/slab_snapshot.py)：不依赖
   gdb，渲染一份 slab 报告；默认使用真实测试内核的取值（一个直接映射
@@ -702,7 +702,7 @@ kdbg.disable_color()           # 同时关闭 logger 与 styler
   命令（带前缀，避免遮蔽同用途的 KernLens 命令）。它读取
   `KERNLENS_SYMBOL` / `KERNLENS_ARG`，因此在不改文件的前提下就能跟踪
   任意钩子点。
-- [`examples/tracing/cve_2025_38616_trace.py`](examples/tracing/cve_2025_38616_trace.py)：
+- [`examples/tracing/cve_2025_38616_tracer.py`](examples/tracing/cve_2025_38616_tracer.py)：
   CVE-2025-38616 KTLS UAF tracer，直接复用 `gdbinit.py` 已注册的
   API 和命令；`trace-start` 会调用已注册的 `kl-base` 自动选择基址，
   并在安装断点前应用 KASLR。手工配置需先设置非零的
@@ -711,12 +711,12 @@ kdbg.disable_color()           # 同时关闭 logger 与 styler
 
 ### 断点调试
 
-- [`examples/breakpoints/conditional.py`](examples/breakpoints/conditional.py)：
+- [`examples/breakpoints/conditional_bp.py`](examples/breakpoints/conditional_bp.py)：
   安装 `kbp-object <address>`——一个只在特定对象上停下的 `kfree`
   断点，其它命中静默放行。它比较的是**对象起点**而非原始参数，
   因为 `kfree` 合法地会收到指向对象内部的指针，而这正是
   use-after-free 产生的那些释放。
-- [`examples/breakpoints/watchfield.py`](examples/breakpoints/watchfield.py)：
+- [`examples/breakpoints/watchfield_bp.py`](examples/breakpoints/watchfield_bp.py)：
   安装 `kwatch-field <type> <field> <address> --expect N`——字段
   watchpoint，只在字段**变成**指定值时报告（引用计数归零但对象仍在
   链表上，就是 use-after-free）。它需要支持硬件 watchpoint 的目标；

@@ -19,7 +19,7 @@ translation is worth attempting; a module list decides whether
 Source it after `gdbinit.py` and run `kfacts`::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/api/kernel_facts.py
+    (gdb) source /path/to/KernLens/examples/api/kernel_facts_tour.py
     (gdb) kfacts                # resolves init_task by default
     (gdb) kfacts kmalloc_caches
 
@@ -33,7 +33,7 @@ from __future__ import annotations
 try:
     import gdb
 except ImportError as exc:  # pragma: no cover - GDB only
-    raise SystemExit("kernel_facts.py must be sourced by GDB") from exc
+    raise SystemExit("kernel_facts_tour.py must be sourced by GDB") from exc
 
 
 def _bootstrap_if_needed() -> None:

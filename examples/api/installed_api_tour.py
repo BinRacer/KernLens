@@ -14,7 +14,7 @@
 an explicit ``from kernlens import ...``::
 
     (gdb) source /path/to/KernLens/gdbinit.py
-    (gdb) source /path/to/KernLens/examples/api/trace.py
+    (gdb) source /path/to/KernLens/examples/api/installed_api_tour.py
 
 The fallback below only exists so this file remains inspectable from a
 normal Python process; in GDB the names are already present.
@@ -25,7 +25,7 @@ from __future__ import annotations
 try:
     import gdb
 except ImportError as exc:  # pragma: no cover - GDB only
-    raise SystemExit("trace.py must be sourced by GDB") from exc
+    raise SystemExit("installed_api_tour.py must be sourced by GDB") from exc
 
 
 def _bootstrap_if_needed() -> None:

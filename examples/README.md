@@ -86,7 +86,7 @@ written.
 `gdbinit.py` installs the public names (`kdbg`, `KAddr`, `walk`, ...)
 into GDB's `__main__`, which is the namespace a sourced file runs in.
 That is why the examples do not `from kernlens import ...`: they use what
-is already there.  `api/hello.py` shows the one exception -- a fallback
+is already there.  `api/hello_sample.py` shows the one exception -- a fallback
 for running the file from a plain interpreter.
 
 ## Conventions

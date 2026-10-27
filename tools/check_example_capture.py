@@ -63,6 +63,11 @@ def _source_of(name: str) -> pathlib.Path | None:
 #: produced by the f-string and do not appear in the source.
 _PROSE = re.compile(r"[A-Za-z][A-Za-z ,'\-]{9,}")
 
+#: The placeholders ``run_examples_gdb`` substitutes for per-boot values.
+#: They are not in any source file, so they have to be removed before the
+#: remaining text is looked for there.
+_PLACEHOLDER = re.compile(r"\b[HN]\b")
+
 #: A parenthesised aside, which in these headings is a command line or an
 #: address and is therefore *never* verbatim in the source: the cache name
 #: inside ``kl-slab info {name} -v`` only exists at run time.
@@ -85,7 +90,7 @@ def _template(heading: str) -> str:
     spaces, leaves something that could only have been typed by hand.  A
     heading with nothing left is skipped rather than guessed at.
     """
-    prose_only = _ASIDE.sub("", heading)
+    prose_only = _PLACEHOLDER.sub(" ", _ASIDE.sub("", heading))
     candidates = [
         candidate.strip()
         for candidate in _PROSE.findall(prose_only)

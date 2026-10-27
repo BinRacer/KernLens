@@ -7,13 +7,13 @@ running and the interesting events accumulate in the output.
 | File | What it traces |
 | --- | --- |
 | [`gdb_tracer.py`](gdb_tracer.py) | every `kfree`, printing the slab that owns the argument; also demonstrates registering your own commands |
-| [`cve_2025_38616_trace.py`](cve_2025_38616_trace.py) | a full CVE-2025-38616 KTLS use-after-free chain, from the skb's refcounts to the double free |
-| [`kaslr_retarget.py`](kaslr_retarget.py) | not events: it fixes the slide so a tracer's link-time addresses resolve at all |
+| [`cve_2025_38616_tracer.py`](cve_2025_38616_tracer.py) | a full CVE-2025-38616 KTLS use-after-free chain, from the skb's refcounts to the double free |
+| [`kaslr_retarget_tour.py`](kaslr_retarget_tour.py) | not events: it fixes the slide so a tracer's link-time addresses resolve at all |
 
-## Before you trace anything: `kaslr_retarget.py`
+## Before you trace anything: `kaslr_retarget_tour.py`
 
 ```gdb
-(gdb) source /path/to/KernLens/examples/tracing/kaslr_retarget.py
+(gdb) source /path/to/KernLens/examples/tracing/kaslr_retarget_tour.py
 (gdb) retarget
 ```
 
@@ -80,7 +80,7 @@ One detail worth noticing: the script adopts
 under KASLR is planted at its **link-time** address, so a tracer that
 skips this appears to work while never firing.
 
-## `cve_2025_38616_trace.py` — the large one
+## `cve_2025_38616_tracer.py` — the large one
 
 A worked example of tracing a specific vulnerability rather than a
 function.  It follows one skb through the KTLS path and prints each
@@ -101,7 +101,7 @@ carrying its own copy of the KASLR logic.
 Load it and start tracing:
 
 ```gdb
-(gdb) source /path/to/KernLens/examples/tracing/cve_2025_38616_trace.py
+(gdb) source /path/to/KernLens/examples/tracing/cve_2025_38616_tracer.py
 (gdb) trace-start
 (gdb) continue
 ```

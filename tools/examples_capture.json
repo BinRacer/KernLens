@@ -1,17 +1,17 @@
 {
- "shape": "f8817b615fa21e4c",
+ "shape": "4fe25a6fa6d9619a",
  "examples": [
   {
-   "source": "source examples/api/trace.py",
-   "invocation": "source examples/api/trace.py",
+   "source": "source examples/api/installed_api_tour.py",
+   "invocation": "source examples/api/installed_api_tour.py",
    "headings": [],
    "ok": true
   },
   {
-   "source": "source examples/api/kernel_facts.py",
+   "source": "source examples/api/kernel_facts_tour.py",
    "invocation": "kfacts",
    "headings": [
-    "kernel identity (slide +0x16200000)",
+    "kernel identity (slide +H)",
     "identity",
     "config flags that change what a value means",
     "hardening checklist",
@@ -26,15 +26,15 @@
    "source": "source examples/api/address_tour.py",
    "invocation": "atour",
    "headings": [
-    "1. classify (kl-addr)",
-    "2. classify + translate (kl-page)",
-    "3. indices, no memory read (kl-pt)",
-    "4. walk the live tables (kl-walk)",
-    "5. the same walk, pwndbg format (kl-pagewalk)",
-    "6. decode one entry (kl-pte)",
-    "7. virtual to physical (kl-v2p)",
-    "8. physical to virtual (kl-p2v)",
-    "9. the struct page (kl-pageinfo)",
+    "N. classify (kl-addr)",
+    "N. classify + translate (kl-page)",
+    "N. indices, no memory read (kl-pt)",
+    "N. walk the live tables (kl-walk)",
+    "N. the same walk, pwndbg format (kl-pagewalk)",
+    "N. decode one entry (kl-pte)",
+    "N. virtual to physical (kl-v2p)",
+    "N. physical to virtual (kl-p2v)",
+    "N. the struct page (kl-pageinfo)",
     "reading the result"
    ],
    "ok": true
@@ -43,13 +43,13 @@
    "source": "source examples/api/slab_tour.py",
    "invocation": "stour",
    "headings": [
-    "1. which caches exist (kl-slab list)",
-    "2. one cache in full (kl-slab info kmalloc-1k -v)",
-    "3. cache geometry, from the API rather than the report",
-    "4. which cache owns 0xffff8b02c66bfc00 (kl-slab contains)",
-    "5. that object, in SLUB terms (kl-slab details)",
-    "6. the buddy allocator underneath (kl-buddy list)",
-    "7. one page, classified (kl-buddy info)",
+    "N. which caches exist (kl-slab list)",
+    "N. one cache in full (kl-slab info kmalloc-1k -v)",
+    "N. cache geometry, from the API rather than the report",
+    "N. which cache owns H (kl-slab contains)",
+    "N. that object, in SLUB terms (kl-slab details)",
+    "N. the buddy allocator underneath (kl-buddy list)",
+    "N. one page, classified (kl-buddy info)",
     "reading the result"
    ],
    "ok": true
@@ -61,11 +61,11 @@
     "SLUB freelist: the encoding, not just the report",
     "what this kernel does to the freelist",
     "kmalloc-1k: geometry and key",
-    "kmalloc-1k cpu 0: the chain",
-    "kmalloc-1k cpu 1: the chain",
-    "kmalloc-1k cpu 2: the chain",
-    "kmalloc-1k cpu 3: the chain",
-    "kmalloc-1k cpu 0: neighbourhood of the first free object",
+    "kmalloc-1k cpu N: the chain",
+    "kmalloc-1k cpu N: the chain",
+    "kmalloc-1k cpu N: the chain",
+    "kmalloc-1k cpu N: the chain",
+    "kmalloc-1k cpu N: neighbourhood of the first free object",
     "kmalloc-1k: the same slab, rendered by the library",
     "the page that contains the object is not the slab head",
     "chain depth and the partial list",
@@ -77,12 +77,12 @@
    "source": "source examples/api/symbols_tour.py",
    "invocation": "ytour",
    "headings": [
-    "1. substring search (kl-klookup init_task)",
-    "2. exact resolution (kl-sym 0xffffffff9921b680)",
-    "3. raw words (kl-read)",
-    "4. as a global value (kl-kvar)",
-    "5. a typed field (kl-read-field)",
-    "6. the current stack (kl-bt, kl-chain)",
+    "N. substring search (kl-klookup init_task)",
+    "N. exact resolution (kl-sym H)",
+    "N. raw words (kl-read)",
+    "N. as a global value (kl-kvar)",
+    "N. a typed field (kl-read-field)",
+    "N. the current stack (kl-bt, kl-chain)",
     "reading the result"
    ],
    "ok": true
@@ -94,29 +94,29 @@
    "ok": true
   },
   {
-   "source": "source examples/breakpoints/conditional.py",
+   "source": "source examples/breakpoints/conditional_bp.py",
    "invocation": "kbp-object &init_task",
    "headings": [],
    "ok": true
   },
   {
-   "source": "source examples/breakpoints/per_cpu.py",
+   "source": "source examples/breakpoints/per_cpu_bp.py",
    "invocation": "pbreak --off",
    "headings": [],
    "ok": true
   },
   {
-   "source": "source examples/tracing/kaslr_retarget.py",
+   "source": "source examples/tracing/kaslr_retarget_tour.py",
    "invocation": "retarget",
    "headings": [
     "retarget: make runtime addresses resolvable",
-    "1. current state (kl-status)",
-    "2. discover the slide from the target (kl-kbase -v)",
-    "3. is it applied?",
-    "4. apply it (kl-base)",
-    "5. verify: the same symbol, after",
-    "6. the environment fix (kl-color)",
-    "7. when a command's output is not what you expected"
+    "N. current state (kl-status)",
+    "N. discover the slide from the target (kl-kbase -v)",
+    "N. is it applied?",
+    "N. apply it (kl-base)",
+    "N. verify: the same symbol, after",
+    "N. the environment fix (kl-color)",
+    "N. when a command's output is not what you expected"
    ],
    "ok": true
   }

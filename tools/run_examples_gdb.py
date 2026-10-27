@@ -75,12 +75,38 @@ CAPTURE = _TOOLS / "examples_capture.json"
 _HEADING_JUNK = re.compile(r"^[=\-\s]+|[=\-\s]+$")
 
 
+#: One or more hex digits, with an optional ``0x``.  Headings embed
+#: addresses and offsets that change on every boot.
+_HEX = re.compile(r"0x[0-9a-fA-F]+|\b[0-9a-fA-F]{8,}\b")
+
+#: A decimal number, which covers counts and indices.
+_DECIMAL = re.compile(r"\b\d+\b")
+
+
+def _stable(title: str) -> str:
+    """A heading with the per-boot values removed.
+
+    This is the fix for a real false negative: the shape digest used to
+    include the headings verbatim, so a *different boot* reported a
+    mismatch on ``kernel identity (slide +0x16200000)`` -- because the
+    slide had changed, which is the one thing guaranteed to change.  A
+    check that fails for that reason is worse than no check: it teaches
+    the reader to ignore it.
+
+    What is left is the part a person wrote, which is the part that should
+    not move when the code is unchanged.
+    """
+    return _DECIMAL.sub("N", _HEX.sub("H", title))
+
+
 def _headings(text: str) -> list[str]:
     """The section titles an example printed, in order.
 
     Both heading styles in the tree are recognised -- ``=== title ===``
     from ``_section()`` and ``--- title ---`` from the banner -- so an
     example is free to choose either without updating a table here.
+
+    Values are replaced with placeholders: see :func:`_stable`.
     """
     found: list[str] = []
     for line in text.splitlines():
@@ -94,7 +120,7 @@ def _headings(text: str) -> list[str]:
             continue
         title = _HEADING_JUNK.sub("", stripped.strip("=-"))
         if title:
-            found.append(title)
+            found.append(_stable(title))
     return found
 
 
@@ -138,7 +164,7 @@ def _registered_command(path: str) -> str | None:
     a ``super().__init__("<name>", gdb.COMMAND_*)`` call rather than in
     the class statement or in a decorator.  A file that only defines the
     class and never instantiates it registers nothing -- the commentary in
-    ``kernel_facts.py`` calls that the most common mistake with this API,
+    ``kernel_facts_tour.py`` calls that the most common mistake with this API,
     and it is why this looks for the name in the string literal rather
     than trusting the class to exist.
     """
