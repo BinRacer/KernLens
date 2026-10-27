@@ -22,6 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     ecosystems weekly, so the next runtime migration arrives as a
     reviewable PR instead of as a warning on every run.
 
+- CI is now `concurrency`-guarded (`ci-<workflow>-<ref>`,
+  `cancel-in-progress`), so a burst of pushes to a branch cancels the
+  superseded run instead of queueing several full matrices.  It can also
+  be started by hand (`workflow_dispatch`), and a `push` that only
+  touches prose (`CHANGELOG.md`, `CREDITS.md`, `LICENSE`, `docs/**`,
+  `images/**`, `examples/gdbinit.example`) no longer runs the suite.
+  - The two READMEs are deliberately **not** in `paths-ignore`: both are
+    asserted by `tests/integration/test_gdbinit.py` (their command tables
+    must match the frozen contract), so a README edit has to run the
+    suite.
+  - The filter is on `push` only.  Applying it to `pull_request` as well
+    would leave a required check permanently "pending" on a doc-only PR,
+    because no run would ever be created to satisfy it.
+
 - Architecture refactor with no user-visible behaviour change (every
   command, alias, and public name is byte-for-byte the same):
   - `gdb/kernel.py` (previously a ~1.6k-line class) is now a thin

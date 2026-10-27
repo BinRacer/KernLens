@@ -3,10 +3,31 @@ name: CI
 on:
   push:
     branches: ["main"]
+    # Skip a doc-only push.  The READMEs are deliberately absent: both are
+    # asserted by tests/integration/test_gdbinit.py (their command tables
+    # must match the frozen contract), so a README edit has to run the
+    # suite.  Kept on ``push`` only -- filtering ``pull_request`` too would
+    # leave a required check permanently pending on a doc-only PR, because
+    # no run would ever be created for it.
+    paths-ignore:
+      - "CHANGELOG.md"
+      - "CREDITS.md"
+      - "LICENSE"
+      - "docs/**"
+      - "images/**"
+      - "examples/gdbinit.example"
   pull_request:
+  # Lets a run be started (or re-run) by hand from the Actions tab.
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# A newer push to the same branch cancels the run it superseded, so a burst
+# of pushes does not queue several full matrices behind each other.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
