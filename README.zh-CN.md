@@ -761,8 +761,8 @@ for exact struct offsets.
 `vmlinux`。
 
 `tools/gen_layouts.py` 用于保证注册表不漂移：它探测真实内核
-（通过 GDB 的 DWARF 读 `vmlinux`，或通过 `bpftool` 读 BTF），并可
-据此校验注册表：
+（通过 GDB 的 DWARF 读 `vmlinux`，或通过项目自带的解析器读 BTF，
+不需要 `bpftool` / `libbpf`），并可据此校验注册表：
 
 ```console
 uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux --check

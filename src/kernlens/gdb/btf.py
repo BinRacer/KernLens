@@ -146,40 +146,55 @@ class BTF:
     def offset(self, type_name: str, path: str) -> int | None:
         """Return ``offsetof(type_name, path)`` in bytes, or ``None``.
 
-        *path* may descend named members (``desc_ring.descs``).  A path
-        that is absent -- or that reaches an anonymous member, which BTF
-        inlines without a name -- yields ``None`` rather than a guess.
+        *path* may descend named members (``desc_ring.descs``) and may
+        name a field that BTF inlined anonymously (``page.lru`` lives in
+        an unnamed union, which is searched as well).  A path that is
+        truly absent yields ``None`` rather than a guess.
         """
         type_id = self._find(type_name)
         if type_id is None:
             return None
+        return self._path_offset(type_id, path, frozenset())
+
+    def _path_offset(
+        self, type_id: int, path: str, seen: frozenset[int],
+    ) -> int | None:
+        """Resolve *path* relative to *type_id* (guarding cycles)."""
         head, _, tail = path.partition(".")
-        found = self._member_offset(type_id, head)
+        found = self._member_offset(type_id, head, seen)
         if found is None:
             return None
         offset, member_type = found
         if not tail:
             return offset
-        inner = self._strip(member_type)
-        if inner not in self._types:
-            return None
-        kind, name, _size, _members = self._types[inner]
-        if kind not in (_KIND_STRUCT, _KIND_UNION) or not name:
-            return None
-        nested = self.offset(f"struct {name}", tail)
+        nested = self._path_offset(member_type, tail, seen)
         return None if nested is None else offset + nested
 
     def _member_offset(
-        self, type_id: int, member: str,
+        self, type_id: int, member: str, seen: frozenset[int] = frozenset(),
     ) -> tuple[int, int] | None:
-        """Return ``(byte_offset, member_type_id)`` for one member."""
+        """Return ``(byte_offset, member_type_id)`` for one member.
+
+        Named members are matched first; when *member* is not one of
+        them the search descends into every anonymous struct/union
+        member, because BTF inlines those without a name (``struct
+        page`` reaches ``lru`` through an unnamed union).  *seen* guards
+        against a self-referential anonymous member.
+        """
         type_id = self._strip(type_id)
-        if type_id not in self._types:
+        if type_id not in self._types or type_id in seen:
             return None
         _kind, _name, _size, members = self._types[type_id]
         for name, member_type, bit_offset in members:
             if name == member:
                 return bit_offset // 8, member_type
+        inner = seen | {type_id}
+        for name, member_type, bit_offset in members:
+            if name:
+                continue
+            nested = self._member_offset(member_type, member, inner)
+            if nested is not None:
+                return bit_offset // 8 + nested[0], nested[1]
         return None
 
 

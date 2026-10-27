@@ -312,10 +312,12 @@ class ToolsLayoutTests(unittest.TestCase):
 
     def test_generator_reuses_the_registry(self) -> None:
         text = (ROOT / "tools" / "gen_layouts.py").read_text(encoding="utf-8")
-        self.assertIn("from kernlens.gdb import layouts", text)
-        # It must not carry its own copy of the offsets.
+        self.assertIn("from kernlens.gdb import btf, layouts", text)
+        # It must not carry its own copy of the offsets, nor invoke a tool
+        # the user may not have (the probe reads BTF itself).
         self.assertNotIn("0x90", text)
         self.assertNotIn("0x60", text)
+        self.assertNotIn('"bpftool"', text)
 
 
 if __name__ == "__main__":

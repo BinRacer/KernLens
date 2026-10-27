@@ -107,6 +107,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The layout-probe CI step failed on every matrix job.  It installed
+  `bpftool` and read `/sys/kernel/btf/vmlinux` with it, but the Ubuntu
+  `bpftool` package installs a *wrapper* that dispatches to a per-kernel
+  tools package (`linux-tools-<release>`) which does not exist on a
+  GitHub runner, so the probe aborted with
+  `bpftool failed on /sys/kernel/btf/vmlinux`.  The tool now reads the
+  blob with the project's own BTF parser, so the step needs neither
+  `bpftool` nor `libbpf`; the CI condition is just "is there BTF here".
+
+- `kernlens.gdb.btf` could not resolve a field that BTF inlines
+  anonymously, so a BTF-only probe disagreed with the DWARF/bpftool view
+  for `struct page.lru`/`compound_head`/`_mapcount`, `struct slab`'s
+  `freelist`/`counters` and `bpf_prog.insns` -- 6 fields across the
+  registry.  `BTF.offset` now descends into unnamed struct/union members
+  (named members still win, and a self-referential anonymous member is
+  guarded), which also makes the runtime BTF tier resolve those fields.
+
 - Real-kernel fixes found by exercising every command's options against a
   live QEMU/KGDB session (Linux 6.1.134, KASLR on, DWARF5 debug info).
   The session is confirmed booted over SSH (`ctf@127.0.0.1:2222`) before
@@ -207,11 +224,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tools/gen_layouts.py`, which probes a real kernel for the struct
   layouts the fallback registry declares and verifies the registry
   against it.  It reads a `vmlinux` through GDB's DWARF (`--vmlinux`) or
-  a BTF blob through `bpftool` (`--btf`, e.g. `/sys/kernel/btf/vmlinux`);
+  a BTF blob with the project's own parser (`--btf`, e.g.
+  `/sys/kernel/btf/vmlinux` -- no `bpftool`, no `libbpf`);
   `--check` exits non-zero on any drift (including a struct or field the
   probe could not resolve, so an incomplete probe cannot pass silently),
   and the default mode prints a ready-to-paste variant block.  The pure
-  helpers (`build_spec`, `compare`, `render`, `parse_bpftool`) are
+  helpers (`build_spec`, `compare`, `render`, `probe_btf`) are
   unit-tested, and CI asserts the probe resolves every registry struct
   from the runner kernel.
   - `kl-walk` / `kl-v2p` / `kl-pagewalk` failed with "unreadable pgd

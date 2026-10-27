@@ -16,6 +16,7 @@ from kernlens.gdb import btf
 
 _MAGIC = 0xEB9F
 _KIND_STRUCT = 4
+_KIND_UNION = 5
 _KIND_INT = 1
 _KIND_PTR = 2
 _KIND_TYPEDEF = 8
@@ -48,7 +49,17 @@ def _info(kind: int, vlen: int, kind_flag: int = 0) -> int:
 
 
 def _struct(name_off: int, size: int, members: list[tuple[int, int, int]]) -> bytes:
-    out = bytearray(_type_header(name_off, _info(_KIND_STRUCT, len(members)), size))
+    return _aggregate(_KIND_STRUCT, name_off, size, members)
+
+
+def _union(name_off: int, size: int, members: list[tuple[int, int, int]]) -> bytes:
+    return _aggregate(_KIND_UNION, name_off, size, members)
+
+
+def _aggregate(
+    kind: int, name_off: int, size: int, members: list[tuple[int, int, int]],
+) -> bytes:
+    out = bytearray(_type_header(name_off, _info(kind, len(members)), size))
     for member_name, member_type, bit_offset in members:
         out.extend(struct.pack("<III", member_name, member_type, bit_offset))
     return bytes(out)
@@ -57,9 +68,11 @@ def _struct(name_off: int, size: int, members: list[tuple[int, int, int]]) -> by
 def make_blob() -> bytes:
     """Build a small BTF image:
 
-    id 1  struct inner { int a; int b; }        (b at +4)
-    id 2  struct outer { int id; struct inner in; int tail; }
-                                                (in at +4, tail at +16)
+    id 1  struct inner { int a; int b; }             (b at +4)
+    id 2  union hidden { int hidden; }              (an anonymous member)
+    id 3  struct outer { int id; struct inner in; int tail;
+                         union { int hidden; }; }
+        (in at +4, tail at +16, the union at +20)
     """
     strings = StringTable()
     types = bytearray()
@@ -69,13 +82,20 @@ def make_blob() -> bytes:
         strings.add("inner"), 8,
         [(strings.add("a"), 0, 0), (strings.add("b"), 0, 32)],
     )
-    # id 2: struct outer (``in`` references id 1)
+    # id 2: the anonymous union (name offset 0 = unnamed)
+    types += _union(
+        strings.add(""), 4,
+        [(strings.add("hidden"), 0, 0)],
+    )
+    # id 3: struct outer; ``in`` references id 1, the trailing anonymous
+    # union references id 2 and shares its member's name.
     types += _struct(
         strings.add("outer"), 24,
         [
             (strings.add("id"), 0, 0),
             (strings.add("in"), 1, 32),
             (strings.add("tail"), 0, 128),
+            (strings.add(""), 2, 160),
         ],
     )
 
@@ -119,6 +139,28 @@ class ParseTests(unittest.TestCase):
         # ``in`` at +4, ``b`` at +4 inside it -> +8.
         self.assertEqual(self.db.offset("struct outer", "in.a"), 4)
         self.assertEqual(self.db.offset("struct outer", "in.b"), 8)
+
+    def test_member_inside_an_anonymous_union(self) -> None:
+        # ``struct page.lru`` (and ``slab.freelist``, ``slab.counters``,
+        # ``bpf_prog.insns``) live in a member BTF inlines without a name,
+        # so a lookup must descend into unnamed struct/union members.
+        # The anonymous union sits at +20 and ``hidden`` at +0 inside it.
+        assert self.db is not None
+        self.assertEqual(self.db.offset("struct outer", "hidden"), 20)
+
+    def test_anonymous_descent_prefers_a_named_member(self) -> None:
+        # ``id`` is a direct member at +0; the anonymous union also holds
+        # ``hidden`` at +20, so the direct member must win for its name.
+        assert self.db is not None
+        self.assertEqual(self.db.offset("struct outer", "id"), 0)
+        self.assertIsNone(self.db.offset("struct outer", "a"))
+
+    def test_nested_path_inside_an_anonymous_member(self) -> None:
+        # The inner struct ``in`` is named, but the path still descends a
+        # named member inside it; both forms must resolve.
+        assert self.db is not None
+        self.assertEqual(self.db.offset("struct inner", "b"), 4)
+        self.assertIsNone(self.db.offset("struct inner", "hidden"))
 
     def test_unknown_type_is_none(self) -> None:
         assert self.db is not None

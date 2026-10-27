@@ -11,16 +11,18 @@ build with no debug info at all.  That table must therefore be *exact*
 for the kernels it claims, and this tool keeps it honest:
 
 * it probes a real kernel -- ``--vmlinux`` through GDB's DWARF, or
-  ``--btf`` through ``bpftool`` -- for every struct/field the registry
-  declares, and
+  ``--btf`` through the project's own BTF parser (no ``bpftool``
+  dependency, so it also works on a runner whose ``bpftool`` is the
+  Ubuntu wrapper script that refuses to run) -- for every struct/field
+  the registry declares, and
 * with ``--check`` it compares the probe against the registry and exits
   non-zero on any disagreement, so CI can catch a table that drifted
   from the kernel it was verified against.
 
 Without ``--check`` it prints a ready-to-paste ``StructVariant`` block for
 a newly verified kernel.  The pure helpers (:func:`build_spec`,
-:func:`compare`, :func:`render`, :func:`parse_bpftool`) are unit-tested;
-only the two ``probe_*`` wrappers shell out.
+:func:`compare`, :func:`render`) are unit-tested; only the two
+``probe_*`` wrappers touch an external process / file.
 
 Usage::
 
@@ -34,7 +36,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -46,7 +47,7 @@ _SRC = _REPO / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from kernlens.gdb import layouts  # noqa: E402
+from kernlens.gdb import btf, layouts  # noqa: E402
 
 #: Line printed before the JSON payload so surrounding GDB noise is ignored.
 _MARKER = "@@KERNLENS_JSON@@"
@@ -77,16 +78,6 @@ for type_name, paths in SPEC.items():
 print("__MARKER__")
 print(json.dumps(report))
 """
-
-#: ``[123] STRUCT 'name' size=48 vlen=5`` (bpftool raw dump).
-_BTF_ENTRY_RE = re.compile(
-    r"^\[(\d+)\]\s+(\w+)\s+'([^']*)'(?:\s+size=(\d+))?"
-)
-#: ``\t'field' type_id=42 bits_offset=64`` (bpftool raw dump).
-_BTF_MEMBER_RE = re.compile(
-    r"^\s+'([^']*)'\s+type_id=(\d+)(?:\s+bits_offset=(-?\d+))?"
-)
-
 
 # ---------------------------------------------------------------------
 # Pure helpers (unit-tested)
@@ -161,125 +152,6 @@ def render(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def parse_bpftool(text: str, spec: dict[str, list[str]]) -> dict[str, Any]:
-    """Parse ``bpftool btf dump format raw`` output into a report.
-
-    *spec* maps a registry type name (``struct kmem_cache``) to its field
-    paths.  BTF records the bare tag name (``kmem_cache``), so the probe
-    keys the report by the registry name.  Nested field paths (``a.b``)
-    and fields inside anonymous members (``page.lru``) are resolved
-    through the member ``type_id`` chain; a path that cannot be resolved
-    is skipped rather than guessed.
-    """
-    entries: dict[int, dict[str, Any]] = {}
-    by_name: dict[str, dict[str, Any]] = {}
-    current: dict[str, Any] | None = None
-    for line in text.splitlines():
-        entry_match = _BTF_ENTRY_RE.match(line)
-        if entry_match:
-            ident, kind, name, size = (
-                int(entry_match.group(1)),
-                entry_match.group(2),
-                entry_match.group(3),
-                entry_match.group(4),
-            )
-            current = {
-                "kind": kind,
-                "name": name,
-                "size": int(size) if size else None,
-                "members": [],
-            }
-            entries[ident] = current
-            # ``format raw`` prefixes the tag: STRUCT 'struct kmem_cache'.
-            if kind == "STRUCT" and name:
-                tag = name.removeprefix("struct ")
-                by_name.setdefault(tag, current)
-            continue
-        if current is None:
-            continue
-        member_match = _BTF_MEMBER_RE.match(line)
-        if member_match:
-            field, type_id, bits = member_match.groups()
-            if bits is not None:
-                # A list, not a dict: several anonymous members share the
-                # name ``(anon)`` and a dict would drop all but the last.
-                current["members"].append(
-                    (field, int(type_id), int(bits)),
-                )
-
-    report: dict[str, Any] = {}
-    for type_name, paths in spec.items():
-        tag = type_name.removeprefix("struct ")
-        entry = by_name.get(tag)
-        if entry is None:
-            continue
-        result: dict[str, Any] = {"fields": {}}
-        if entry["size"] is not None:
-            result["sizeof"] = entry["size"]
-        type_id = next(
-            (i for i, e in entries.items() if e is entry), None,
-        )
-        if type_id is None:
-            continue
-        for path in paths:
-            value = _resolve_btf_path(entries, type_id, path)
-            if value is not None:
-                result["fields"][path] = value
-        report[type_name] = result
-    return report
-
-
-def _resolve_btf_path(
-    entries: dict[int, dict[str, Any]], type_id: int, path: str,
-) -> int | None:
-    """Resolve one (possibly nested) field path to a byte offset.
-
-    Fields inside anonymous members are found by recursing into every
-    unnamed struct/union member, mirroring what a DWARF lookup does.
-    """
-    head, _, tail = path.partition(".")
-    member = _find_member(entries, type_id, head)
-    if member is None:
-        return None
-    offset, member_type = member
-    if not tail:
-        return offset
-    nested = _resolve_btf_path(entries, member_type, tail)
-    return None if nested is None else offset + nested
-
-
-#: ``bpftool`` renders an anonymous member's name as this literal.
-_ANON_NAMES = ("", "(anon)")
-
-
-def _find_member(
-    entries: dict[int, dict[str, Any]], type_id: int, field: str,
-) -> tuple[int, int] | None:
-    """Return ``(byte_offset, member_type_id)`` for a member name.
-
-    Searches the type's direct members first, then descends into its
-    anonymous struct/union members, so ``page.lru`` resolves even though
-    BTF inlines the union without a name (``bpftool`` prints it as
-    ``(anon)``).
-    """
-    entry = entries.get(type_id)
-    if entry is None or entry["kind"] not in ("STRUCT", "UNION"):
-        return None
-    for name, member_type, bits in entry["members"]:
-        if name == field:
-            return bits // 8, member_type
-    for name, member_type, bits in entry["members"]:
-        if name not in _ANON_NAMES:
-            continue
-        nested = entries.get(member_type)
-        if nested is None or nested["kind"] not in ("STRUCT", "UNION"):
-            continue
-        found = _find_member(entries, member_type, field)
-        if found is not None:
-            return bits // 8 + found[0], found[1]
-    return None
-
-
 # ---------------------------------------------------------------------
 # Probes (shell out)
 # ---------------------------------------------------------------------
@@ -312,18 +184,33 @@ def probe_gdb(vmlinux: str) -> dict[str, Any]:
 
 
 def probe_btf(btf_path: str) -> dict[str, Any]:
-    """Probe a BTF blob through ``bpftool``; raise on failure."""
-    result = subprocess.run(
-        ["bpftool", "btf", "dump", "file", btf_path, "format", "raw"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"bpftool failed on {btf_path}: {result.stderr.strip()}"
-        )
-    return parse_bpftool(result.stdout, build_spec())
+    """Probe a BTF blob using the project's own parser.
+
+    The parser is self-contained, so this needs neither ``bpftool`` nor
+    ``libbpf``.  That matters on CI: the Ubuntu ``bpftool`` package
+    installs a *wrapper* that dispatches to a per-kernel tools package
+    and fails on a cloud runner, where no matching package exists.
+    """
+    data = Path(btf_path).read_bytes()
+    blob = btf.extract_btf(data) or data
+    database = btf.parse(blob)
+    if database is None:
+        raise RuntimeError(f"no usable BTF in {btf_path}")
+    spec = build_spec()
+    report: dict[str, Any] = {}
+    for type_name, paths in spec.items():
+        if not database.has(type_name):
+            continue
+        entry: dict[str, Any] = {"fields": {}}
+        size = database.sizeof(type_name)
+        if size is not None:
+            entry["sizeof"] = size
+        for path in paths:
+            value = database.offset(type_name, path)
+            if value is not None:
+                entry["fields"][path] = value
+        report[type_name] = entry
+    return report
 
 
 def _extract(stdout: str, stderr: str, source: str) -> dict[str, Any]:
@@ -358,7 +245,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     source.add_argument(
         "--btf", metavar="PATH",
-        help="a BTF blob such as /sys/kernel/btf/vmlinux (read via bpftool)",
+        help=(
+            "a BTF blob such as /sys/kernel/btf/vmlinux or a vmlinux "
+            "with an embedded .BTF section (parsed directly)"
+        ),
     )
     parser.add_argument(
         "--check", action="store_true",

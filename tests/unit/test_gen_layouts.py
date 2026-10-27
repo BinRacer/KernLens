@@ -112,61 +112,118 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("sizeof", text)
 
 
-class ParseBpftoolTests(unittest.TestCase):
-    """The BTF names are bare, so the probe keys by the registry name."""
+class ProbeBtfTests(unittest.TestCase):
+    """``--btf`` reads a blob with the project's own parser.
 
-    SAMPLE = """\
-[1] PTR '(anon)' type_id=3
-[130103] STRUCT 'struct kmem_cache' size=8400 vlen=3
-        'name' type_id=1 bits_offset=704
-        'list' type_id=131192 bits_offset=768
-        'flags' type_id=154050 bits_offset=64
-[130104] STRUCT 'struct printk_ringbuffer' size=88 vlen=2
-        'desc_ring' type_id=131200 bits_offset=384
-        'text_data_ring' type_id=131210 bits_offset=384
-[131200] STRUCT 'prb_desc_ring' size=48 vlen=1
-        'descs' type_id=5 bits_offset=64
-"""
+    This is what makes the tool usable on CI: the Ubuntu ``bpftool``
+    package installs a wrapper that dispatches to a per-kernel tools
+    package and fails on a cloud runner, and the project already has a
+    self-contained parser (no ``bpftool``, no ``libbpf``).
+    """
 
-    def test_bare_tag_name_resolves(self) -> None:
-        spec = {"struct kmem_cache": ["name", "list", "flags"]}
-        report = gen_layouts.parse_bpftool(self.SAMPLE, spec)
-        self.assertEqual(
-            report["struct kmem_cache"]["fields"],
-            {"name": 0x58, "list": 0x60, "flags": 0x08},
+    def test_absent_file_raises(self) -> None:
+        with self.assertRaises(OSError):
+            gen_layouts.probe_btf("/nonexistent/btf")
+
+    def test_resolves_a_direct_member(self) -> None:
+        import tempfile
+
+        from kernlens.gdb import btf
+
+        blob = _make_btf(
+            {"struct kmem_cache": 0x2100},
+            {"struct kmem_cache": [("flags", 5, 0)]},
         )
-        self.assertEqual(report["struct kmem_cache"]["sizeof"], 8400)
-
-    def test_nested_path_resolves(self) -> None:
-        spec = {"struct printk_ringbuffer": ["desc_ring.descs"]}
-        report = gen_layouts.parse_bpftool(self.SAMPLE, spec)
-        # desc_ring @ 0x30, descs @ 0x08 inside it.
-        self.assertEqual(
-            report["struct printk_ringbuffer"]["fields"]["desc_ring.descs"],
-            0x38,
-        )
-
-    def test_unknown_struct_is_skipped(self) -> None:
-        report = gen_layouts.parse_bpftool(self.SAMPLE, {"struct nope": ["x"]})
-        self.assertEqual(report, {})
+        with tempfile.NamedTemporaryFile(suffix=".btf") as handle:
+            handle.write(blob)
+            handle.flush()
+            report = gen_layouts.probe_btf(handle.name)
+        self.assertEqual(report["struct kmem_cache"]["fields"]["flags"], 0)
+        self.assertEqual(report["struct kmem_cache"]["sizeof"], 0x2100)
+        self.assertTrue(btf.parse(blob).has("struct kmem_cache"))
 
     def test_unresolved_field_is_skipped(self) -> None:
-        spec = {"struct kmem_cache": ["name", "not_a_field"]}
-        report = gen_layouts.parse_bpftool(self.SAMPLE, spec)
+        import tempfile
+
+        blob = _make_btf(
+            {"struct kmem_cache": 0x2100},
+            {"struct kmem_cache": [("flags", 5, 0)]},
+        )
+        with tempfile.NamedTemporaryFile(suffix=".btf") as handle:
+            handle.write(blob)
+            handle.flush()
+            report = gen_layouts.probe_btf(handle.name)
         self.assertEqual(
-            set(report["struct kmem_cache"]["fields"]), {"name"},
+            set(report["struct kmem_cache"]["fields"]), {"flags"},
         )
 
-    def test_takes_the_first_struct_of_a_duplicated_tag(self) -> None:
-        sample = (
-            "[1] STRUCT 'struct dup' size=8 vlen=1\n"
-            "        'a' type_id=1 bits_offset=0\n"
-            "[2] STRUCT 'struct dup' size=16 vlen=1\n"
-            "        'a' type_id=1 bits_offset=64\n"
+    def test_structs_outside_the_spec_are_omitted(self) -> None:
+        import tempfile
+
+        blob = _make_btf(
+            {"struct kmem_cache": 0x2100, "struct unrelated": 0x8},
+            {"struct kmem_cache": [("flags", 5, 0)],
+             "struct unrelated": [("x", 5, 0)]},
         )
-        report = gen_layouts.parse_bpftool(sample, {"struct dup": ["a"]})
-        self.assertEqual(report["struct dup"]["fields"]["a"], 0x0)
-        self.assertEqual(report["struct dup"]["sizeof"], 8)
+        with tempfile.NamedTemporaryFile(suffix=".btf") as handle:
+            handle.write(blob)
+            handle.flush()
+            report = gen_layouts.probe_btf(handle.name)
+        # ``struct unrelated`` is not a registry type, so it is absent.
+        self.assertEqual(set(report), {"struct kmem_cache"})
+
+
+def _make_btf(
+    sizes: dict[str, int],
+    members: dict[str, list[tuple[str, int, int]]],
+) -> bytes:
+    """Build a minimal BTF blob: ``INT`` filler + one STRUCT per name.
+
+    Kept local so this suite does not depend on the test helpers in
+    ``tests/unit/test_btf.py``.
+    """
+    import struct as _struct
+
+    strings = bytearray(b"\x00")
+    offsets: dict[str, int] = {"": 0}
+
+    def string(text: str) -> int:
+        if text in offsets:
+            return offsets[text]
+        offsets[text] = len(strings)
+        strings.extend(text.encode() + b"\x00")
+        return offsets[text]
+
+    names = list(sizes)
+    for type_name in names:
+        for member_name, _member_type, _bits in members.get(type_name, []):
+            string(member_name)
+        string(type_name.removeprefix("struct "))
+
+    # INT (id 1, kind 1, size 4) carries a 4-byte payload; then the STRUCTs
+    # (kind 4, bits 24-28).
+    body = bytearray(_struct.pack("<III", 0, (1 << 24) | 1, 4) + b"\x00" * 4)
+    for type_name in names:
+        rows = members.get(type_name, [])
+        body += _struct.pack(
+            "<III",
+            string(type_name.removeprefix("struct ")),
+            (4 << 24) | (len(rows) & 0xFFFF),
+            sizes[type_name],
+        )
+        for member_name, member_type, bits in rows:
+            body += _struct.pack(
+                "<III", string(member_name), member_type, bits,
+            )
+
+    # ``type_off`` / ``str_off`` are relative to the header, so the string
+    # section starts right after the type section.
+    header = _struct.pack(
+        "<HBBIIIII",
+        0xEB9F, 1, 0, 24, 0, len(body),
+        len(body), len(strings),
+    )
+    return header + bytes(body) + bytes(strings)
 
 
 class CliTests(unittest.TestCase):

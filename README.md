@@ -796,8 +796,9 @@ usable `.BTF` section) by setting `kdbg.reader.config.btf_path` to a raw
 blob or to a `vmlinux` carrying a `.BTF` section.
 
 `tools/gen_layouts.py` keeps the registry honest.  It probes a real
-kernel -- a `vmlinux` through GDB's DWARF, or a BTF blob through
-`bpftool` -- and can verify the registry against it:
+kernel -- a `vmlinux` through GDB's DWARF, or a BTF blob through the
+project's own parser (no `bpftool`, no `libbpf`) -- and can verify the
+registry against it:
 
 ```console
 uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux --check

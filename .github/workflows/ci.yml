@@ -44,12 +44,11 @@ jobs:
       - name: Verify the layout generator probes a real kernel
         run: |
           set -eu
-          if ! command -v bpftool >/dev/null; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq bpftool || true
-          fi
-          if [ ! -r /sys/kernel/btf/vmlinux ] || ! command -v bpftool >/dev/null; then
-            echo "no BTF / bpftool on this runner; skipping"
+          # No bpftool needed: the probe uses the project's own BTF parser.
+          # (Ubuntu's bpftool package installs a *wrapper* that dispatches
+          # to a per-kernel tools package and fails on a cloud runner.)
+          if [ ! -r /sys/kernel/btf/vmlinux ]; then
+            echo "no BTF on this runner; skipping"
             exit 0
           fi
           # The runner kernel differs from the verified one, so only the
