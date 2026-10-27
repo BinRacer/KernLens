@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `examples/api/freelist_walk.py` had four defects that only a live
+  target exposed.  All four produced *confident, plausible* output rather
+  than an error, which is why none of them showed up in a green build:
+  - **The hardening report inverted itself.**  `kconfig_get()` returns
+    `"y"`, `"n"`, `"m"` or `None` -- a string, never a bool -- and the
+    example tested it for truthiness, so every option set to `n` printed
+    as `y`.  On the test kernel that meant claiming
+    `INIT_ON_FREE_DEFAULT_ON` was *on*, i.e. freed objects zeroed, while
+    the chain below it was visibly intact.  The options are now printed
+    by value.
+  - **`kconfig_get()` returning `None` is not the same as `"n"`.**  The
+    config parser keeps only `NAME=value` lines, so `# X is not set` is
+    dropped: an option disabled in the config and an option absent from
+    the image are indistinguishable.  Both read as off, and a `*` now
+    marks the ones the tool cannot tell apart -- worth saying, because a
+    reader debugging a surprising chain is exactly who needs to know.
+  - **`nr_cpus()` returning -1 wiped out the whole run.**  It is the
+    documented sentinel for "unreadable", and `range(-1)` is empty, so a
+    single failed symbol read skipped every chain *and* then indexed
+    `cpus[0]`.  It now falls back to one CPU and says so.
+  - **A decoded link was only checked for being *some* slab object.**
+    `slab_object()` also returns the owning cache, and that half was
+    thrown away.  A stale link that lands in a different cache's slab
+    passes the first check and is still wrong, so the walk now compares
+    the cache and stops.
+- `examples/api/freelist_walk.py` was also missing the stop condition
+  its own docstring promised: a chain longer than the slab has objects,
+  which is how a corrupted freelist that still points at readable slab
+  memory shows up.  It stopped on "not a slab object" and on cycles, and
+  neither catches that case.
+- `tests/unit/test_examples.py` gains `FreelistWalkRegressions` (4 tests,
+  each shown to fail when its fix is reverted).  They are AST assertions
+  rather than output assertions because the file needs a live GDB and the
+  test environment's stubbed `gdb` has no memory to read.
+
 ### Added
 
 - `examples/api/freelist_walk.py` (`flwalk`) — the SLUB freelist as an

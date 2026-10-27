@@ -98,12 +98,39 @@ HARDENING_NOTES: dict[str, str] = {
 
 
 def report_hardening() -> None:
-    """What this kernel does to the chain, before showing it."""
+    """What this kernel does to the chain, before showing it.
+
+    `config_get()` returns the *value* (``"y"``, ``"n"``, or ``"m"`` for
+    a tristate) and ``None`` when the key is not in the parsed map.
+    Testing that return for truthiness -- the obvious thing to write --
+    reports every option this kernel sets to ``n`` as ``y``, which here
+    would have claimed that freed objects are zeroed, the exact misreading
+    this section exists to prevent.
+
+    ``None`` is not quite ``"n"`` either.  The parser keeps only
+    ``NAME=value`` lines, so ``# CONFIG_X is not set`` never reaches the
+    map: an option disabled in the config and an option that appears
+    nowhere look identical.  Both mean "off", which is what gets printed,
+    but the difference is flagged with ``*`` because a reader debugging a
+    surprising chain should know the tool cannot tell them apart.
+    """
     _section("what this kernel does to the freelist")
+    absent: list[str] = []
     for name, effect in HARDENING_NOTES.items():
         value = kdbg.kconfig_get(name)  # noqa: F821
-        state = "y" if value else "n"
-        gdb.write(f"{name:<28s} = {state}    {effect}\n")
+        if value is None:
+            absent.append(name)
+            state = "n*"
+        else:
+            state = value
+        gdb.write(f"{name:<28s} = {state:<8s} {effect}\n")
+    if absent:
+        gdb.write(
+            "\n* not in the parsed CONFIG_* map.  The parser keeps only\n"
+            "  NAME=value lines, so '# X is not set' is dropped: this\n"
+            "  reads 'off', but 'off' and 'unknown' cannot be told apart\n"
+            "  from here.  Both mean there is nothing to watch.\n"
+        )
 
 
 def decode_one(cache_name: str, cpu: int) -> None:
@@ -121,6 +148,12 @@ def decode_one(cache_name: str, cpu: int) -> None:
 
     offset = kdbg.freeptr_offset(cache.address)  # noqa: F821
     random = kdbg.freeptr_random(cache.address)  # noqa: F821
+    # A kernel without `CONFIG_SLAB_FREELIST_HARDENED` has no `random`
+    # member and reads 0, *not* `None`.  Testing `random is not None`
+    # would therefore print the arithmetic section on an unhardened
+    # kernel, where `stored` is the next pointer verbatim and the XOR
+    # line would be a tautology dressed up as a derivation.
+    hardened = bool(random)
 
     _section(f"{cache_name}: geometry and key")
     # `page_bytes` is sizeof(struct page), not PAGE_SIZE -- a metric that
@@ -131,17 +164,15 @@ def decode_one(cache_name: str, cpu: int) -> None:
         f"object size : {cache.size} bytes\n"
         f"objects/slab: {cache.oo_objects}  (order {cache.oo_order})\n"
         f"page slot   : {kdbg.page_bytes()} bytes (sizeof(struct page))\n"  # noqa: F821
-        f"cpu_slab    : "  # noqa: F821
     )
     template = kdbg.cpu_slab_ptr(cache.address)  # noqa: F821
     gdb.write(
-        f"{template:#x} (__percpu template)\n" if template
-        else "(none)\n"
+        f"cpu_slab    : {template:#x} (__percpu template)\n" if template
+        else "cpu_slab    : (none)\n"
     )
     gdb.write(
-        f"freeptr     : offset={offset}  random={random:#x}\n"
-        if random is not None
-        else f"freeptr     : offset={offset}  random=(not hardened)\n"
+        f"freeptr     : offset={offset}  random={random:#x}  "
+        f"({'hardened' if hardened else 'not hardened'})\n"
     )
 
     top = kdbg.cpu_freelist(cache.address, cpu)  # noqa: F821
@@ -162,13 +193,18 @@ def decode_one(cache_name: str, cpu: int) -> None:
         f"  stored word    : {stored:#018x}\n"
         f"  decoded next   : {decoded:#018x}\n"
     )
-    if random is not None:
+    if hardened:
         # Showing the arithmetic is what makes the formula believable.
         swab = int.from_bytes(slot.to_bytes(8, "little"), "big")
         gdb.write(
             f"  the arithmetic : {decoded:#x} ^ {random:#x} ^ "
             f"swab({slot:#x}) = {stored:#x}\n"
             f"  check          : {decoded ^ random ^ swab:#x}\n"
+        )
+    else:
+        gdb.write(
+            "  (not hardened: `stored` is the next pointer verbatim, so\n"
+            "   there is no arithmetic to verify here)\n"
         )
 
 
@@ -192,6 +228,18 @@ def walk(cache_name: str, cpu: int, limit: int) -> None:
         gdb.write("-- nothing to walk\n")
         return
 
+    # The slab this object belongs to.  Asking the kernel is more
+    # reliable than deriving it from the address: `cpu_active_slab` is
+    # the slab the CPU is allocating from, which is by definition the one
+    # this freelist belongs to.  Read it once, not per link.
+    head = kdbg.cpu_active_slab(cache.address, cpu)  # noqa: F821
+    head = int(head) if head else 0
+    objects = 0
+    if head:
+        counters = kdbg.slab_counters(head)  # noqa: F821
+        if counters is not None:
+            objects = counters[1]
+
     current = int(top)
     seen: set[int] = set()
     for depth in range(limit):
@@ -201,15 +249,21 @@ def walk(cache_name: str, cpu: int, limit: int) -> None:
             return
         seen.add(current)
 
-        # The slab this object belongs to.  Asking the kernel is more
-        # reliable than deriving it from the address: `cpu_active_slab`
-        # is the slab the CPU is allocating from, which is by definition
-        # the one this freelist belongs to.
-        head = kdbg.cpu_active_slab(cache.address, cpu)  # noqa: F821
+        # A chain longer than the slab has objects means the key or the
+        # slot is wrong: the kernel cannot hand out more links than it
+        # stores objects.  This is the condition that catches a corrupted
+        # freelist which still points at readable slab memory.
+        if objects and depth >= objects:
+            gdb.write(
+                f"   <- longer than the slab ({objects} objects), "
+                "stopping\n"
+            )
+            return
+
         if head:
             located = kdbg.object_index(head, current, cache.address)  # noqa: F821
             if located is not None:
-                index, objects = located
+                index, _ = located
                 gdb.write(f"        object {index} of {objects}")
         gdb.write("\n")
 
@@ -222,10 +276,21 @@ def walk(cache_name: str, cpu: int, limit: int) -> None:
         if nxt == 0:
             gdb.write("        end of chain (NULL)\n")
             return
-        if not kdbg.slab_object(nxt):  # noqa: F821
+        resolved = kdbg.slab_object(nxt)  # noqa: F821
+        if resolved is None:
             gdb.write(
                 f"        decoded {nxt:#x} is not a slab object -- "
                 "wrong offset or key, stopping\n"
+            )
+            return
+        # `slab_object` also answers *which* cache the target belongs to.
+        # The link is only meaningful if it points back into this one: a
+        # faithful decode of a stale link can land on a different
+        # cache's slab and still pass the is-it-a-slab check above.
+        if resolved[1].address != cache.address:
+            gdb.write(
+                f"        decoded {nxt:#x} belongs to "
+                f"{resolved[1].name}, not {cache.name} -- stopping\n"
             )
             return
         current = nxt
@@ -292,6 +357,10 @@ def partial_side(cache_address: int, cpu: int, top: int) -> None:
     list, or is it only on the per-CPU freelist?
     """
     _section("chain depth and the partial list")
+    # `freeptr_random()` has no ``None`` case to check: on a kernel built
+    # without ``CONFIG_SLAB_FREELIST_HARDENED`` the keyword does not exist
+    # and the key is 0, which `decode_freeptr()` already treats as "no
+    # XOR".  So `offset` is the only thing that can be missing here.
     second = None
     if top:
         offset = kdbg.freeptr_offset(cache_address)  # noqa: F821
@@ -400,21 +469,35 @@ def freelist_walk(cache_name: str, cpu: int | None, limit: int) -> None:
     gdb.execute("kl-base")
     report_hardening()
 
-    cpus = [cpu] if cpu is not None else list(range(kdbg.nr_cpus()))  # noqa: F821
+    # `nr_cpus()` returns -1 when `nr_cpu_ids` is unreadable, and
+    # `range(-1)` is empty -- so a failed read used to skip every chain
+    # *and* index `cpus[0]`.  Treat it as unknown and fall back to CPU 0.
+    total = kdbg.nr_cpus()  # noqa: F821
+    if total <= 0:
+        gdb.write(
+            "\n-- nr_cpu_ids unreadable; assuming a single CPU.  Every\n"
+            "   chain below may be incomplete.\n"
+        )
+        total = 1
+    cpus = [cpu] if cpu is not None else list(range(total))
+
+    cache = kdbg.slab_cache(cache_name)  # noqa: F821
+    if cache is None:
+        _section(f"{cache_name} is absent")
+        gdb.write("-- no such cache on this kernel\n")
+        return
+
     decode_one(cache_name, cpus[0])
     for index in cpus:
         walk(cache_name, index, limit)
     neighbours(cache_name, cpus[0])
 
-    top = kdbg.cpu_freelist(  # noqa: F821
-        kdbg.slab_cache(cache_name).address, cpus[0]  # noqa: F821
-    )
-    head = kdbg.cpu_active_slab(  # noqa: F821
-        kdbg.slab_cache(cache_name).address, cpus[0]  # noqa: F821
-    )
+    top = kdbg.cpu_freelist(cache.address, cpus[0])  # noqa: F821
+    head = kdbg.cpu_active_slab(cache.address, cpus[0])  # noqa: F821
     if top and head:
         head_chain(int(top), int(head))
-        partial_side(kdbg.slab_cache(cache_name).address, cpus[0], int(top))  # noqa: F821
+    if top:
+        partial_side(cache.address, cpus[0], int(top))
 
     _section("reading the result")
     gdb.write(
@@ -423,9 +506,9 @@ def freelist_walk(cache_name: str, cpu: int | None, limit: int) -> None:
         "`random` is wrong for this cache -- and the walk above stops\n"
         "rather than printing a convincing chain of garbage.  That stop is\n"
         "the difference between a tracer and a plausible-looking one.\n\n"
-        "If `INIT_ON_FREE_DEFAULT_ON = y` above, the chain is zeroed on\n"
-        "free and there is nothing to follow: that is not a bug in the\n"
-        "walk, it is the hardening working.\n"
+        "If `INIT_ON_FREE_DEFAULT_ON` above is not `n`, the chain is\n"
+        "zeroed on free and there is nothing to follow: that is not a bug\n"
+        "in the walk, it is the hardening working.\n"
     )
 
 
