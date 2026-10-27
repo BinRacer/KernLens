@@ -471,6 +471,15 @@ class FakeKdbg:
         self.slab_object_value: SimpleNamespace | None = SimpleNamespace(
             obj=KMALLOC_1K_ADDR, cache=self.slab_caches_value[0],
         )
+        #: `struct slab.counters` for the fixture slab: SLUB packs
+        #: inuse:16 | objects:15 | frozen:1, so this is "3 of 16, not
+        #: frozen" -- the shape the 6.1 VM reports for a partial slab.
+        self.slab_counters_value: tuple[int, int, int] | None = (3, 16, 0)
+        self.object_index_value: tuple[int, int] | None = (7, 16)
+        self.neighbour_value: tuple[int | None, int | None] = (
+            KMALLOC_1K_ADDR - KMALLOC_1K_SIZE,
+            KMALLOC_1K_ADDR + KMALLOC_1K_SIZE,
+        )
         self.dmabufs_value: list[SimpleNamespace] = [
             SimpleNamespace(
                 index=0, address=0xFFFF888000400000, size=0x1000,
@@ -823,6 +832,36 @@ class FakeKdbg:
 
     def cache_name(self, cache: int) -> str:
         return self.cache_name_value
+
+    def slab_counters(self, page: int) -> tuple[int, int, int] | None:
+        return self.slab_counters_value
+
+    def slab_state(self, page: int) -> str:
+        counters = self.slab_counters_value
+        if counters is None:
+            return "unknown"
+        inuse, objects, frozen = counters
+        if frozen:
+            return "frozen"
+        if objects == 0:
+            return "unknown"
+        if inuse >= objects:
+            return "full"
+        if inuse == 0:
+            return "empty"
+        return "partial"
+
+    def object_index(
+        self, head: int, obj: int, cache: int, page_size: int = 64,
+    ) -> tuple[int, int] | None:
+        del head, cache, page_size
+        return self.object_index_value
+
+    def neighbour_objects(
+        self, cache: int, obj: int, head: int, page_size: int = 64,
+    ) -> tuple[int | None, int | None]:
+        del cache, head, page_size
+        return self.neighbour_value
 
     def freeptr_offset(self, cache: int) -> int | None:
         return self.freeptr_offset_value
@@ -1389,6 +1428,57 @@ class MemoryTests(GdbinitTestBase):
     def test_slabs_contains(self) -> None:
         out = self.invoke("kl-slab", f"contains {KMALLOC_1K_ADDR:#x}")
         self.assertIn("kmalloc-1k", out)
+
+    def test_slabs_contains_plain_form_matches_pwndbg(self) -> None:
+        # The default must stay pwndbg's single line; `-v` is the extra.
+        out = self.invoke("kl-slab", f"contains {KMALLOC_1K_ADDR:#x}")
+        self.assertIn("size=", out)
+        self.assertIn("object_size=", out)
+        self.assertNotIn("Slab head", out)
+
+    def test_slabs_contains_verbose_reports_the_slot(self) -> None:
+        fake_kdbg.fields[
+            (KMALLOC_1K_ADDR, "__head_to_page__", "page")
+        ] = 0xFFFFEA0000000040
+        out = self.invoke(
+            "kl-slab", f"contains {KMALLOC_1K_ADDR:#x} -v",
+        )
+        self.assertIn("Slab head", out)
+        self.assertIn("Object #: 7 / 16", out)
+        self.assertIn("Slab state: partial", out)
+        self.assertIn("inuse=3 objects=16 frozen=0", out)
+
+    def test_slabs_contains_verbose_reports_neighbours(self) -> None:
+        fake_kdbg.fields[
+            (KMALLOC_1K_ADDR, "__head_to_page__", "page")
+        ] = 0xFFFFEA0000000040
+        out = self.invoke(
+            "kl-slab", f"contains {KMALLOC_1K_ADDR:#x} -v",
+        )
+        self.assertIn(f"{KMALLOC_1K_ADDR - KMALLOC_1K_SIZE:#x}", out)
+        self.assertIn(f"{KMALLOC_1K_ADDR + KMALLOC_1K_SIZE:#x}", out)
+
+    def test_slabs_contains_verbose_marks_a_missing_neighbour(self) -> None:
+        fake_kdbg.fields[
+            (KMALLOC_1K_ADDR, "__head_to_page__", "page")
+        ] = 0xFFFFEA0000000040
+        fake_kdbg.neighbour_value = (None, None)
+        out = self.invoke(
+            "kl-slab", f"contains {KMALLOC_1K_ADDR:#x} -v",
+        )
+        self.assertIn("Neighbours: - / -", out)
+
+    def test_slabs_contains_verbose_reports_a_frozen_slab(self) -> None:
+        # A frozen slab is on NO list, so list membership cannot be used
+        # to classify it -- only the counters can.
+        fake_kdbg.fields[
+            (KMALLOC_1K_ADDR, "__head_to_page__", "page")
+        ] = 0xFFFFEA0000000040
+        fake_kdbg.slab_counters_value = (16, 16, 1)
+        out = self.invoke(
+            "kl-slab", f"contains {KMALLOC_1K_ADDR:#x} -v",
+        )
+        self.assertIn("Slab state: frozen", out)
 
     def test_legacy_kl_slabs_alias_still_routes(self) -> None:
         # ``kl-slabs`` was the old command name; it is kept as an alias of

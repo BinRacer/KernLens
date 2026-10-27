@@ -204,6 +204,10 @@ _BINDINGS: tuple[tuple[str, str, str, bool], ...] = (
     ("freelist_dist", "slub", "freelist_dist", True),
     ("partial_info", "slub", "partial_info", True),
     ("in_partial", "slub", "in_partial", True),
+    ("slab_counters", "slub", "slab_counters", True),
+    ("slab_state", "slub", "slab_state", True),
+    ("object_index", "slub", "object_index", True),
+    ("neighbour_objects", "slub", "neighbour_objects", True),
     ("print_slab", "slub", "print_slab", True),
 )
 
