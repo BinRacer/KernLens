@@ -267,6 +267,7 @@ arguments, and examples.  The full command table follows.
 | `kernlens-kdmesg [--ctime]` | `kl-kdmesg` | print the kernel ring buffer (dmesg) |
 | `kernlens-klookup [symbol] [--apply]` | `kl-klookup` | look up kernel symbols from the kallsyms tables |
 | `kernlens-kbpf [--verbose] [--break n] [--progs] [--maps] [--values]` | `kl-kbpf` | list BPF programs and maps |
+| `kernlens-buddy {list\|info\|freelist} [addr] [--zone z] [--order n] [--mtype m] [--node n] [--verbose]` | `kl-buddy` | locate an address in the buddy allocator: zone, free block, position in that block |
 | `kernlens-buddydump [--zone z] [--order n] [--mtype m] [--pcp-only] [--cpu c] [--node n] [--find a]` | `kl-buddydump` | buddy-allocator free lists |
 | `kernlens-kdmabuf` | `kl-kdmabuf` | list dma-bufs and their scatterlist chains |
 | `kernlens-kaslr <runtime-text-address>` | `kl-kaslr` | set the KASLR slide from runtime `_text` |

@@ -50,6 +50,7 @@ INSPECTOR_MODULES = (
 #: One module per command domain, plus the framework/help/formatting plumbing.
 COMMAND_MODULES = (
     "__init__.py",
+    "buddy.py",
     "formatting.py",
     "framework.py",
     "help.py",

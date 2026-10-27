@@ -39,6 +39,7 @@ from .help import GROUP_ORDER
 # Importing the domain modules runs the ``@Command`` decorators, which
 # populate ``registry()`` / ``aliases()``.
 from . import (  # noqa: E402,F401  isort:skip
+    buddy,
     kernel_base,
     memory,
     metadata,
