@@ -96,9 +96,12 @@ at its link-time address, and nothing resolved before the slide is
 applied. Loading `gdbinit.py` never installs a breakpoint and is safe
 before `file vmlinux`.
 
-Running from a checkout needs no install -- `gdbinit.py` puts its own
-`src/` on `sys.path`. Contributor setup is in
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
+A checkout is the only installation. KernLens is not published to PyPI,
+and installing it from there would not get you a working copy: the
+startup file the quickstart sources is not part of the wheel. `gdbinit.py`
+puts its own `src/` on `sys.path`, so there is nothing to install and
+nothing to keep in sync; `git pull` is the upgrade path. Contributor
+setup is in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## The 40 commands
 
@@ -264,6 +267,10 @@ Python 3.10+ and a GDB built with Python 3.10+. x86_64 kernels only --
 the page-table and `struct page` decoding are written against that
 architecture. On Python below 3.12 the only runtime dependency is
 `typing-extensions`.
+
+No package is published. Installation is a `git clone`; see
+[Quickstart](#quickstart). The `kernlens` name on PyPI is not this
+project.
 
 GPL-3.0-or-later. See [`LICENSE`](LICENSE); third-party attribution is in
 [`CREDITS.md`](CREDITS.md).

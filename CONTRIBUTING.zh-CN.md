@@ -3,6 +3,20 @@
 KernLens 的开发说明。只想*使用*它的话，[README](README.zh-CN.md) 里有
 三步快速开始和命令表，这里的内容一条都用不上。
 
+## 分发方式
+
+KernLens 以源码 checkout 的形式分发，不作为包发布。没有 PyPI 版本，
+只要入口还是一个需要 source 的文件而不是一个可以 import 的模块，就不会有。
+
+原因不是省事。每个快速开始路径的终点都是 `source /path/to/gdbinit.py`，
+而 `gdbinit.py` 不在 wheel 里：wheel 由 `src/` 构建，启动文件与它平级。
+现在发布只会得到一个装得干干净净、然后照着文档怎么都跑不起来的包 ——
+那比不发布更糟。
+
+要发布，得先把启动文件变成 package data 并加一个打印其路径的入口点，
+那是一次带自己测试的真实改动，不是改个元数据。在那之前，升级路径是
+`git pull`，`uv sync` 只用于开发。
+
 ## 测试与开发
 
 测试同时兼容 `unittest` 与 pytest。开发命令统一通过 uv 执行：
