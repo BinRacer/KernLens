@@ -101,6 +101,8 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   └── integration/      # adapter, gdbinit and host-runnable examples
 ├── docs/
 │   ├── architecture.md   # layout, API map, and design notes
+│   ├── api.md            # Python API reference
+│   ├── api.zh-CN.md      # the same, in Chinese
 │   ├── naming.md         # command, example and Python naming rules
 │   └── tutorial/         # one generated page per command (40)
 ├── gdbinit.py            # thin bootstrap sourced by GDB
@@ -142,6 +144,9 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── gen_layouts.py                # verifies struct layouts against BTF
 │   └── abi_ranges.py                 # struct-drift survey across releases
 ├── uv.lock
+├── CONTRIBUTING.md       # setup, tests, the layout generator
+├── CONTRIBUTING.zh-CN.md
+├── CREDITS.md            # third-party attribution
 └── CHANGELOG.md
 ```
 

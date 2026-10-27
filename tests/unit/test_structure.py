@@ -505,5 +505,65 @@ class DocumentationTrackingTests(unittest.TestCase):
         self.assertEqual(sorted(set(stale)), [])
 
 
+class ReadmeStructureTests(unittest.TestCase):
+    """The front page must stay a front page.
+
+    The README was 927 lines because reference material accumulated in it:
+    317 lines of API documentation and 110 of contributor notes, both of
+    which belong in their own files.  Moving them once is easy; keeping
+    them out is the part that needs a test, because appending "just one
+    more table" is always locally reasonable.
+
+    These pin the three properties that made the rewrite worth doing.
+    """
+
+    #: A ceiling, not a target.  The file is ~270 lines; this leaves room
+    #: for a new section without inviting one to grow indefinitely.
+    MAX_LINES = 340
+
+    def _readme(self, name: str = "README.md") -> str:
+        return (ROOT / name).read_text(encoding="utf-8")
+
+    def test_stays_short(self) -> None:
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                lines = len(self._readme(name).splitlines())
+                self.assertLessEqual(
+                    lines, self.MAX_LINES,
+                    f"{name} is {lines} lines; reference material belongs "
+                    "in docs/api.md or CONTRIBUTING.md",
+                )
+
+    def test_shows_real_command_output(self) -> None:
+        """A front page with no output has to be taken on faith.
+
+        The old README contained 34 fenced blocks -- 19 python, 7 gdb, 8
+        console -- and not one line of captured command output.  The
+        strongest thing the project owns was invisible.
+        """
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                text = self._readme(name)
+                self.assertIn("Paging: 4-level", text)
+                self.assertIn("huge leaf", text)
+                self.assertIn("stored word", text)
+
+    def test_the_reference_and_contributor_docs_exist(self) -> None:
+        """The material moved out of the README must still be reachable.
+
+        A split that leaves the front page clean and the content
+        unreachable is worse than the long README was.
+        """
+        for name in (
+            "docs/api.md", "docs/api.zh-CN.md",
+            "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md",
+        ):
+            with self.subTest(path=name):
+                self.assertTrue((ROOT / name).is_file(), name)
+        for target in ("docs/api.md", "CONTRIBUTING.md"):
+            with self.subTest(linked=target):
+                self.assertIn(f"({target})", self._readme("README.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

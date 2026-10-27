@@ -8,378 +8,260 @@
   </p>
 
   <p>
-    Linux kernel introspection for GDB — from raw memory and page tables to SLUB internals and symbol resolution.
+    Read a live Linux kernel from GDB: page tables at every level, SLUB
+    caches and object chains, <code>struct page</code>, symbols, KASLR.
   </p>
 
   <p>
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
-    <img src="https://img.shields.io/badge/GDB-introspection-informational" alt="GDB introspection">
+    <img src="https://img.shields.io/badge/commands-40-informational" alt="40 commands">
   </p>
 </div>
 
-## Overview
+KernLens adds **40 commands** to GDB for reading a running Linux kernel.
+Each one reads real memory through a single reader, decodes it with
+arithmetic you can check by hand, and prints the answer with the entry it
+came from -- so a wrong result looks wrong instead of looking plausible.
 
-KernLens is a pure-Python toolkit for Linux kernel debugging: byte-order
-encoding, bit operations, x86_64 address classification, page-table math,
-integer formatting, and structured logging.  `core/` and `output/`
-run without gdb; the `gdb/` package is the companion that wires the
-same logger and styler to live-memory inspection.
+`core/` and `output/` are pure Python and run without GDB at all; only
+the `gdb/` package needs a debuggee.
 
-## Layout
+## What it looks like
 
-```
-kernlens/                          # repository root
-├── src/kernlens/
-│   ├── __init__.py               # re-exports the public API
-│   ├── core/                     # pure Python: constants, bitops, codec, fmt, addr, paging
-│   ├── output/                   # palette, levels, logger, styler
-│   ├── gdb/                      # one module per adapter component
-│   │   ├── config.py ... facade.py
-│   │   ├── api.py                # public API for sourced scripts
-│   │   └── __init__.py           # lazy component exports
-│   └── py.typed                  # PEP 561 marker
-├── tests/
-│   ├── unit/                     # pure-Python tests
-│   └── integration/              # adapter + gdbinit tests against fakes
-├── examples/                     # runnable scripts, grouped by intent
-│   ├── api/                      #   write a script against the API
-│   ├── tracing/                  #   trace behaviour as the kernel runs
-│   └── breakpoints/              #   stop, or notice, at the right moment
-├── gdbinit.py                    # optional ~/.gdbinit entry point
-├── docs/
-│   ├── architecture.md           # layout, API map, and design notes
-│   ├── naming.md                 # command and Python naming rules
-│   └── tutorial/                 # one generated page per command, real output
-├── images/banner.svg
-├── pyproject.toml
-├── uv.lock
-├── MANIFEST.in
-└── CHANGELOG.md
+A 2 MiB mapping, walked level by level. The walk stops where the hardware
+does:
+
+```text
+VA: 0xffff8cb880400000
+Paging: 4-level  root=0x6ad2000
+pgd      : idx=0x119 entry=0x6ad28c8 value=0x4a01067 -> 0x4a01000
+pud      : idx=0xe2 entry=0x4a01710 value=0x4a02067 -> 0x4a02000
+pmd      : idx=0x2 entry=0x4a02010 value=0x80000000004000e3 (huge leaf)
+Leaf: 2 MiB huge pa=0x400000 offset=0x0
+Flags: P RW A D PAT PS NX
 ```
 
-Dependency graph: `core.constants` / `core.validation` → the rest of
-`core`; `core.bitops` and `core.fmt` → `core.codec`; `output` is
-independent of `core`; every `gdb` component → `core.paging` and/or
-`output`, and `gdb.facade` → all components.  No cycles.
+Each row shows the index, the *address of the entry*, the raw value, and
+where the next level is. The `PS` bit at `pmd` is why there is no `pte`
+row. Compare with the same address forced to 5-level paging:
 
-## Install
+```text
+pgd      : idx=0x1ff entry=0x6ad2ff8 value=0x3015067 -> 0x3015000
+p4d      : idx=0x119 entry=0x30158c8 value=0x0
+Note: p4d entry is not present
+```
 
-Development is managed with [uv](https://docs.astral.sh/uv/).  From a
-checkout:
+The SLUB allocator, where `Size` and `Obj Size` differ when a cache rounds
+up for alignment or adds metadata -- the gap an amplification attack cares
+about:
+
+```text
+Name                         # Objects  Size  Obj Size  order
+ext4_groupinfo_4k            22         184   184       0
+AF_VSOCK                     25         1280  1232      3
+MPTCPv6                      15         2112  2064      3
+```
+
+And the freelist encoding, which is the part a use-after-free tracer has
+to get right. The stored word is not a pointer:
+
+```text
+cpu 0 first object : 0xffff911c466b5000
+  slot address   : 0xffff911c466b5200   (object + offset 512)
+  stored word    : 0xfa9c7eb28ed8d5fb
+  decoded next   : 0xffff911c466b5800
+  the arithmetic : 0xffff911c466b5800 ^ 0x53184e8d4227204 ^ swab(0xffff911c466b5200) = 0xfa9c7eb28ed8d5fb
+  check          : 0xfa9c7eb28ed8d5fb
+```
+
+## Quickstart
 
 ```console
-uv sync
-uv run python -c "import kernlens; print(kernlens.__version__)"
+git clone https://github.com/BinRacer/KernLens
+echo "source $(pwd)/KernLens/gdbinit.py" >> ~/.gdbinit
 ```
 
-`uv sync` creates `.venv`, installs the project in editable mode, and
-installs the `dev` dependency group resolved in `uv.lock`.  Commit
-`uv.lock` so local and CI environments use the same versions.
-
-For a runtime-only editable install:
-
-```console
-uv pip install -e .
+```gdb
+(gdb) file vmlinux
+(gdb) target remote :1234
+(gdb) kl-base            # recover the KASLR slide and apply it
+(gdb) kl-help            # every command, grouped by category
 ```
 
-Alternatively, copy `src/kernlens/` into your project and import it:
+`kl-base` first, always: on a KASLR kernel every symbol in the vmlinux is
+at its link-time address, and nothing resolved before the slide is
+applied. Loading `gdbinit.py` never installs a breakpoint and is safe
+before `file vmlinux`.
+
+Running from a checkout needs no install -- `gdbinit.py` puts its own
+`src/` on `sys.path`. Contributor setup is in
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## The 40 commands
+
+Grouped exactly as `kl-help` groups them. The `kl-` form is what you
+type at the prompt; the canonical `kernlens-` form is what scripts and
+the generated tutorial use. Both always work.
+
+### kernel metadata (8)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-kchecksec` | `kl-kchecksec` | Hardening audit |
+| `kernlens-kcmdline` | `kl-kcmdline` | Boot command line |
+| `kernlens-kconfig` | `kl-kconfig` | Kernel configuration |
+| `kernlens-kdmesg` | `kl-kdmesg` | Kernel log |
+| `kernlens-klookup` | `kl-klookup` | Symbol search |
+| `kernlens-kmod` | `kl-kmod` | Loaded modules |
+| `kernlens-ksyscalls` | `kl-ksyscalls` | Syscall table |
+| `kernlens-kversion` | `kl-kversion` | Kernel version |
+
+### addresses & page tables (9)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-addr` | `kl-addr` | Address analysis |
+| `kernlens-p2v` | `kl-p2v` | Physical to virtual |
+| `kernlens-page` | `kl-page` | Page for an address |
+| `kernlens-pageinfo` | `kl-pageinfo` | Describe a struct page |
+| `kernlens-pagewalk` | `kl-pagewalk` | Pagewalk (pwndbg format) |
+| `kernlens-pt` | `kl-pt` | Page-table indices |
+| `kernlens-pte` | `kl-pte` | Decode a page-table entry |
+| `kernlens-v2p` | `kl-v2p` | Virtual to physical |
+| `kernlens-walk` | `kl-walk` | Walk the page tables |
+
+### memory & symbols (11)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-bt` | `kl-bt` | Backtrace |
+| `kernlens-buddy` | `kl-buddy` | Locate an address in the buddy allocator |
+| `kernlens-buddydump` | `kl-buddydump` | Buddy free-list dump |
+| `kernlens-chain` | `kl-chain` | Compact call chain |
+| `kernlens-kbpf` | `kl-kbpf` | BPF programs and maps |
+| `kernlens-kdmabuf` | `kl-kdmabuf` | dma-buf objects |
+| `kernlens-kvar` | `kl-kvar` | Read a kernel variable |
+| `kernlens-read` | `kl-read` | Dump memory |
+| `kernlens-read-field` | `kl-read-field` | Read a struct field |
+| `kernlens-slab` | `kl-slab` | SLUB cache inspection |
+| `kernlens-sym` | `kl-sym` | Address to symbol |
+
+### kernel base & KASLR (4)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-base` | `kl-base` | Active base and slide |
+| `kernlens-kaslr` | `kl-kaslr` | Slide from a runtime address |
+| `kernlens-kaslr-offset` | `kl-kaslr-offset` | Set the slide directly |
+| `kernlens-kbase` | `kl-kbase` | Find the kernel base |
+
+### CPU topology (3)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-cpu` | `kl-cpu` | CPU topology |
+| `kernlens-msr` | `kl-msr` | Model-specific registers |
+| `kernlens-percpu` | `kl-percpu` | Per-CPU symbol address |
+
+### bit & integer primitives (2)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-bits` | `kl-bits` | Bit-level view |
+| `kernlens-int` | `kl-int` | Integer view |
+
+### overview (1)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-status` | `kl-status` | Session status |
+
+### output (1)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-color` | `kl-color` | Colour control |
+
+### help (1)
+
+| Command | Alias | What it prints |
+| --- | --- | --- |
+| `kernlens-help` | `kl-help` | Command reference |
+
+Every command has a page in [`docs/tutorial/`](docs/tutorial/) with real
+captured output, its options, and a note on how to read the result.
+
+Two things the command list does not show. `kl-help <command>` gives usage
+and worked examples, and `--help` works on every command with a guided
+error message rather than a bare usage line. And the commands never
+`stop()` the debuggee: they read memory and return, so they compose inside
+a breakpoint handler.
+
+## Use it as a library
+
+The commands are a thin layer over a Python API. From a sourced script:
 
 ```python
-from kernlens import BITS, LE, BE, IntFmt, KAddr, KPageTable, Logger, Styler
+# any file you source after gdbinit.py -- the names are already installed
+print(split_4(0xffff888000001234))       # KPageTable, no memory read
+print(read_kvar("jiffies"))              # live read through the facade
+print(LE.unpack_u32(b"\x34\x12\x00\x00"))  # LE is a ByteOrderCodec
 ```
 
-Python 3.10+ is required.  On Python < 3.12 the only runtime dependency
-is `typing-extensions` (for `typing.override`).
-
-The package ships `src/kernlens/py.typed`, so type checkers treat it as a
-PEP 561 typed distribution.  The marker is intentionally empty (not
-`partial`): every public module is annotated, and the module is included
-in both wheels and source distributions.
-
-For gdb, add the package directory to `sys.path` and import the
-facade:
+Or import it normally:
 
 ```python
-import sys
-sys.path.insert(0, "/path/to/repo/src")
+from kernlens import KAddr, KPageTable
 
-from kernlens.gdb.facade import kdbg
+# (0x111, 0x0, 0x0, 0x1, 0x234) -- one index per level, outermost first
+KPageTable.split_4(0xffff888000001234)
+KAddr.is_direct_map(0xffff888000001234)  # True
 ```
 
-`import kernlens.gdb` itself is safe outside gdb; component names are
-resolved lazily.  GDB must be built with Python 3.10 or newer.
+The arithmetic half needs no debugger, which is what makes it testable on
+the host. The full reference is [`docs/api.md`](docs/api.md).
 
-## GDB startup file
+## How it stays true
 
-Add one line to `~/.gdbinit` to make KernLens available in every GDB
-session:
+Every claim this repository makes about itself is checked by a machine,
+because the alternative is prose that is correct on the day it is written:
 
-```gdb
-source /path/to/KernLens/gdbinit.py
-```
+- `docs/tutorial/` is **generated** from a capture taken on a running
+  kernel; `gen_tutorial.py --check` fails when a page and the capture
+  disagree.
+- Example coverage is declared in `tools/example_manifest.py` and enforced
+  by `tools/check_examples.py --check`: a claim without the code fails,
+  and so does a command named in prose but never executed.
+- The examples that can run without a debugger are executed in CI; the
+  rest are replayed under GDB and recorded, and the record is compared
+  against the source on every push.
+- The repository tree in `docs/architecture.md` and the numbers in
+  `examples/README.md` are checked against the real tree and the real
+  measurement, not typed by hand.
 
-From a checkout, install it into the user startup file with:
+The `kl-*` command count on this page is checked against the command
+registry by the test suite, so it cannot quietly become false.
 
-```console
-echo "source $(pwd)/gdbinit.py" >> ~/.gdbinit
-```
+## Documentation
 
-The checkout's `src/` directory is added to `sys.path` automatically, so
-this also works without installing the package into GDB's Python.  The
-startup file registers commands and installs the public Python API; it
-never installs a breakpoint and can be loaded before `file vmlinux`.
+| Document | What is in it |
+| --- | --- |
+| [`docs/tutorial/`](docs/tutorial/) | one page per command, real output |
+| [`docs/api.md`](docs/api.md) | the Python API reference |
+| [`docs/architecture.md`](docs/architecture.md) | package layout, API map, design notes |
+| [`examples/`](examples/README.md) | runnable scripts, grouped by intent |
+| [`docs/naming.md`](docs/naming.md) | command and filename conventions |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | setup, tests, the layout generator |
+| [`CHANGELOG.md`](CHANGELOG.md) | every change, newest first |
 
-### Python API for sourced trace scripts
+## Requirements and license
 
-`gdbinit.py` is sourced into GDB's `__main__` namespace.  It exposes the
-package's public classes/constants (`KAddr`, `KPageTable`, `IntFmt`,
-`BitOps`, ...), the `KernelDebugger` class and its shared `kdbg` object,
-the facade free functions such as `read_kvar`, `kvar_addr`, `walk`,
-`sym`, `head_to_page`, `print_slab`, `find_kbase`, and the stateless core
-helpers as free functions (`byte_swap64`, `popcount`, `pack_u16`,
-`virt_to_phys`, `split_4`, ...).  A script sourced afterwards can use
-them directly, without an explicit `from kernlens import ...`:
+Python 3.10+ and a GDB built with Python 3.10+. x86_64 kernels only --
+the page-table and `struct page` decoding are written against that
+architecture. On Python below 3.12 the only runtime dependency is
+`typing-extensions`.
 
-```gdb
-# ~/.gdbinit
-source /path/to/KernLens/gdbinit.py
-```
-
-```python
-# my_script.py -- any file you source afterwards
-print(byte_swap64(0x1122334455667788))
-print(popcount(0xFF))
-print(split_4(0xFFFF888000001234))
-print(pack_u16(0x1234))
-print(virt_to_phys(0xFFFF888000001234))
-print(read_kvar("jiffies"))
-```
-
-```gdb
-(gdb) source /path/to/my_script.py
-```
-
-[`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py)
-is a working version of that file.
-
-For names that could collide, prefer the class-qualified form:
-
-```python
-BitOps.byte_swap64(value)
-KAddr.virt_to_phys(addr)
-KPageTable.split_4(addr)
-IntCodec.pack_u16(value)
-IntFmt.size(1024)
-```
-
-`BitOps_byte_swap64(...)` is an identifier-safe alias, and
-`KERNLENS_QUALIFIED["BitOps.byte_swap64"]` exposes the same mapping
-with dotted keys.  Bare aliases such as `byte_swap64(...)` remain for
-short trace scripts.
-
-Stateful components are installed as the same default instances used by
-`kdbg`:
-
-```python
-logger.info("trace hit")
-styler.addr(address)
-reader.u64("$rdi")
-symbols.sym(pc)
-slub.print_slab(head)
-```
-
-`KERNLENS_INSTANCES` maps these names (`config`, `logger`, `styler`,
-`reader`, `symbols`, `kaslr`, `cpu`, `walker`, `slub`, `kdbg`) to their
-objects.  Constructors remain available through `KERNLENS_CLASSES` when
-independent state is needed:
-
-```python
-local_logger = KERNLENS_CLASSES["Logger"]()
-local_styler = KERNLENS_CLASSES["Styler"]()
-local_config = KERNLENS_CLASSES["DebugConfig"]()
-```
-
-Each constructor creates an independent object; changing
-`local_logger`, `local_styler`, or `local_config` does not modify the
-global `logger`, `styler`, or `config` instances.
-
-`KERNLENS_API` is a mapping of every installed name for discovery.
-Facade free functions are listed in `FACADE_FUNCTIONS`; stateless core
-aliases come from `BitOps`, `IntCodec`, `KAddr`, `KPageTable`, and
-`IntFmt`.  `kdbg` remains the preferred object-oriented entry point.
-See [`examples/api/installed_api_tour.py`](examples/api/installed_api_tour.py) for a runnable
-example, or [`examples/api/hello_sample.py`](examples/api/hello_sample.py) for the
-smallest starting point.
-
-### Getting help
-
-Every command supports discovery from inside GDB:
-
-```gdb
-(gdb) kl-help            # list every command, grouped by category
-(gdb) kl-help kl-walk    # usage, options, and examples for one command
-(gdb) kl-walk --help     # the same detail; -h, help, and ? also work
-```
-
-The argument is namespaced: ``kl-help kl-walk`` or ``kl-help
-kernlens-walk``.  A bare ``kl-help walk`` is rejected with a hint,
-because KernLens deliberately lives in its own ``kl-``/``kernlens-``
-namespace -- a bare name would read like a query about a GDB command.
-
-Invalid arguments print a guided message instead of a bare usage line:
-
-```gdb
-(gdb) kl-walk
-kl-walk: error: the following arguments are required: va
-usage : kernlens-walk [-h] [-p ROOT] va [{4,5}]
-try   : kl-help kl-walk  (detailed help and examples)
-```
-
-`help kl-walk` (GDB's native help) shows the same summary, usage,
-arguments, and examples.  The full command table follows.
-
-| Command | Short alias | Purpose |
-|---------|-------------|---------|
-| `kernlens-help [command]` | `kl-help` | list commands or explain one in detail |
-| `kernlens-status` | `kl-status` | version, color, KASLR, `_text`, layout bases, topology |
-| `kernlens-slab <list\|info\|contains\|details> [arg] [--verbose] [--cpu <id>] [--node <id>] [--partial] [--active] [--inuse] [--random] [--reclaim] [--ctor]` | `kl-slab` | SLUB caches: `list`/`info`/`contains` (pwndbg form), `details` for the granular inspector; a bare address prints a cache's slab |
-| `kernlens-page <address> [--verbose]` | `kl-page` | classify an address; translate direct-map addresses |
-| `kernlens-pte <page-table-entry> [virtual-address]` | `kl-pte` | decode PTE flags; show 4K/2M/1G leaf translations |
-| `kernlens-sym <address>` | `kl-sym` | resolve an address to symbol and source line |
-| `kernlens-bt [depth] [--chain]` | `kl-bt` | formatted kernel backtrace; `--chain` for the compact view |
-| `kernlens-chain [depth]` | `kl-chain` | compact `caller <- callee` chain |
-| `kernlens-read <address> [count] [--mode ascii]` | `kl-read` | dump 64-bit words with symbols; `--mode ascii` for bytes |
-| `kernlens-kvar <symbol>` | `kl-kvar` | read a KASLR-aware kernel global |
-| `kernlens-read-field <address> <type> <path>` | `kl-read-field` | read a struct field as an integer |
-| `kernlens-addr <address> [tag-mask]` | `kl-addr` | full KAddr analysis, including ERR_PTR/tags |
-| `kernlens-pt <virtual-address>` | `kl-pt` | 4/5-level page-table indices and huge-page bases |
-| `kernlens-walk <virtual-address> [4\|5] [--pgd <table>]` | `kl-walk` | walk live page tables (CR3) and decode every level |
-| `kernlens-pagewalk <vaddr> [--pgd <table>]` | `kl-pagewalk` | pwndbg-style page walk (deepest level first) |
-| `kernlens-bits <value> [bit-index]` | `kl-bits` | BitOps popcount/scan and bit operations |
-| `kernlens-int <value> [width]` | `kl-int` | signed/unsigned and LE/BE integer views |
-| `kernlens-cpu [cpu]` | `kl-cpu` | CPU topology, online mask, current CPU, per-CPU offset |
-| `kernlens-percpu <symbol> [cpu]` | `kl-percpu` | resolve a per-CPU symbol to a runtime address |
-| `kernlens-msr [name] [--write <v>] [--list] [--range A-B]` | `kl-msr` | read/write x86_64 model-specific registers (via GDB's `$` pseudo-registers) |
-| `kernlens-base` | `kl-base` | auto-select the runtime kernel base and KASLR slide |
-| `kernlens-kbase [--rebase] [--verbose]` | `kl-kbase` | recover the kernel text base |
-| `kernlens-p2v <paddr>` | `kl-p2v` | physical to virtual + `struct page` info |
-| `kernlens-v2p <vaddr>` | `kl-v2p` | virtual to physical (pagewalk) + page info |
-| `kernlens-pageinfo <struct-page>` | `kl-pageinfo` | `struct page` to virtual/physical + type/refcount |
-| `kernlens-kcmdline` | `kl-kcmdline` | print the kernel boot command line |
-| `kernlens-kversion` | `kl-kversion` | print the kernel version banner and release |
-| `kernlens-kconfig [name] [--load <file>]` | `kl-kconfig` | print kernel `CONFIG_*` options |
-| `kernlens-kchecksec` | `kl-kchecksec` | audit kernel hardening `CONFIG_*` options |
-| `kernlens-kmod [name] [--load <path>]` | `kl-kmod` | list loaded kernel modules |
-| `kernlens-ksyscalls [name]` | `kl-ksyscalls` | list the syscall table |
-| `kernlens-kdmesg [--ctime]` | `kl-kdmesg` | print the kernel ring buffer (dmesg) |
-| `kernlens-klookup [symbol] [--apply]` | `kl-klookup` | look up kernel symbols from the kallsyms tables |
-| `kernlens-kbpf [--verbose] [--break n] [--progs] [--maps] [--values]` | `kl-kbpf` | list BPF programs and maps |
-| `kernlens-buddy {list\|info\|freelist} [addr] [--zone z] [--order n] [--mtype m] [--node n] [--verbose]` | `kl-buddy` | locate an address in the buddy allocator: zone, free block, position in that block |
-| `kernlens-buddydump [--zone z] [--order n] [--mtype m] [--pcp-only] [--cpu c] [--node n] [--find a]` | `kl-buddydump` | buddy-allocator free lists |
-| `kernlens-kdmabuf` | `kl-kdmabuf` | list dma-bufs and their scatterlist chains |
-| `kernlens-kaslr <runtime-text-address>` | `kl-kaslr` | set the KASLR slide from runtime `_text` |
-| `kernlens-kaslr-offset <offset>` | `kl-kaslr-offset` | set the KASLR slide directly |
-| `kernlens-color [on\|off\|toggle]` | `kl-color` | control ANSI color output |
-
-```gdb
-(gdb) kl-sym $pc
-(gdb) kl-bt 12
-(gdb) kl-chain 8
-(gdb) kl-read 0xffff8880032a1c40 8
-(gdb) kl-kvar jiffies
-(gdb) kl-addr 0xffff888000001000
-(gdb) kl-pt 0xffff888000001234
-(gdb) kl-walk 0xffff888000001234
-(gdb) kl-bits 0xff 3
-(gdb) kl-int 0x1234 16
-(gdb) kl-cpu
-(gdb) kl-percpu current_task 0
-(gdb) kl-base
-(gdb) kl-kbase
-```
-
-Both `kl-status` and `kl-kbase` derive the KASLR slide from the live IDT,
-so they agree with the slide the reader is using even before `kl-base`
-runs.
-
-`kl-msr` reads an MSR through GDB's `$` pseudo-registers (`$efer`,
-`$lstar`, `$fs_base`, ...), which is enough for the common MSRs and needs
-no code injection.  A remote target only exposes the registers it
-implements, so on a kernel that does not export `$lstar` the command
-reports `the remote target does not expose this MSR` instead of
-inventing a value.  pwndbg gets the rest by executing an `rdmsr`/`wrmsr`
-shellcode stub on the debuggee; KernLens deliberately does not run code
-in the target, so `--list`, the registers a target does expose, and
-`--write` on those registers are the supported surface.
-
-These commands are thin GDB frontends to the pure-Python API:
-`KAddr` → `addr`/`page`, `KPageTable`/`PageTableWalker` →
-`pt`/`pte`/`walk`, `BitOps` → `bits`, `IntCodec`/`IntFmt` → `int`,
-`MemoryReader`/`SymbolResolver`/`CpuInfo` → `kvar`/`read`/`sym`/
-`bt`/`chain`/`cpu`/`percpu`, `SlubInspector` → `slab`,
-`Kaslr` → `kaslr`/`status`, `Kbase` → `kbase`, and `Styler` → `color`.
-
-### Kernel text base recovery
-
-`kl-base` is the automatic convenience command.  With no running kernel it
-prints the default link-time base and clears the KASLR slide.  With a live
-kernel it recovers the runtime base (via IDT), immediately applies the
-detected slide to `kdbg.kaslr_offset`, and can be run again after a reboot
-or re-attach to refresh the value:
-
-```gdb
-(gdb) kl-base
-kernel base : 0xffffffff99e00000  (runtime)
-KASLR offset: +0x18e00000
-link _text  : 0xffffffff81000000
-method      : symbol
-status      : kernel running
-```
-
-`kl-kbase` is the lower-level diagnostic form of the same detector: it
-prints the base without changing state unless `--set` is given, and can
-also print the physical address with `--verbose` (pwndbg's name for the
-same output).  The hidden `--text <addr>` and `--offset <slide>` extras
-set the slide here, at the point where the report already shows
-`kaslr=+0x...`; they are the equivalents of the manual overrides
-`kl-kaslr` and `kl-kaslr-offset`, which remain available for cases where
-the IDT cannot be read.
-
-The detector follows the same idea as pwndbg's `kbase`: the live IDT gate
-for exception 0 points at `asm_exc_divide_error` in kernel `.text`.
-KernLens reads `IDT` from QEMU's `monitor info registers` (or `$idt` /
-`idt_table`), decodes the 16-byte gate, and recovers the base by:
-
-1. comparing the handler with the link-time `asm_exc_divide_error`
-   symbol and adding the delta to link-time `_text` (exact with vmlinux);
-2. finding the containing QEMU mapping via `monitor info mem`;
-3. rounding the handler down to the 2 MiB kernel text alignment.
-
-`kl-kbase --set` applies the detected slide to `kdbg.kaslr_offset`;
-`kl-kbase --verbose` prints the physical address of the text base (the
-older `--phys` spelling still works but is hidden).  This does not
-require pwndbg.
-
-**KASLR is self-healing.**  You do not have to run `kl-base` first: the
-memory reader detects the slide on the first KASLR-aware read, and if a
-read fails at the current slide (for example after a reboot or
-re-attach) it re-detects it and retries.  A debugger that already
-carries the relocation (`add-symbol-file vmlinux <runtime>`) is handled
-too, because a link-time read is tried last.  Whenever the slide
-changes, the reader drops the inspector's address-derived caches, so the
-ported commands (kallsyms, modules, syscalls, dmesg, BPF, buddy, SLUB,
-dma-buf, ...) keep working across a KASLR change.  `kl-base` and
-`kl-kbase --set` remain the explicit way to pin the slide.
-
-The original `kernlens-*` names are kept; `kl-*` is only an alias.
-See [`examples/api/gdbinit.example`](examples/api/gdbinit.example) for a
-sample `~/.gdbinit`.  Loading `gdbinit.py` twice is safe, and the
-example [`examples/tracing/gdb_tracer.py`](examples/tracing/gdb_tracer.py)
-registers its own commands under the `kernlens-tracer-` prefix so they
-never clash with the shipped `kernlens-slab` / `kernlens-color`.
-
-## License
-
-GPL-3.0-or-later.  See [`LICENSE`](LICENSE).
+GPL-3.0-or-later. See [`LICENSE`](LICENSE); third-party attribution is in
+[`CREDITS.md`](CREDITS.md).
