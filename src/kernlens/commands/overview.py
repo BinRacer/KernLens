@@ -90,7 +90,7 @@ def kernlens_status() -> None:
     print(
         message.hint("kl-help")
         + " lists every command, "
-        + message.hint("kl-help <command>")
+        + message.hint("kl-help kl-<command>")
         + " explains one"
     )
 

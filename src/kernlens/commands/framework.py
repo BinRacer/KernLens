@@ -40,7 +40,7 @@ import functools
 import shlex
 from collections.abc import Callable
 from enum import Enum
-from typing import Any, TypeVar, cast
+from typing import Any, NoReturn, TypeVar, cast
 
 import gdb  # type: ignore[import-not-found]
 
@@ -291,6 +291,16 @@ def warn_fallback_layouts() -> None:
 # Command definition + decorator
 # =========================================================================
 
+class _UsageError(Exception):
+    """Raised by the ``ArgumentParser.error`` replacement.
+
+    ``argparse`` signals a usage failure by calling ``parser.error``,
+    which prints and then raises ``SystemExit`` -- fatal inside GDB.
+    Swapping in a variant that raises this instead keeps the failure
+    inside ``invoke``, where the guided message has already been printed.
+    """
+
+
 class CommandDefinition:
     """A decorated command: body, parser, category, aliases, and metadata."""
 
@@ -317,6 +327,10 @@ class CommandDefinition:
         self.notes = notes.strip()
         # ``prog`` drives the usage line; use the canonical command name.
         self.parser.prog = self.command_name
+        # argparse's ``error()`` ends in ``sys.exit``, which would close
+        # the GDB shell.  Every failure has to go through ``usage_error``
+        # instead, so it is replaced on this parser instance.
+        self.parser.error = self._parser_error  # type: ignore[method-assign]
         self.setup_epilog()
 
     @property
@@ -345,6 +359,36 @@ class CommandDefinition:
         if parts:
             self.parser.epilog = "\n\n".join(parts)
 
+    @property
+    def prog(self) -> str:
+        """The name a user should type: the shortest alias, else canonical.
+
+        ``kl-`` is the documented spelling, so the guidance points at it.
+        """
+        return self.aliases[0] if self.aliases else self.command_name
+
+    def _parser_error(self, detail: str) -> NoReturn:
+        """Replacement for ``ArgumentParser.error`` (which would exit GDB)."""
+        self.usage_error(detail)
+        raise _UsageError(detail)
+
+    def usage_error(self, detail: str) -> None:
+        """Print a guided usage error instead of a bare usage line.
+
+        argparse's own message names the canonical ``kernlens-`` command
+        and stops there; this adds the usage line and the ``kl-help``
+        pointer the README documents, spelled with the ``kl-`` alias.
+        """
+        print(
+            self.prog + ": " + message.error(f"error: {detail}")
+        )
+        print("usage : " + self.usage)
+        print(
+            "try   : "
+            + message.notice(f"kl-help {self.prog}")
+            + "  (detailed help and examples)"
+        )
+
     def invoke(self, argument: str, from_tty: bool) -> None:
         """Run the command: parse argv, then call the body (pwndbg semantics)."""
         del from_tty
@@ -358,20 +402,11 @@ class CommandDefinition:
         try:
             kwargs = vars(self.parser.parse_args(arg_list))
         except SystemExit:
-            # argparse already printed usage / help; do not call the body.
+            # argparse reported help (``-h``/``--help`` reached through
+            # the parser) and would have exited; do not call the body.
             return
-        except argparse.ArgumentError as exc:
-            # A ``type=`` converter that itself raises ArgumentTypeError
-            # (instead of argparse doing it) would otherwise abort the
-            # whole session: GDB turns an uncaught Python exception
-            # inside ``invoke`` into a fatal error that stops sourced
-            # scripts.  Report it the way argparse would.
-            self.parser.print_usage()
-            print(
-                message.error(
-                    f"{self.command_name}: error: {exc.message}"
-                )
-            )
+        except _UsageError:
+            # ``usage_error`` already printed the guided message.
             return
         try:
             self.function(**kwargs)
@@ -379,12 +414,7 @@ class CommandDefinition:
             print(message.error(f"{self.command_name}: {exc}"))
         except argparse.ArgumentTypeError as exc:
             # Same guard for converters called from the command *body*.
-            self.parser.print_usage()
-            print(
-                message.error(
-                    f"{self.command_name}: error: {exc}"
-                )
-            )
+            self.usage_error(str(exc))
         else:
             warn_fallback_layouts()
 

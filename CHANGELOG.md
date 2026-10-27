@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `kl-help` now requires a namespaced argument.  `kl-help kl-walk` (and
+  `kl-help kernlens-walk`) work; a bare `kl-help walk` is rejected with a
+  hint naming the `kl-` spelling.  KernLens registers `kl-*` and
+  `kernlens-*` only, precisely so its commands never collide with GDB's
+  own, and accepting a bare name in the help text undid that -- `kl-help
+  print` would have answered "no command matches" while GDB's own `help
+  print` works, and `kl-help slab` reads like a question about a GDB
+  command.  The rejected query is answered with the form that does work:
+
+  ```
+  kernlens-help: no command matches 'slab' -- names are namespaced, so
+  try 'kl-slab'; run 'kl-help' for the full list
+  ```
+  - This drops the never-working `kl-help -slab` spelling, which argparse
+    read as an option and rejected.  The previous test only passed because
+    it matched the `usage:` line argparse printed on its way out.
+
+- Invalid arguments now print one guided message on every failure path:
+  a missing required argument, an unknown option, a bad `--range`, a
+  mutually exclusive pair, and a `type=` converter that raises.  The
+  README had documented this since the command layer landed, but only the
+  converter path was implemented; the rest fell through to argparse's own
+  bare usage line and, worse, `ArgumentParser.error` ends in
+  `sys.exit`, which would have closed the GDB shell.  The parser's
+  `error` is now replaced with a variant that raises and is caught inside
+  `invoke`, so the failure never leaves the command:
+
+  ```
+  kl-walk: error: the following arguments are required: va
+  usage : kernlens-walk [-h] [-p ROOT] va [{4,5}]
+  try   : kl-help kl-walk  (detailed help and examples)
+  ```
+  - The message and the pointer use the `kl-` alias, not the canonical
+    `kernlens-` name, matching how the commands are documented.
+
 ### Added
 
 - Four commands gained an option that previously lived on a sibling

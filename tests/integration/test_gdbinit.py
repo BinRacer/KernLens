@@ -1241,7 +1241,8 @@ class MemoryTests(GdbinitTestBase):
         # converter raises and the framework must report it like argparse
         # instead of letting it abort the session.
         out = self.invoke("kl-slab", "bogus-command")
-        self.assertIn("usage:", out)
+        self.assertIn("usage :", out)
+        self.assertIn("kl-help kl-slab", out)
         self.assertIn("is not an integer or a resolvable expression", out)
 
     def test_kl_slab_info_reports_the_node_partial(self) -> None:
@@ -1996,7 +1997,7 @@ class FrameworkHelperTests(GdbinitTestBase):
         self.assertIn("see the docs", definition.parser.epilog)
 
     def test_print_help_writes_the_parser(self) -> None:
-        definition = help_module.resolve_command("slab")
+        definition = help_module.resolve_command("kl-slab")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             definition.print_help()
@@ -2150,13 +2151,16 @@ class FrameworkInvokeTests(GdbinitTestBase):
         self.assertIn("Alias:", self.invoke("kl-walk", "--help"))
         self.assertIn("kl-walk", self.invoke("kl-walk", "--help"))
 
-    def test_unknown_option_exits_with_usage(self) -> None:
+    def test_unknown_option_prints_a_guided_error(self) -> None:
         out = self.invoke("kl-walk", "--nope")
-        self.assertIn("usage:", out)
+        self.assertIn("usage :", out)
+        self.assertIn("kl-help kl-walk", out)
 
-    def test_missing_required_argument_exits_with_usage(self) -> None:
+    def test_missing_required_argument_prints_a_guided_error(self) -> None:
         out = self.invoke("kl-walk")
-        self.assertIn("usage:", out)
+        self.assertIn("kl-walk: error:", out)
+        self.assertIn("usage :", out)
+        self.assertIn("try   : kl-help kl-walk", out)
 
     def test_argparse_help_writes_to_stdout_only(self) -> None:
         out = self.invoke("kl-walk", "--help")
@@ -2229,7 +2233,7 @@ class LayoutFallbackWarningTests(GdbinitTestBase):
 
 class HelpDispatchTests(GdbinitTestBase):
     def test_help_with_a_command_shows_its_parser(self) -> None:
-        out = self.invoke("kl-help", "slab")
+        out = self.invoke("kl-help", "kl-slab")
         self.assertIn("usage:", out)
         self.assertIn("kernlens-slab", out)
 
@@ -2239,8 +2243,26 @@ class HelpDispatchTests(GdbinitTestBase):
     def test_help_accepts_an_alias(self) -> None:
         self.assertIn("usage:", self.invoke("kl-help", "kl-walk"))
 
-    def test_help_accepts_a_leading_dash(self) -> None:
-        self.assertIn("usage:", self.invoke("kl-help", "-slab"))
+    def test_help_rejects_a_leading_dash_form(self) -> None:
+        # argparse sees a leading-dash token as an option; ``kl-help``
+        # never accepted it (the old assertion only matched the usage
+        # line argparse printed on its way out).
+        out = self.invoke("kl-help", "-kl-slab")
+        self.assertNotIn("positional arguments", out)
+        self.assertIn("usage :", out)
+
+    def test_help_rejects_a_bare_command_name(self) -> None:
+        # Names are namespaced: a bare word would read like a query about
+        # a GDB command, and ``kl-help print`` would answer "no command
+        # matches" while GDB's own ``help print`` works.
+        out = self.invoke("kl-help", "slab")
+        self.assertIn("names are namespaced", out)
+        self.assertIn("'kl-slab'", out)
+        self.assertNotIn("usage:", out)
+
+    def test_help_bare_name_hint_names_the_alias(self) -> None:
+        out = self.invoke("kl-help", "walk")
+        self.assertIn("'kl-walk'", out)
 
     def test_help_reports_an_unknown_command(self) -> None:
         out = self.invoke("kl-help", "does-not-exist")
@@ -2252,6 +2274,19 @@ class HelpDispatchTests(GdbinitTestBase):
     def test_resolve_command_returns_none_for_empty(self) -> None:
         self.assertIsNone(help_module.resolve_command(""))
         self.assertIsNone(help_module.resolve_command("  "))
+
+    def test_resolve_command_rejects_a_bare_name(self) -> None:
+        self.assertIsNone(help_module.resolve_command("slab"))
+        self.assertIsNone(help_module.resolve_command("print"))
+
+    def test_suggested_name_maps_a_bare_name_to_its_alias(self) -> None:
+        self.assertEqual(help_module.suggested_name("slab"), "kl-slab")
+        self.assertEqual(help_module.suggested_name("-walk"), "kl-walk")
+
+    def test_suggested_name_is_silent_when_there_is_nothing_to_suggest(self) -> None:
+        self.assertIsNone(help_module.suggested_name("nope"))
+        self.assertIsNone(help_module.suggested_name("kernlens-walk"))
+        self.assertIsNone(help_module.suggested_name(""))
 
     def test_resolve_command_finds_every_canonical_command(self) -> None:
         for name in CANONICAL_COMMANDS:
@@ -2283,7 +2318,7 @@ class HelpDispatchTests(GdbinitTestBase):
                 self.assertIn(category.value, text)
 
     def test_render_command_help_has_no_trailing_blank(self) -> None:
-        definition = help_module.resolve_command("slab")
+        definition = help_module.resolve_command("kl-slab")
         rendered = help_module.render_command_help(definition)
         self.assertEqual(rendered, rendered.rstrip())
         self.assertIn("usage:", rendered)

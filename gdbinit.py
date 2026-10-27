@@ -48,7 +48,7 @@ defaults and their constructors.
 
 Commands
 --------
-Run ``kl-help`` (or ``kl-help <command>``) for a grouped list or
+Run ``kl-help`` (or ``kl-help kl-<command>``) for a grouped list or
 detailed help, and pass ``-h``/``--help`` to any command.  Every command
 has a short ``kl-`` alias; the original ``kernlens-`` spelling remains
 available.  The full set is described in ``README.md``.
