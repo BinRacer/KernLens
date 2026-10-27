@@ -20,6 +20,7 @@ import argparse
 import gdb  # type: ignore[import-not-found]
 
 from .. import IntFmt
+from ..core.constants import PAGE_SIZE
 from ..gdb.facade import kdbg
 from ..output import message
 from ..output.tree import IndentContextManager
@@ -190,6 +191,30 @@ def _slab_detail(head: int, focus_cpu: int | None) -> None:
             indent.prefix("freelist") + ": "
             + (indent.addr_hex(slab_freelist) if slab_freelist else message.on("NULL"))
         )
+        # The slab's own occupancy.  `objects` and `inuse` come from the
+        # packed counters word, and `state` is derived from them rather
+        # than from list membership -- a frozen slab is on no list.
+        counters = kdbg.slab_counters(page)
+        if counters is not None:
+            inuse, objects, frozen = counters
+            indent.print(
+                indent.prefix("objects") + f": {objects}"
+                + f"  {indent.prefix('inuse')}={inuse}"
+                + f"  {indent.prefix('frozen')}={frozen}"
+            )
+            indent.print(
+                indent.prefix("state")
+                + ": " + message.notice(kdbg.slab_state(page))
+            )
+        else:
+            indent.print(
+                indent.prefix("objects") + ": " + message.warn("?")
+            )
+        slab_size = _cache_slab_size(cache)
+        if slab_size is not None:
+            indent.print(
+                indent.prefix("slab_size") + ": " + indent.aux_hex(slab_size)
+            )
         if slab_freelist and offset is not None:
             raw = _safe_read_u64(slab_freelist + offset)
             if raw is not None:
@@ -258,9 +283,18 @@ def _slabs_node_partial(
         count, _node_ptr, head_slab, head_freelist = kdbg.partial_info(
             address, node_id,
         )
+        # pwndbg shows the count against the cache's watermark, which is
+        # `kmem_cache->min_partial` -- NOT a field of the node.  The
+        # watermark is what decides whether an empty slab is kept.
+        min_partial = _cache_field_u64(address, "min_partial")
         indent.print(
             indent.prefix(f"node {node_id}")
-            + f": nr_partial={count}"
+            + ": nr_partial=" + indent.aux_hex(count)
+            + "/ min_partial="
+            + (
+                indent.aux_hex(min_partial)
+                if min_partial is not None else message.warn("?")
+            )
         )
         if count <= 0:
             indent.print(indent.prefix("Partial Slabs") + ": (none)")
@@ -286,6 +320,37 @@ def _safe_read_u64(addr: int) -> int | None:
         return kdbg.u64(f"*(unsigned long *)({addr:#x})")
     except (gdb.error, gdb.MemoryError):
         return None
+
+
+def _cache_slab_size(cache: int) -> int | None:
+    """Return the bytes one slab of *cache* spans, or ``None``.
+
+    ``PAGE_SIZE << oo_order``.  ``oo`` packs the order and the object
+    count into one word, so the order half has to be shifted out; the
+    kernel's ``PAGE_SIZE`` is a macro (invisible to DWARF) but this
+    project is x86_64-only where it is always 4096.
+    """
+    value = _safe_read_u64(cache + (kdbg.u64(
+        "(unsigned long)&((struct kmem_cache *)0)->oo"
+    ) or 0))
+    if value is None:
+        return None
+    return PAGE_SIZE << ((value >> 16) & 0xFFFF)
+
+
+def _cache_field_u64(cache: int, field: str) -> int | None:
+    """Read one ``unsigned long`` member of ``struct kmem_cache``.
+
+    The offset comes from the loaded debug info (DWARF, then BTF, then
+    the registry), so a member that a ``CONFIG_*`` knob removed simply
+    resolves to ``None`` instead of reading a neighbouring field.
+    """
+    offset = kdbg.u64(
+        f"(unsigned long)&((struct kmem_cache *)0)->{field}"
+    )
+    if offset is None:
+        return None
+    return _safe_read_u64(cache + offset)
 
 
 # =========================================================================
