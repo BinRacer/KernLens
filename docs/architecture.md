@@ -104,18 +104,17 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   └── naming.md         # command and Python naming rules
 ├── gdbinit.py            # thin bootstrap sourced by GDB
 ├── examples/
-│   ├── api/                # scripting the API
-│   │   ├── hello.py        # minimal script: names + fallback + pure calls
-│   │   ├── trace.py        # script sourced after gdbinit.py
-│   │   ├── slab_snapshot.py        # pure-Python report
-│   │   └── gdbinit.example         # sample ~/.gdbinit
-│   ├── tracing/            # breakpoints that log and keep running
-│   │   ├── gdb_tracer.py   # GDB breakpoint / command example
-│   │   └── cve_2025_38616_trace.py  # CVE-specific KTLS tracer
-│   └── breakpoints/        # breakpoints whose purpose is to stop
-│       ├── conditional.py  # break only on one object
-│       └── watchfield.py   # watch a field reach a value
-│   └── gdbinit.example   # sample ~/.gdbinit
+│   ├── api/                          # scripting the API
+│   │   ├── hello.py                  # minimal script: names + fallback
+│   │   ├── trace.py                  # script sourced after gdbinit.py
+│   │   ├── slab_snapshot.py          # pure-Python report
+│   │   └── gdbinit.example           # sample ~/.gdbinit
+│   ├── tracing/                      # breakpoints that log and continue
+│   │   ├── gdb_tracer.py             # GDB breakpoint / command example
+│   │   └── cve_2025_38616_trace.py   # CVE-specific KTLS tracer
+│   └── breakpoints/                  # breakpoints whose purpose is to stop
+│       ├── conditional.py            # break only on one object
+│       └── watchfield.py             # watch a field reach a value
 ├── images/banner.svg
 ├── pyproject.toml
 ├── uv.lock
