@@ -79,6 +79,21 @@ jobs:
             --capture tools/tutorial_capture.json \
             --meta tools/tutorial_meta.json --check
 
+      - name: Verify the examples match their manifest
+        run: |
+          set -eu
+          # The examples are the only place the API is shown used end to
+          # end, and nothing used to check them: no test imported them and
+          # no table said what they were supposed to cover, so a claim
+          # like "the examples show the allocator API" could not be
+          # falsified.  tools/example_manifest.py is that table, and this
+          # fails when a claim and the code disagree -- including a
+          # command that an example only names in prose without running.
+          uv run --frozen python tools/check_examples.py --check
+          # The report is printed for the log, so a reviewer can see the
+          # coverage a green build actually corresponds to.
+          uv run --frozen python tools/check_examples.py --report
+
       - name: Verify the layout generator probes a real kernel
         run: |
           set -eu

@@ -1,0 +1,340 @@
+"""Tests for ``tools/check_examples.py`` and its manifest.
+
+The checker exists so that a coverage claim about ``examples/`` can fail
+a build.  These tests therefore do two jobs:
+
+* pin the guarantees the checker makes (a claim without the code fails,
+  a command that is only mentioned does not count as executed, the
+  ratchet cannot be lowered silently), and
+* pin the numbers in ``docs/example-coverage-plan.md``, so that document
+  cannot drift from the tree the way hand-written coverage prose does.
+
+The negative tests are the important ones.  A checker that only ever
+passes is indistinguishable from one that does nothing -- the tutorial
+pipeline earned its trust the same way, by being shown to fail when a
+page was hand-edited.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import pathlib
+import re
+import tempfile
+import unittest
+
+import check_examples
+import example_manifest
+from contract_spec import CANONICAL_COMMANDS
+
+
+class SurfaceNameTests(unittest.TestCase):
+    """The one judgement the tool makes about what counts as coverage."""
+
+    def test_methods_are_surface(self) -> None:
+        self.assertTrue(check_examples.is_surface_name("byte_swap64"))
+        self.assertTrue(check_examples.is_surface_name("walk"))
+
+    def test_upper_case_constants_are_not(self) -> None:
+        self.assertFalse(check_examples.is_surface_name("PTE_PRESENT"))
+        self.assertFalse(check_examples.is_surface_name("PGD_SHIFT_4"))
+
+    def test_mixed_case_geometry_constants_are_not(self) -> None:
+        self.assertFalse(check_examples.is_surface_name("BITS_PER_LEVEL"))
+        self.assertFalse(check_examples.is_surface_name("ENTRY_SIZE"))
+
+    def test_private_names_are_not(self) -> None:
+        self.assertFalse(check_examples.is_surface_name("_BINDINGS"))
+
+
+class SurfaceDerivationTests(unittest.TestCase):
+    """The surface must come from the code, not from a hand-written list."""
+
+    def test_facade_bindings_match_the_literal(self) -> None:
+        bound, free = check_examples.facade_bindings()
+        self.assertEqual(len(bound), 140)
+        self.assertEqual(len(free), 68)
+        self.assertTrue(free <= bound)
+
+    def test_commands_match_the_frozen_contract(self) -> None:
+        self.assertEqual(
+            set(check_examples.canonical_commands()), set(CANONICAL_COMMANDS)
+        )
+
+    def test_core_methods_exclude_constants(self) -> None:
+        methods = check_examples.core_methods()
+        self.assertNotIn("PTE_PRESENT", methods["KPageTable"])
+        self.assertIn("split_4", methods["KPageTable"])
+        self.assertNotIn("BITS_PER_LEVEL", methods["KPageTable"])
+
+    def test_surface_groups_merge_qualified_and_bare_spellings(self) -> None:
+        groups = check_examples.surface_groups()
+        walk = groups["walker"]["walk"]
+        self.assertEqual(walk, {"kdbg.walk", "walk"})
+        self.assertEqual(len(groups["walker"]), 1)
+
+    def test_surface_groups_count_each_function_once(self) -> None:
+        """A free function is one entry, not two."""
+        groups = check_examples.surface_groups()
+        for component, members in groups.items():
+            for canonical, spellings in members.items():
+                self.assertTrue(spellings, f"{component}/{canonical} has no spelling")
+
+
+class ManifestTests(unittest.TestCase):
+    """The manifest is the coverage contract; these keep it honest."""
+
+    def test_every_row_lives_under_a_known_root(self) -> None:
+        for example in example_manifest.EXAMPLES:
+            root = example.path.split("/")[1]
+            self.assertIn(root, example_manifest.EXAMPLE_ROOTS, example.path)
+
+    def test_script_rows_declare_something(self) -> None:
+        for example in example_manifest.EXAMPLES:
+            if example.kind != "script":
+                continue
+            self.assertTrue(
+                example_manifest.declares(example),
+                f"{example.path} declares neither surface nor commands",
+            )
+
+    def test_paths_are_unique(self) -> None:
+        paths = [e.path for e in example_manifest.EXAMPLES]
+        self.assertEqual(len(paths), len(set(paths)))
+
+    def test_ratchet_is_not_negative(self) -> None:
+        self.assertGreaterEqual(example_manifest.REQUIRED_COMMAND_COVERAGE, 0)
+
+
+class CheckPassesOnTheCurrentTreeTests(unittest.TestCase):
+    """The committed tree satisfies its own manifest."""
+
+    def test_check_all_is_clean(self) -> None:
+        failures = check_examples.check_all()
+        self.assertEqual([str(f) for f in failures], [])
+
+    def test_every_manifest_file_exists(self) -> None:
+        self.assertEqual(check_examples.check_existence(), [])
+
+    def test_every_manifest_file_is_linked_from_its_readme(self) -> None:
+        self.assertEqual(check_examples.check_readme_links(), [])
+
+    def test_every_claim_is_referenced(self) -> None:
+        self.assertEqual(check_examples.check_claims(), [])
+
+
+class NegativeTests(unittest.TestCase):
+    """A checker that cannot fail is not a checker."""
+
+    def _patched(self, examples: tuple[example_manifest.Example, ...]) -> list:
+        original = check_examples.manifest.EXAMPLES
+        check_examples.manifest.EXAMPLES = examples
+        try:
+            return check_examples.check_claims()
+        finally:
+            check_examples.manifest.EXAMPLES = original
+
+    def test_claim_absent_from_the_file_is_reported(self) -> None:
+        """Dropping the code but keeping the claim must fail."""
+        broken = example_manifest.Example(
+            path="examples/api/hello.py",
+            purpose="negative test",
+            surface=("KAddr.is_vmalloc",),
+            readme="examples/api/README.md",
+        )
+        failures = self._patched((broken,))
+        self.assertEqual(len(failures), 1)
+        self.assertIn("never references it", str(failures[0]))
+
+    def test_unknown_surface_name_is_reported(self) -> None:
+        broken = example_manifest.Example(
+            path="examples/api/hello.py",
+            purpose="negative test",
+            surface=("KAddr.not_a_real_method",),
+            readme="examples/api/README.md",
+        )
+        failures = self._patched((broken,))
+        self.assertEqual(len(failures), 1)
+        self.assertIn("unknown surface name", str(failures[0]))
+
+    def test_missing_file_is_reported(self) -> None:
+        broken = example_manifest.Example(
+            path="examples/api/does_not_exist.py",
+            purpose="negative test",
+        )
+        original = check_examples.manifest.EXAMPLES
+        check_examples.manifest.EXAMPLES = (broken,)
+        try:
+            failures = check_examples.check_existence()
+        finally:
+            check_examples.manifest.EXAMPLES = original
+        self.assertEqual(len(failures), 1)
+        self.assertIn("does not exist", str(failures[0]))
+
+    def test_unknown_command_claim_is_reported(self) -> None:
+        broken = example_manifest.Example(
+            path="examples/api/trace.py",
+            purpose="negative test",
+            commands=("kl-not-a-command",),
+            readme="examples/api/README.md",
+        )
+        original = check_examples.manifest.EXAMPLES
+        check_examples.manifest.EXAMPLES = (broken,)
+        try:
+            failures = check_examples.check_commands()
+        finally:
+            check_examples.manifest.EXAMPLES = original
+        self.assertEqual(len(failures), 1)
+        self.assertIn("unknown command", str(failures[0]))
+
+    def test_mentioned_but_not_executed_command_is_reported(self) -> None:
+        """Claiming a command a file only names in prose must fail.
+
+        ``cve_2025_38616_trace.py`` mentions ``kl-kaslr`` in a banner and
+        in a docstring but never executes it -- that is exactly the
+        distinction this checker exists to draw.
+        """
+        broken = example_manifest.Example(
+            path="examples/tracing/cve_2025_38616_trace.py",
+            purpose="negative test",
+            commands=("kernlens-kaslr",),
+            readme="examples/tracing/README.md",
+        )
+        original = check_examples.manifest.EXAMPLES
+        check_examples.manifest.EXAMPLES = (broken,)
+        try:
+            failures = check_examples.check_commands()
+        finally:
+            check_examples.manifest.EXAMPLES = original
+        self.assertEqual(len(failures), 1)
+        self.assertIn("never executes it", str(failures[0]))
+
+    def test_missing_readme_link_is_reported(self) -> None:
+        broken = example_manifest.Example(
+            path="examples/api/hello.py",
+            purpose="negative test",
+            readme="examples/tracing/README.md",
+        )
+        original = check_examples.manifest.EXAMPLES
+        check_examples.manifest.EXAMPLES = (broken,)
+        try:
+            failures = check_examples.check_readme_links()
+        finally:
+            check_examples.manifest.EXAMPLES = original
+        self.assertEqual(len(failures), 1)
+        self.assertIn("does not link to", str(failures[0]))
+
+    def test_ratchet_above_actual_coverage_is_reported(self) -> None:
+        original = example_manifest.REQUIRED_COMMAND_COVERAGE
+        example_manifest.REQUIRED_COMMAND_COVERAGE = 10_000
+        try:
+            failures = check_examples.check_coverage()
+        finally:
+            example_manifest.REQUIRED_COMMAND_COVERAGE = original
+        self.assertEqual(len(failures), 1)
+        self.assertIn("REQUIRED_COMMAND_COVERAGE", str(failures[0]))
+
+
+class ExecutionDetectionTests(unittest.TestCase):
+    """Only a real ``gdb.execute`` counts as demonstrating a command."""
+
+    def _write(self, source: str) -> pathlib.Path:
+        directory = tempfile.mkdtemp()
+        path = pathlib.Path(directory) / "sample.py"
+        path.write_text(source, encoding="utf-8")
+        return path
+
+    def test_literal_execute_counts(self) -> None:
+        path = self._write('import gdb\ngdb.execute("kl-base")\n')
+        self.assertEqual(
+            check_examples.executed_commands(path), {"kernlens-base"}
+        )
+
+    def test_canonical_spelling_counts(self) -> None:
+        path = self._write('import gdb\ngdb.execute("kernlens-kbase")\n')
+        self.assertEqual(
+            check_examples.executed_commands(path), {"kernlens-kbase"}
+        )
+
+    def test_execute_with_arguments_counts(self) -> None:
+        path = self._write('import gdb\ngdb.execute("kl-walk 0xffff888000000000")\n')
+        self.assertEqual(
+            check_examples.executed_commands(path), {"kernlens-walk"}
+        )
+
+    def test_dynamically_built_command_does_not_count(self) -> None:
+        """``f"kl-{name}"`` cannot be resolved statically."""
+        path = self._write('import gdb\ngdb.execute(f"kl-{name} arg")\n')
+        self.assertEqual(check_examples.executed_commands(path), set())
+
+    def test_command_in_a_docstring_does_not_count(self) -> None:
+        path = self._write('"""Try kl-walk here."""\nimport gdb\n')
+        self.assertEqual(check_examples.executed_commands(path), set())
+        self.assertEqual(check_examples.mentioned_commands(path), {"kernlens-walk"})
+
+    def test_command_in_a_banner_does_not_count_as_executed(self) -> None:
+        path = self._write(
+            'import gdb\n'
+            'gdb.write("run kl-slab -v to see the cache\\n")\n'
+        )
+        self.assertEqual(check_examples.executed_commands(path), set())
+        self.assertEqual(check_examples.mentioned_commands(path), {"kernlens-slab"})
+
+    def test_non_command_execute_string_is_ignored(self) -> None:
+        path = self._write('import gdb\ngdb.execute("break kfree")\n')
+        self.assertEqual(check_examples.executed_commands(path), set())
+
+
+class ReportTests(unittest.TestCase):
+    """The report is what the plan's numbers are regenerated from."""
+
+    def test_report_mentions_every_section(self) -> None:
+        text = "\n".join(check_examples.report())
+        for heading in ("examples coverage", "per example", "by owning component"):
+            self.assertIn(heading, text)
+
+    def test_report_command_line_is_in_range(self) -> None:
+        lines = check_examples.report()
+        command_line = next(line for line in lines if line.startswith("commands"))
+        match = re.search(r"(\d+)\s*/\s*(\d+)", command_line)
+        assert match is not None
+        covered, total = int(match.group(1)), int(match.group(2))
+        self.assertLessEqual(covered, total)
+        self.assertEqual(total, len(CANONICAL_COMMANDS))
+
+    def test_uninvoked_plus_covered_is_every_command(self) -> None:
+        covered = check_examples.covered_commands()
+        uninvoked = set(check_examples.uninvoked_commands())
+        self.assertEqual(covered | uninvoked, set(CANONICAL_COMMANDS))
+        self.assertEqual(covered & uninvoked, set())
+
+
+class CliTests(unittest.TestCase):
+    def test_check_exits_zero_on_the_current_tree(self) -> None:
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(check_examples.main(["--check"]), 0, out.getvalue())
+
+    def test_report_exits_zero(self) -> None:
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(check_examples.main(["--report"]), 0, out.getvalue())
+
+    def test_list_commands_exits_zero(self) -> None:
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(
+                check_examples.main(["--list-commands"]), 0, out.getvalue()
+            )
+
+    def test_modes_are_mutually_exclusive(self) -> None:
+        with self.assertRaises(SystemExit):
+            with contextlib.redirect_stderr(io.StringIO()):
+                check_examples.main(["--check", "--report"])
+
+    def test_a_mode_is_required(self) -> None:
+        with self.assertRaises(SystemExit):
+            with contextlib.redirect_stderr(io.StringIO()):
+                check_examples.main([])
+
+
+if __name__ == "__main__":
+    unittest.main()

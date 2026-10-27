@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `tools/example_manifest.py` and `tools/check_examples.py` make the
+  examples' coverage a checked claim instead of an impression.  The
+  manifest is one row per example declaring the API names and commands
+  it is responsible for; the checker derives the real surface from the
+  source (the facade's `_BINDINGS` literal and the core classes, both
+  parsed without importing `gdb`) and fails when a claim and the code
+  disagree.  `--report` prints the coverage table and `--list-commands`
+  prints the commands no example runs yet.  CI runs `--check` on every
+  push, and the report is echoed into the log so a green build says what
+  it covers.
+  - The checker counts only the first argument of an actual
+    `gdb.execute(...)` call as a demonstration.  A command named in a
+    docstring or printed in a banner does not count, which is the
+    difference between the two numbers that made the previous estimate
+    of this gap too generous: grepping suggests 23 of 40 commands
+    appear in `examples/`, and one is executed.
+  - Constants are excluded by `is_surface_name`: `KPageTable`'s 21
+    constant names are already a table in the README, and a row
+    mentioning `PTE_NX` would otherwise read as coverage.
+  - `REQUIRED_COMMAND_COVERAGE` is a ratchet that may only increase.
+    It is `0` today, matching the single command the examples execute;
+    the planned workflow examples raise it to 40.
+  - `tests/unit/test_examples.py` has 39 tests, 7 of them negative --
+    a claim without the code, an unknown name, a command only mentioned
+    in prose, a missing README link, and a ratchet above actual
+    coverage all fail.
+
 ### Changed
 
 - The `examples/` tree is now grouped by intent: `examples/api/` for
