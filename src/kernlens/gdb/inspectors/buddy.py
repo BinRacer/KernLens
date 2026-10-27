@@ -69,6 +69,68 @@ class BuddyPage:
     virt: int
 
 
+@dataclass(frozen=True, slots=True)
+class ZoneSpan:
+    """One ``struct zone``, reduced to what an address lookup needs."""
+
+    name: str
+    node: int
+    #: Kernel-virtual address of the ``struct zone``.
+    address: int
+    start_pfn: int
+    spanned_pages: int
+    present_pages: int
+
+    @property
+    def end_pfn(self) -> int:
+        """One past the last pfn this zone spans."""
+        return self.start_pfn + self.spanned_pages
+
+
+@dataclass(frozen=True, slots=True)
+class BlockLocation:
+    """Where an address sits inside the buddy allocator's blocks.
+
+    ``order`` is ``None`` when the page is not on a free list, in which
+    case the block size is unknown and every derived field is ``None``
+    rather than a guess -- the kernel only records the order while a
+    block is free (``set_buddy_order`` in ``__free_one_page``).
+    """
+
+    phys: int
+    pfn: int
+    page: int
+    zone: ZoneSpan | None
+    #: ``True`` when the pfn is inside ``spanned_pages`` but outside
+    #: ``present_pages`` -- an unpopulated hole in the zone.
+    hole: bool
+    order: int | None
+    #: ``1 << order``, the block's length in pages.
+    size_pages: int | None
+    #: pfn of the block's first page.
+    base_pfn: int | None
+    #: ``pfn - base_pfn``: which page of the block this is.
+    position: int | None
+    #: The block head's ``struct page`` address.
+    block_page: int | None
+    #: The block head's physical address.
+    block_phys: int | None
+    #: The block head's direct-map address.
+    block_virt: int | None
+    #: Whether *this* pfn is itself the head of a block of ``order``.
+    is_block_head: bool
+
+    @property
+    def managed(self) -> bool:
+        """Whether any zone claims this pfn."""
+        return self.zone is not None
+
+    @property
+    def free(self) -> bool:
+        """Whether the page is on a buddy free list."""
+        return self.order is not None
+
+
 class BuddyInspector(InspectorBase):
     """Walk the buddy free lists and decode zone/node metadata."""
 
@@ -400,6 +462,412 @@ class BuddyInspector(InspectorBase):
             return value
         return 1
 
+    # --- address -> zone / block ----------------------------------------
+
+    def zone_spans(self) -> tuple[ZoneSpan, ...]:
+        """Return every populated ``struct zone``, in node/zone order.
+
+        Read from ``node_data[].node_zones[]``: the same traversal
+        :meth:`buddy_zones` uses, so a zone an address can belong to is
+        exactly a zone whose free lists that method walks.
+        """
+        node_data = self._reader.kvar_addr("node_data")
+        if not node_data:
+            return ()
+        numa = self.config_contains("NUMA")
+        zone_size = self._layout_sizeof("struct zone")
+        if not zone_size:
+            return ()
+        offsets = {
+            name: self._layout_offset("struct zone", name)
+            for name in ("name", "zone_start_pfn", "spanned_pages",
+                         "present_pages")
+        }
+        if offsets["zone_start_pfn"] is None or offsets["spanned_pages"] is None:
+            return ()
+        nzones = self._nzones()
+        names = self._zone_names()
+        spans: list[ZoneSpan] = []
+        for node_index in range(self.nr_nodes()):
+            pgdat = (
+                self._read_u64(node_data + node_index * 8)
+                if numa else node_data
+            )
+            if not pgdat:
+                continue
+            for zone_index in range(nzones):
+                address = pgdat + zone_index * zone_size
+                label = self._zone_label(address, offsets["name"], names,
+                                         zone_index)
+                if label is None:
+                    continue
+                start = self._read_u64(
+                    address + offsets["zone_start_pfn"]
+                )
+                spanned = self._read_u64(
+                    address + offsets["spanned_pages"]
+                )
+                present = (
+                    self._read_u64(address + offsets["present_pages"])
+                    if offsets["present_pages"] is not None else None
+                )
+                if start is None or spanned is None or not spanned:
+                    continue
+                spans.append(
+                    ZoneSpan(
+                        name=label,
+                        node=node_index,
+                        address=address,
+                        start_pfn=start,
+                        spanned_pages=spanned,
+                        present_pages=(
+                            present if present is not None else spanned
+                        ),
+                    )
+                )
+        return tuple(spans)
+
+    def _zone_label(
+        self, address: int, name_off: int | None,
+        names: tuple[str, ...], index: int,
+    ) -> str | None:
+        """Return a zone's name, or ``None`` when the slot is empty.
+
+        The name pointer is authoritative (an unpopulated
+        ``node_zones[]`` slot has none); the ``zone_names`` table is only
+        used when the field itself is unavailable.
+        """
+        if name_off is not None:
+            pointer = self._read_u64(address + name_off)
+            if not pointer:
+                return None
+            text = self._cstring(pointer)
+            if text:
+                return text
+            return None
+        return names[index] if index < len(names) else None
+
+    def zone_of_pfn(
+        self, pfn: int, spans: tuple[ZoneSpan, ...] | None = None,
+    ) -> tuple[ZoneSpan | None, bool]:
+        """Return ``(zone, is_hole)`` for *pfn*.
+
+        ``(None, False)`` means no zone spans the pfn -- memory the
+        allocator does not manage at all.  ``(zone, True)`` means the
+        pfn is inside the zone's ``spanned_pages`` but outside its
+        ``present_pages``, i.e. a hole in the physical map.
+        """
+        for span in spans if spans is not None else self.zone_spans():
+            if span.start_pfn <= pfn < span.end_pfn:
+                hole = not (
+                    span.start_pfn <= pfn
+                    < span.start_pfn + span.present_pages
+                )
+                return span, hole
+        return None, False
+
+    def block_of_pfn(
+        self,
+        pfn: int,
+        phys: int,
+        *,
+        spans: tuple[ZoneSpan, ...] | None = None,
+        page_size: int = 64,
+    ) -> BlockLocation:
+        """Locate *pfn* in the buddy allocator's block structure.
+
+        The search runs from the largest order down, because only one
+        order can have both an aligned base and a head whose ``private``
+        equals that order: a smaller block can never sit at the head of
+        a larger one.  Trying the largest first therefore cannot report
+        a sub-block of a real free block as the answer.
+
+        A pfn that is not free still gets its zone and page, but no
+        order/position -- see :class:`BlockLocation`.
+        """
+        vmemmap = self._vmemmap_base()
+        page_offset = self._page_offset_base()
+        page = (vmemmap + (pfn * page_size)) & MASK64
+        span, hole = self.zone_of_pfn(pfn, spans)
+        base_fields = {
+            "phys": phys, "pfn": pfn, "page": page, "zone": span,
+            "hole": hole,
+        }
+        for order in range(self._norders() - 1, -1, -1):
+            size_pages = 1 << order
+            if pfn & (size_pages - 1):
+                continue
+            head = (vmemmap + ((pfn) * page_size)) & MASK64
+            if self.buddy_order(head) != order:
+                continue
+            head_phys = pfn << 12
+            try:
+                head_virt = KAddr.page_to_virt(
+                    head, page_offset, vmemmap, page_size,
+                )
+            except ValueError:
+                head_virt = None
+            return BlockLocation(
+                **base_fields,
+                order=order,
+                size_pages=size_pages,
+                base_pfn=pfn,
+                position=0,
+                block_page=head,
+                block_phys=head_phys,
+                block_virt=head_virt,
+                is_block_head=True,
+            )
+        # Not a head: look for a larger free block that contains it.
+        for order in range(self._norders() - 1, 0, -1):
+            size_pages = 1 << order
+            base = pfn & ~(size_pages - 1)
+            head = (vmemmap + (base * page_size)) & MASK64
+            if self.buddy_order(head) != order:
+                continue
+            head_phys = base << 12
+            try:
+                head_virt = KAddr.page_to_virt(
+                    head, page_offset, vmemmap, page_size,
+                )
+            except ValueError:
+                head_virt = None
+            return BlockLocation(
+                **base_fields,
+                order=order,
+                size_pages=size_pages,
+                base_pfn=base,
+                position=pfn - base,
+                block_page=head,
+                block_phys=head_phys,
+                block_virt=head_virt,
+                is_block_head=False,
+            )
+        return BlockLocation(
+            **base_fields,
+            order=None, size_pages=None, base_pfn=None, position=None,
+            block_page=None, block_phys=None, block_virt=None,
+            is_block_head=False,
+        )
+
+    def block_range(
+        self, location: BlockLocation, page_size: int = 64,
+    ) -> tuple[int, int, int, int] | None:
+        """Return ``(first_pfn, last_pfn, first_phys, last_phys)``.
+
+        Inclusive on both ends, so it can be printed as a range.  ``None``
+        when the page is not inside a known free block.
+        """
+        del page_size
+        if location.base_pfn is None or location.size_pages is None:
+            return None
+        first = location.base_pfn
+        last = first + location.size_pages - 1
+        return first, last, first << 12, (last << 12) | 0xFFF
+
+    def buddy_pfn(self, location: BlockLocation) -> tuple[int, int] | None:
+        """Return the ``(pfn, phys)`` of the block's buddy, or ``None``.
+
+        ``buddy = base ^ size`` is exact while the block is the only unit
+        at its order, which is the case for anything still on a free
+        list.  The caller must still check the buddy's own state.
+        """
+        if location.base_pfn is None or location.size_pages is None:
+            return None
+        pfn = location.base_pfn ^ location.size_pages
+        return pfn, pfn << 12
+
+    # --- free_area counters and one list's contents ----------------------
+
+    def free_area_counts(
+        self,
+        *,
+        zone: str | None = None,
+        order: int | None = None,
+        mtype: str | None = None,
+        node: int | None = None,
+        spans: tuple[ZoneSpan, ...] | None = None,
+    ) -> tuple[tuple[str, int, int, int], ...]:
+        """Return ``(zone, node, order, nr_free)`` for each non-empty order.
+
+        ``nr_free`` is **one counter per order**, covering every
+        migratetype in that ``free_area`` -- not one per migratetype.
+        The kernel keeps it that way (``area->nr_free++`` in
+        ``__free_one_page``, printed per order by ``/proc/buddyinfo``),
+        and the per-type breakdown only exists as "is this list empty?",
+        which costs a walk.  Reading a per-type counter therefore cannot
+        work: the bytes past the counter are the next ``free_area``'s
+        ``free_list[]`` pointers.
+        """
+        node_data = self._reader.kvar_addr("node_data")
+        if not node_data:
+            return ()
+        numa = self.config_contains("NUMA")
+        zone_size = self._layout_sizeof("struct zone")
+        free_area_off = self._layout_offset("struct zone", "free_area")
+        nr_free_off = self._layout_offset("struct free_area", "nr_free")
+        area_size = self._layout_sizeof("struct free_area")
+        if (
+            not zone_size or free_area_off is None
+            or nr_free_off is None or not area_size
+        ):
+            return ()
+        norders = self._norders()
+        resolved = spans if spans is not None else self.zone_spans()
+        by_address = {span.address: span for span in resolved}
+        wanted = mtype.lower() if mtype is not None else None
+        rows: list[tuple[str, int, int, int]] = []
+        for node_index in range(self.nr_nodes()):
+            if node is not None and node_index != node:
+                continue
+            pgdat = (
+                self._read_u64(node_data + node_index * 8)
+                if numa else node_data
+            )
+            if not pgdat:
+                continue
+            for zone_index in range(self._nzones()):
+                address = pgdat + zone_index * zone_size
+                span = by_address.get(address)
+                label = span.name if span is not None else None
+                if label is None:
+                    continue
+                if zone is not None and zone.lower() != label.lower():
+                    continue
+                for zone_order in range(norders):
+                    if order is not None and order != zone_order:
+                        continue
+                    area = (
+                        address + free_area_off + zone_order * area_size
+                    )
+                    if wanted is not None and not self._mtype_nonempty(
+                        area, wanted,
+                    ):
+                        continue
+                    count = self._read_u64(area + nr_free_off)
+                    if count:
+                        rows.append(
+                            (label, node_index, zone_order, count)
+                        )
+        return tuple(rows)
+
+    def _mtype_nonempty(self, area: int, mtype: str) -> bool:
+        """Whether ``free_area[*].free_list[mtype]`` holds any block."""
+        index = next(
+            (
+                i for i, name in enumerate(self._migratetype_names())
+                if name.lower() == mtype
+            ),
+            None,
+        )
+        if index is None:
+            return False
+        head = area + index * 0x10
+        first = self._read_u64(head)
+        return bool(first) and first != head
+
+    def freelist_blocks(
+        self,
+        zone_name: str,
+        order: int,
+        mtype: str,
+        *,
+        node: int = 0,
+        limit: int = 64,
+        page_size: int = 64,
+    ) -> tuple[BuddyPage, ...]:
+        """Return the blocks on one ``free_area[order][mtype]`` list.
+
+        Yields them in list order, which is the order the allocator would
+        hand them out, so ``index`` doubles as the list position.
+        """
+        node_data = self._reader.kvar_addr("node_data")
+        if not node_data:
+            return ()
+        numa = self.config_contains("NUMA")
+        pgdat = (
+            self._read_u64(node_data + node * 8) if numa else node_data
+        )
+        if not pgdat:
+            return ()
+        zone_size = self._layout_sizeof("struct zone")
+        free_area_off = self._layout_offset("struct zone", "free_area")
+        area_size = self._layout_sizeof("struct free_area")
+        lru_offset = self._layout_offset("struct page", "lru") or 0x8
+        mtypes = self._migratetype_names()
+        if not zone_size or free_area_off is None or not area_size:
+            return ()
+        names = self._zone_names()
+        zone_index = next(
+            (
+                index for index, name in enumerate(names)
+                if name.lower() == zone_name.lower()
+            ),
+            None,
+        )
+        if zone_index is None:
+            return ()
+        mtype_index = next(
+            (
+                index for index, name in enumerate(mtypes)
+                if name.lower() == mtype.lower()
+            ),
+            None,
+        )
+        if mtype_index is None:
+            return ()
+        list_head = (
+            pgdat + zone_index * zone_size + free_area_off
+            + order * area_size + mtype_index * 0x10
+        )
+        vmemmap = self._vmemmap_base()
+        page_offset = self._page_offset_base()
+        found: list[BuddyPage] = []
+        seen: set[int] = set()
+        current = self._read_u64(list_head)
+        while (
+            current and current != list_head and len(found) < limit
+        ):
+            page = (current - lru_offset) & MASK64
+            if page in seen:
+                break
+            seen.add(page)
+            try:
+                phys = KAddr.page_to_phys(page, vmemmap, page_size)
+                virt = KAddr.page_to_virt(
+                    page, page_offset, vmemmap, page_size,
+                )
+            except ValueError:
+                break
+            found.append(
+                BuddyPage(index=len(found), page=page, phys=phys, virt=virt)
+            )
+            current = self._read_u64(current)
+        return tuple(found)
+
+    def freelist_count(
+        self,
+        zone_name: str,
+        order: int,
+        mtype: str,
+        *,
+        node: int = 0,
+        limit: int = 4096,
+        page_size: int = 64,
+    ) -> int:
+        """How many blocks one ``free_area[order][mtype]`` list holds.
+
+        A walk, because the kernel keeps only the per-order total.  The
+        result is used to decide whether a list is worth expanding, so it
+        is capped by *limit* to keep a corrupt list from running away.
+        """
+        return len(
+            self.freelist_blocks(
+                zone_name, order, mtype, node=node, limit=limit,
+                page_size=page_size,
+            )
+        )
+
 
 __all__ = [
     "BUDDY_MAX_ORDER",
@@ -410,6 +878,8 @@ __all__ = [
     "ISOLATE_MIGRATETYPE",
     "MIGRATE_TYPES",
     "ZONE_NAMES",
+    "BlockLocation",
     "BuddyInspector",
     "BuddyPage",
+    "ZoneSpan",
 ]

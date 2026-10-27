@@ -40,7 +40,7 @@ from .bpf import (
     bpf_map_type_name,
     bpf_prog_type_name,
 )
-from .buddy import BuddyInspector, BuddyPage
+from .buddy import BuddyInspector, BuddyPage, BlockLocation, ZoneSpan
 from .dmabuf import DmabufEntry, DmabufInspector, SgEntry
 from .dmesg import DmesgInspector, DmesgRecord
 from .kallsyms import Kallsym, KallsymsInspector
@@ -55,6 +55,8 @@ __all__ = [
     "BpfProg",
     "BuddyInspector",
     "BuddyPage",
+    "BlockLocation",
+    "ZoneSpan",
     "DmabufEntry",
     "DmabufInspector",
     "DmesgInspector",

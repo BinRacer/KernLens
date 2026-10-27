@@ -404,6 +404,45 @@ class FakeKdbg:
                 phys=0x140000, virt=PAGE_OFFSET_BASE + 0x140000,
             ),
         ]
+        #: One zone, the shape the 6.1.134 test VM reports for DMA:
+        #: `node 0, zone DMA, spanned 4095, present 3998, start_pfn 1`.
+        self.zone_spans_value: list[SimpleNamespace] = [
+            SimpleNamespace(
+                name="DMA", node=0, address=0xFFFF888000500000,
+                start_pfn=0x1, spanned_pages=4095, present_pages=3998,
+                end_pfn=0x1000,
+            ),
+        ]
+        #: A free order-10 block at pfn 0x400 (the VM's real first DMA
+        #: block: 1024 pages = 4 MiB, base phys 0x400000).
+        self.block_value: SimpleNamespace = SimpleNamespace(
+            page=0xFFFFEA0000100000, order=10, base_pfn=0x400,
+            block_virt=PAGE_OFFSET_BASE + 0x400000,
+        )
+        #: ``nr_free`` is the per-order total, so one row per order --
+        #: the shape `kl-buddy list` prints and the tidiest fixture for
+        #: asserting the column layout.
+        self.free_area_value: list[tuple[str, int, int, int]] = [
+            ("DMA", 0, 0, 3),
+            ("DMA", 0, 10, 3),
+        ]
+        self.freelist_value: dict[tuple[str, int, str], tuple] = {
+            ("DMA", 10, "Movable"): (
+                SimpleNamespace(
+                    index=0, page=0xFFFFEA0000100000,
+                    phys=0x400000, virt=PAGE_OFFSET_BASE + 0x400000,
+                ),
+                SimpleNamespace(
+                    index=1, page=0xFFFFEA0000200000,
+                    phys=0x800000, virt=PAGE_OFFSET_BASE + 0x800000,
+                ),
+                SimpleNamespace(
+                    index=2, page=0xFFFFEA0000300000,
+                    phys=0xC00000, virt=PAGE_OFFSET_BASE + 0xC00000,
+                ),
+            ),
+        }
+        self.buddy_order_value: int | None = 10
         self.slab_caches_value: list[SimpleNamespace] = [
             SimpleNamespace(
                 address=KMALLOC_1K_ADDR, name="kmalloc-1k",
@@ -631,6 +670,121 @@ class FakeKdbg:
         if zone is not None and zone != "Normal":
             return ()
         return tuple(self.buddy_value)
+
+    def zone_spans(self) -> tuple[SimpleNamespace, ...]:
+        return tuple(self.zone_spans_value)
+
+    def zone_of_pfn(
+        self, pfn: int, spans: object = None,
+    ) -> tuple[SimpleNamespace | None, bool]:
+        del spans
+        for span in self.zone_spans_value:
+            if span.start_pfn <= pfn < span.end_pfn:
+                hole = not (
+                    span.start_pfn <= pfn
+                    < span.start_pfn + span.present_pages
+                )
+                return span, hole
+        return None, False
+
+    def block_of_pfn(
+        self, pfn: int, phys: int, *, spans: object = None,
+        page_size: int = 64,
+    ) -> SimpleNamespace:
+        del spans, page_size
+        span, hole = self.zone_of_pfn(pfn)
+        template = self.block_value
+        if (
+            self.buddy_order_value is not None
+            and template.order is not None
+            and template.base_pfn is not None
+        ):
+            size = 1 << template.order
+            if template.base_pfn <= pfn < template.base_pfn + size:
+                position = pfn - template.base_pfn
+                return SimpleNamespace(
+                    phys=phys, pfn=pfn, page=template.page + position * 64,
+                    zone=span, hole=hole, order=template.order,
+                    size_pages=size, base_pfn=template.base_pfn,
+                    position=position, block_page=template.page,
+                    block_phys=template.base_pfn << 12,
+                    block_virt=template.block_virt,
+                    is_block_head=position == 0,
+                    managed=span is not None,
+                    free=True,
+                )
+        return SimpleNamespace(
+            phys=phys, pfn=pfn, page=0xFFFFEA0000000000 + pfn * 64,
+            zone=span, hole=hole, order=None, size_pages=None,
+            base_pfn=None, position=None, block_page=None, block_phys=None,
+            block_virt=None, is_block_head=False,
+            managed=span is not None, free=False,
+        )
+
+    def block_range(
+        self, location: SimpleNamespace, page_size: int = 64,
+    ) -> tuple[int, int, int, int] | None:
+        del page_size
+        if location.base_pfn is None or location.size_pages is None:
+            return None
+        first = location.base_pfn
+        last = first + location.size_pages - 1
+        return first, last, first << 12, (last << 12) | 0xFFF
+
+    def buddy_pfn(
+        self, location: SimpleNamespace,
+    ) -> tuple[int, int] | None:
+        if location.base_pfn is None or location.size_pages is None:
+            return None
+        pfn = location.base_pfn ^ location.size_pages
+        return pfn, pfn << 12
+
+    def free_area_counts(
+        self, *, zone: str | None = None, order: int | None = None,
+        mtype: str | None = None, node: int | None = None,
+        spans: object = None,
+    ) -> tuple[tuple[str, int, int, int], ...]:
+        del spans
+        rows = []
+        for label, node_index, area_order, count in self.free_area_value:
+            if zone is not None and zone.lower() != label.lower():
+                continue
+            if order is not None and order != area_order:
+                continue
+            if node is not None and node != node_index:
+                continue
+            if mtype is not None and not self.freelist_value.get(
+                (label, area_order, mtype)
+            ):
+                continue
+            rows.append((label, node_index, area_order, count))
+        return tuple(rows)
+
+    def freelist_blocks(
+        self, zone_name: str, order: int, mtype: str, *, node: int = 0,
+        limit: int = 64, page_size: int = 64,
+    ) -> tuple[SimpleNamespace, ...]:
+        del node, page_size
+        return tuple(
+            self.freelist_value.get((zone_name, order, mtype), ())
+        )[:limit]
+
+    def freelist_count(
+        self, zone_name: str, order: int, mtype: str, *, node: int = 0,
+        limit: int = 4096, page_size: int = 64,
+    ) -> int:
+        return len(
+            self.freelist_blocks(
+                zone_name, order, mtype, node=node, limit=limit,
+                page_size=page_size,
+            )
+        )
+
+    def buddy_order(self, page: int) -> int | None:
+        return self.buddy_order_value
+
+    def page_is_buddy(self, page: int) -> bool | None:
+        return self.buddy_order_value is not None
 
     def slab_caches(self) -> tuple[SimpleNamespace, ...]:
         return tuple(self.slab_caches_value)
@@ -1318,6 +1472,92 @@ class MemoryTests(GdbinitTestBase):
         out = self.invoke("kl-buddydump")
         self.assertIn("free page(s)", out)
         self.assertIn(f"{BUDDY_VIRT:#x}", out)
+
+    # --- kl-buddy: the address -> block locator ------------------------
+
+    def test_kl_buddy_list_prints_one_row_per_order(self) -> None:
+        # `nr_free` is the kernel's per-ORDER total (one counter per
+        # `free_area`), so the table must not carry a migratetype column.
+        out = self.invoke("kl-buddy", "list")
+        self.assertIn("nr_free", out)
+        self.assertIn("pages(1<<order)", out)
+        self.assertNotIn("migratetype", out)
+        self.assertIn("2 non-empty order(s)", out)
+
+    def test_kl_buddy_list_multiplies_pages_by_order(self) -> None:
+        out = self.invoke("kl-buddy", "list")
+        # DMA order 10 with 3 blocks = 3072 pages.
+        self.assertIn("3072", out)
+
+    def test_kl_buddy_list_filters_by_order(self) -> None:
+        out = self.invoke("kl-buddy", "list -o 0")
+        self.assertIn("1 non-empty order(s)", out)
+        self.assertNotIn("3072", out)
+
+    def test_kl_buddy_info_reports_the_block_head(self) -> None:
+        out = self.invoke("kl-buddy", "info pfn:0x400")
+        self.assertIn("DMA", out)
+        self.assertIn("Status: free", out)
+        self.assertIn("Order: 10", out)
+        self.assertIn("0 / 1024 pages", out)
+        self.assertIn("(block head)", out)
+        self.assertIn("Own block head: order 10", out)
+
+    def test_kl_buddy_info_reports_a_position_inside_the_block(self) -> None:
+        out = self.invoke("kl-buddy", "info pfn:0x425")
+        self.assertIn("37 / 1024 pages", out)
+        self.assertIn("0x25000 bytes into the block", out)
+        # A page inside someone else's block is NOT its own head.
+        self.assertIn("Own block head: none", out)
+
+    def test_kl_buddy_order_is_per_order_not_per_migratetype(self) -> None:
+        # The regression this guards: summing per-migratetype "counters"
+        # used to read the next free_area's list pointers and report
+        # impossible values (111 blocks in a 128 MiB guest).
+        out = self.invoke("kl-buddy", "list -o 10")
+        self.assertNotIn("111", out)
+
+    def test_kl_buddy_info_without_an_order_reports_no_position(self) -> None:
+        fake_kdbg.buddy_order_value = None
+        out = self.invoke("kl-buddy", "info pfn:0x500")
+        self.assertIn("Status: allocated", out)
+        self.assertIn("the order is only recorded while a block is free", out)
+        # Position must not be invented for an allocated page.
+        self.assertNotIn("Position: 0", out)
+        self.assertIn("Position: -", out)
+
+    def test_kl_buddy_info_rejects_an_unresolvable_address(self) -> None:
+        out = self.invoke("kl-buddy", "info")
+        self.assertIn("usage:", out)
+
+    def test_kl_buddy_info_marks_an_unmanaged_pfn(self) -> None:
+        out = self.invoke("kl-buddy", "info pfn:0x9000000")
+        self.assertIn("not managed", out)
+
+    def test_kl_buddy_freelist_expands_one_list(self) -> None:
+        out = self.invoke(
+            "kl-buddy", "freelist -z DMA -o 10 -m Movable -v",
+        )
+        self.assertIn("free_area[order 10]", out)
+        self.assertIn("mtype=Movable", out)
+        self.assertIn("nr_free=3", out)
+        self.assertIn("#0", out)
+        self.assertIn("#2", out)
+
+    def test_kl_buddy_freelist_reports_an_empty_list(self) -> None:
+        out = self.invoke(
+            "kl-buddy", "freelist -z DMA -o 10 -m Unmovable -v",
+        )
+        self.assertIn("this migratetype list is empty", out)
+
+    def test_kl_buddy_freelist_requires_a_full_list_spec(self) -> None:
+        out = self.invoke("kl-buddy", "freelist -v")
+        self.assertIn("needs -z/--zone, -o/--order and -m/--mtype", out)
+
+    def test_kl_buddy_bare_address_is_info(self) -> None:
+        # `kl-slab` accepts a bare address; so does `kl-buddy`.
+        out = self.invoke("kl-buddy", "pfn:0x400")
+        self.assertIn("Status: free", out)
 
     def test_kdmabuf(self) -> None:
         out = self.invoke("kl-kdmabuf")
