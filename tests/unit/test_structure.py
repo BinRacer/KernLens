@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import ast
+import io
 import pathlib
+import tokenize
 import unittest
 
 from kernlens import BitOps, IntCodec, IntFmt, KAddr, KPageTable, Logger, Palette
@@ -318,6 +320,33 @@ class ToolsLayoutTests(unittest.TestCase):
         self.assertNotIn("0x90", text)
         self.assertNotIn("0x60", text)
         self.assertNotIn('"bpftool"', text)
+
+    def test_range_deriver_lives_under_tools(self) -> None:
+        self.assertTrue((ROOT / "tools" / "abi_ranges.py").is_file())
+        package = SRC / "kernlens"
+        self.assertFalse((package / "abi_ranges.py").exists())
+
+    def test_range_deriver_reuses_the_registry(self) -> None:
+        text = (ROOT / "tools" / "abi_ranges.py").read_text(encoding="utf-8")
+        # It reads the registry to report which rows are missing, and it
+        # must not hard-code an offset: the whole point is that the values
+        # come from a probed kernel, never from the source text.  Only the
+        # *code* is checked -- the docstring legitimately quotes the
+        # measured 0x18 to explain what the tool is for.
+        self.assertIn("from kernlens.gdb import layouts", text)
+        self.assertIn("layouts.lookup", text)
+        code = self._code_without_strings(text)
+        self.assertNotRegex(code, r"0x[0-9a-fA-F]{2,}")
+
+    @staticmethod
+    def _code_without_strings(text: str) -> str:
+        """Return *text* with comments and string literals removed."""
+        pieces: list[str] = []
+        for token in tokenize.generate_tokens(io.StringIO(text).readline):
+            if token.type in (tokenize.COMMENT, tokenize.STRING):
+                continue
+            pieces.append(token.string)
+        return " ".join(pieces)
 
 
 if __name__ == "__main__":

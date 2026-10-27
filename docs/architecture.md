@@ -395,7 +395,10 @@ fallback report, and the cached BTF handle.
 Only the *loaded* image's BTF is consulted -- never the host's -- so a
 cross-kernel session cannot silently borrow the wrong layout.
 `tools/gen_layouts.py` regenerates and verifies the registry against a
-real kernel.
+real kernel, and `tools/abi_ranges.py` reads a local `linux-stable`
+clone to report which release ranges need a row of their own (a member
+list is an upper bound on change -- it says where to probe, not what the
+value is).
 
 ### `commands/`
 

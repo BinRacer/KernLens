@@ -776,6 +776,24 @@ uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux   # 报告
 
 `--check` 在发现任何偏差时以非零码退出，可用于 CI 中守护表的更新。
 
+`tools/abi_ranges.py` 负责决定**哪些内核版本需要单独一行**。
+这些结构体跨版本发生过变化，所以「用某一个内核验证过的一行」
+对另一个内核是**静默错误**的：注册表里的 `struct slab.slab_cache`
+取自 7.0 内核，在所有版本上都报 `0x8`，而 5.17–6.1 实际是 `0x18`。
+该工具读取本地 `linux-stable` 仓库，把每个版本的
+结构体体按一组 `CONFIG_*` 求值成**扁平成员序**，
+然后报告成员序不变的区间：
+
+```console
+uv run python tools/abi_ranges.py struct slab
+uv run python tools/abi_ranges.py --with-layouts --since v5.15 struct kmem_cache
+uv run python tools/abi_ranges.py --config-file /boot/config-$(uname -r)
+```
+
+它需要一份 `linux-stable` 检出（`--repo` 或 `$KERNLENS_LINUX_STABLE`），
+且只做**侦察**而非**定值**：成员序只说明哪些版本发生了变化，
+不说明新偏移是多少——具体数值仍要用 `gen_layouts.py` 从真实内核取得。
+
 ## 许可证
 
 GPL-3.0-or-later，见 [`LICENSE`](LICENSE)。
