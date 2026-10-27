@@ -58,7 +58,7 @@ class RegistryLookupTests(unittest.TestCase):
         )
 
     def test_sizeof(self) -> None:
-        self.assertEqual(layouts.sizeof("struct zone"), 0x6C0)
+        self.assertEqual(layouts.sizeof("struct zone", (7, 0, 0)), 0x6C0)
         self.assertEqual(layouts.sizeof("struct prb_desc"), 0x18)
         self.assertEqual(layouts.sizeof("struct printk_info"), 0x70)
         self.assertIsNone(layouts.sizeof("struct not_a_struct"))
@@ -74,14 +74,22 @@ class RegistryLookupTests(unittest.TestCase):
 
 
 class VerifiedValueTests(unittest.TestCase):
-    """Every value was read from the BTF of a Linux 7.0.0-38 (x86_64)."""
+    """Every value carries the kernel it was read from.
 
-    def test_verified_kernel_marker(self) -> None:
+    Bands are ordered **newest first**, so the unversioned lookup (no
+    debug info, no banner) returns the most recent layout instead of the
+    oldest.  Each band is pinned against its own probe below.
+    """
+
+    def test_verified_kernel_marker_names_both_probes(self) -> None:
+        self.assertIn("6.1.134", layouts.VERIFIED_KERNEL)
         self.assertIn("7.0", layouts.VERIFIED_KERNEL)
 
-    def test_kmem_cache(self) -> None:
+    def test_kmem_cache_7_0_band(self) -> None:
+        # Host BTF, and the band the unversioned lookup must pick.
         entry = layouts.lookup("struct kmem_cache")
         assert entry is not None
+        self.assertTrue(entry.variants[0].matches((7, 0, 0), None))
         self.assertEqual(
             dict(entry.variants[0].fields),
             {
@@ -91,6 +99,32 @@ class VerifiedValueTests(unittest.TestCase):
             },
         )
 
+    def test_kmem_cache_6_1_band(self) -> None:
+        # 6.1.134 DWARF: the four fields that moved after the reorder.
+        self.assertEqual(
+            layouts.offset("struct kmem_cache", "name", (6, 1, 134)),
+            0x60,
+        )
+        self.assertEqual(
+            layouts.offset("struct kmem_cache", "oo", (6, 1, 134)), 0x34,
+        )
+        self.assertEqual(
+            layouts.offset("struct kmem_cache", "align", (6, 1, 134)),
+            0x54,
+        )
+        self.assertEqual(
+            layouts.offset("struct kmem_cache", "list", (6, 1, 134)),
+            0x68,
+        )
+
+    def test_kmem_cache_versions_in_one_band_agree(self) -> None:
+        # 6.6 and 6.12 share 6.1's layout, so one row describes all three.
+        for version in ((6, 1, 134), (6, 6, 0), (6, 12, 0), (6, 17, 0)):
+            self.assertEqual(
+                layouts.offset("struct kmem_cache", "name", version), 0x60,
+                version,
+            )
+
     def test_dma_buf(self) -> None:
         entry = layouts.lookup("struct dma_buf")
         assert entry is not None
@@ -99,10 +133,43 @@ class VerifiedValueTests(unittest.TestCase):
         self.assertEqual(fields["exp_name"], 0x40)
         self.assertEqual(fields["list_node"], 0x60)
 
-    def test_page_and_slab(self) -> None:
-        self.assertEqual(layouts.offset("struct page", "lru"), 0x08)
-        self.assertEqual(layouts.offset("struct page", "_mapcount"), 0x30)
-        self.assertEqual(layouts.offset("struct slab", "slab_cache"), 0x08)
+    def test_page_never_moved(self) -> None:
+        for version in ((4, 19, 0), (6, 1, 134), (7, 0, 0)):
+            self.assertEqual(
+                layouts.offset("struct page", "lru", version), 0x08,
+            )
+            self.assertEqual(
+                layouts.offset("struct page", "_mapcount", version), 0x30,
+                version,
+            )
+
+    def test_slab_moved_at_6_2(self) -> None:
+        # The bug this table had: one unversioned row said 0x08 everywhere.
+        self.assertEqual(
+            layouts.offset("struct slab", "slab_cache", (6, 1, 134)),
+            0x18,
+        )
+        for version in ((6, 2, 0), (6, 6, 0), (7, 0, 0)):
+            self.assertEqual(
+                layouts.offset("struct slab", "slab_cache", version), 0x08,
+                version,
+            )
+
+    def test_zone_size_is_banded(self) -> None:
+        # The buddy walk strides by this, so a wrong value is not cosmetic.
+        self.assertEqual(layouts.sizeof("struct zone", (6, 1, 134)), 0x600)
+        self.assertEqual(layouts.sizeof("struct zone", (7, 0, 0)), 0x6C0)
+
+    def test_zone_band_starts_where_the_member_list_changed(self) -> None:
+        # 5.14 renamed `pageset` to `per_cpu_pageset`/`per_cpu_zonestats`, so
+        # 5.14-6.3 share 6.1's layout and 6.1's size cannot speak for 5.13.
+        self.assertEqual(layouts.sizeof("struct zone", (5, 14, 0)), 0x600)
+        self.assertEqual(layouts.sizeof("struct zone", (6, 3, 0)), 0x600)
+
+    def test_a_banded_size_is_not_answered_outside_its_bands(self) -> None:
+        # 5.13 is below every band; the neighbouring band's stride must not
+        # be handed out (a wrong stride is worse than none).
+        self.assertIsNone(layouts.sizeof("struct zone", (5, 13, 0)))
 
     def test_printk_nested_paths(self) -> None:
         self.assertEqual(

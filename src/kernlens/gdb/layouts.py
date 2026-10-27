@@ -34,8 +34,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping
 
-#: The kernel the table's numbers were verified against.
-VERIFIED_KERNEL = "Linux 7.0.0-38-generic (x86_64, CONFIG_SECURITY=y)"
+#: The kernels the table's numbers were read from.  Every band records
+#: which probe produced it, because a value nobody measured is a guess.
+VERIFIED_KERNEL = (
+    "Linux 6.1.134 (x86_64, this project's test VM, DWARF) and "
+    "Linux 7.0.0-38-generic (x86_64, CONFIG_SECURITY=y, host BTF)"
+)
 
 #: ``CONFIG_*`` predicate: ``"y"`` requires the option set, ``"n"``
 #: requires it unset, anything else must match the value exactly.
@@ -56,6 +60,11 @@ class StructVariant:
     #: Optional inclusive lower/upper bound on the kernel version.
     version_min: Version | None = None
     version_max: Version | None = None
+    #: Optional ``sizeof`` for this band, when the struct's size moved.
+    #: A variant that declares any size makes the bands authoritative
+    #: for that name, so a release no band covers gets no answer instead
+    #: of the neighbouring band's (see :meth:`StructLayout.resolved_size`).
+    sizes: Mapping[str, int] = field(default_factory=dict)
 
     def matches(
         self, version: Version | None, config: Mapping[str, str] | None,
@@ -116,10 +125,22 @@ class StructLayout:
         self, name: str, version: Version | None,
         config: Mapping[str, str] | None,
     ) -> int | None:
-        """Return a named ``sizeof`` for the first matching variant."""
-        for variant in self.variants:
-            if variant.matches(version, config) and name in self.sizes:
-                return self.sizes[name]
+        """Return a named ``sizeof`` for the matching band, or ``None``.
+
+        Two storage styles, and the precedence matters.  When no variant
+        declares a size, the layout-level :attr:`sizes` map is the whole
+        answer (it is unversioned, which is fine for a struct whose size
+        never moved).  As soon as one variant declares sizes, the bands
+        own that name: only a *matching* band answers, and an uncovered
+        release yields ``None`` rather than the neighbouring band's
+        number -- a wrong stride is worse than a missing one.
+        """
+        declaring = [v for v in self.variants if name in v.sizes]
+        if not declaring:
+            return self.sizes.get(name)
+        for variant in declaring:
+            if variant.matches(version, config):
+                return variant.sizes[name]
         return None
 
 
@@ -131,19 +152,66 @@ _LAYOUTS: tuple[StructLayout, ...] = (
     StructLayout(
         type_name="struct kmem_cache",
         origin_version="v2.6.23",
-        origin_path="mm/slab.h / mm/slub.c",
+        origin_path="mm/slab.h / mm/slub.h",
         variants=(
             StructVariant(
                 note=(
-                    "SLUB kmem_cache; 6.11+ adds reciprocal_size before "
-                    "offset and cpu_sheaves at +0"
+                    "7.0 probe (host BTF).  `cpu_sheaves` replaced "
+                    "`cpu_slab` at +0 in 6.18 and `node[]` became "
+                    "`per_node[]` in 7.1, but both sit after every field "
+                    "read here."
                 ),
+                version_min=(6, 18),
                 fields={
                     "name": 0x58,
                     "size": 0x18,
                     "object_size": 0x1C,
                     "offset": 0x28,
                     "oo": 0x30,
+                    "align": 0x4C,
+                    "flags": 0x08,
+                    "list": 0x60,
+                },
+            ),
+            StructVariant(
+                note=(
+                    "6.1.134 probe (DWARF).  One band covers 5.19-6.17: "
+                    "6.12 only moved the definition from slub_def.h to "
+                    "mm/slab.h, and `cpu_slab` (read by slub.py) is "
+                    "still at +0 until 6.18.  The earlier releases also "
+                    "had `max` after `oo`; that is past every field here."
+                ),
+                version_min=(5, 19),
+                version_max=(6, 18),
+                fields={
+                    "name": 0x60,
+                    "size": 0x18,
+                    "object_size": 0x1C,
+                    "offset": 0x28,
+                    "oo": 0x34,
+                    "align": 0x54,
+                    "flags": 0x08,
+                    "list": 0x68,
+                },
+            ),
+            StructVariant(
+                note=(
+                    "Pre-5.9 layout: no `reciprocal_size`, so everything "
+                    "from `offset` on sits one word earlier.  NOT probed "
+                    "-- derived from the member order in this project's "
+                    "linux-stable clone (`tools/abi_ranges.py`), which "
+                    "shows the only change between 3.6 and 5.15 is the "
+                    "insertion of `reciprocal_size` before `offset`.  "
+                    "Verify with `gen_layouts.py --vmlinux` before "
+                    "trusting it."
+                ),
+                version_max=(5, 9),
+                fields={
+                    "name": 0x58,
+                    "size": 0x18,
+                    "object_size": 0x1C,
+                    "offset": 0x20,
+                    "oo": 0x2C,
                     "align": 0x4C,
                     "flags": 0x08,
                     "list": 0x60,
@@ -249,11 +317,31 @@ _LAYOUTS: tuple[StructLayout, ...] = (
         variants=(
             StructVariant(
                 note=(
-                    "6.11+ `memdesc_flags_t` rename moved slab_cache from "
-                    "+0x18 to +0x8"
+                    "7.0 probe (host BTF): `slab_cache` moved to +0x8 "
+                    "when the union was reordered at 6.2.  The 6.5-6.9 "
+                    "`freelist_counter` union and 6.10's `__page_type` "
+                    "rename do not move any field read here, and the "
+                    "struct ended up 0x40 from 6.10."
                 ),
+                version_min=(6, 2),
                 fields={
                     "slab_cache": 0x08,
+                    "slab_list": 0x10,
+                    "freelist": 0x20,
+                    "counters": 0x28,
+                },
+            ),
+            StructVariant(
+                note=(
+                    "6.1.134 probe (DWARF): `slab_list` is the first "
+                    "union word, so `slab_cache` is the third (+0x18).  "
+                    "Spans 5.17-6.1; the struct does not exist before "
+                    "5.17."
+                ),
+                version_max=(6, 2),
+                fields={
+                    "slab_cache": 0x18,
+                    "slab_list": 0x08,
                     "freelist": 0x20,
                     "counters": 0x28,
                 },
@@ -268,13 +356,35 @@ _LAYOUTS: tuple[StructLayout, ...] = (
         variants=(
             StructVariant(
                 note=(
-                    "watermarks + per-CPU pageset; 6.x grows 0x600 -> "
-                    "0x6c0 with CMA / reserved-highatomic counters"
+                    "7.0 probe (host BTF): a larger page-set/compact block "
+                    "before the (unchanged) +0x100 `free_area` grows the "
+                    "struct to 0x6c0.  Also the value used for 6.4-6.18, "
+                    "because the size was not probed per release -- "
+                    "re-verify with `gen_layouts.py --vmlinux` if a "
+                    "6.4-6.12 kernel relies on it."
                 ),
+                version_min=(6, 4),
                 fields={"free_area": 0x100},
+                sizes={"struct zone": 0x6C0},
+            ),
+            StructVariant(
+                note=(
+                    "6.1.134 probe (DWARF), and the size the buddy walk "
+                    "strides by: `free_area` is at +0x100 and the struct "
+                    "is 0x600.  The layout between the watermarks and "
+                    "`free_area` changed at 6.4 (compact controls) but "
+                    "`free_area` did not move.  5.14 is the lower bound "
+                    "because that release renamed `pageset` to "
+                    "`per_cpu_pageset` + `per_cpu_zonestats`; the member "
+                    "list is byte-identical from 5.14 to 6.3 "
+                    "(`tools/abi_ranges.py`)."
+                ),
+                version_min=(5, 14),
+                version_max=(6, 4),
+                fields={"free_area": 0x100},
+                sizes={"struct zone": 0x600},
             ),
         ),
-        sizes={"struct zone": 0x6C0},
     ),
     StructLayout(
         type_name="struct printk_ringbuffer",
@@ -423,10 +533,7 @@ def sizeof(
     layout = _BY_TYPE.get(type_name)
     if layout is None:
         return None
-    resolved = layout.resolved_size(type_name, version, config or None)
-    if resolved is not None:
-        return resolved
-    return layout.sizes.get(type_name)
+    return layout.resolved_size(type_name, version, config or None)
 
 
 def type_names() -> tuple[str, ...]:
