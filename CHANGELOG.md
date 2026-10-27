@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Four commands gained an option that previously lived on a sibling
+  command, so a task no longer needs a detour through the other one.
+  Every addition is opt-in: the existing invocations, defaults, and
+  output are unchanged, and pwndbg-derived help stays identical.
+
+  - `kl-walk --pgd <table>` (short `-p`) walks a top-level table other
+    than the live CR3, so a saved or foreign root can be followed
+    without switching to its task.  It is the same option `kl-pagewalk`
+    already had.
+  - `kl-page --verbose` (short `-v`) adds the full `kl-addr` analysis
+    (canonicality, alignment, tags) to the classification output.
+  - `kl-bt --chain` selects the compact `kl-chain` presentation, and the
+    1-128 depth limit both commands share is now validated once.
+  - `kl-kbase --text <addr>` and `kl-kbase --offset <slide>` set the
+    KASLR slide at the point where `kl-kbase` already reports
+    `kaslr=+0x...`; they are the equivalents of `kl-kaslr` and
+    `kl-kaslr-offset`, both of which are kept.  They are registered as a
+    mutually exclusive pair and, like the other KernLens-only `kbase`
+    extras, hidden from `--help` (documented in the `Notes` section
+    instead) so the pwndbg option surface is unchanged.
+
 ### Fixed
 
 - Loading KernLens no longer silently hands a command to another plugin.

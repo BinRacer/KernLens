@@ -411,6 +411,18 @@ def kernlens_sym(address: int) -> None:
     )
 
 
+def _valid_depth(depth: int) -> bool:
+    """Report and reject a frame count outside 1-128.
+
+    Shared by ``kl-bt`` and its ``--chain`` view so the limit is stated
+    once instead of once per command.
+    """
+    if 1 <= depth <= 128:
+        return True
+    print(message.error("depth must be between 1 and 128"))
+    return False
+
+
 _bt_parser = argparse.ArgumentParser(
     description="Prints a formatted kernel backtrace."
 )
@@ -418,17 +430,27 @@ _bt_parser.add_argument(
     "depth", nargs="?", type=int, default=8,
     help="maximum frames, 1-128 (default 8)",
 )
+_bt_parser.add_argument(
+    "--chain", action="store_true",
+    help="print the compact caller <- callee chain instead of the frames",
+)
 
 
 @Command(
     _bt_parser,
     category=CommandCategory.MEMORY,
     aliases=["kl-bt"],
-    examples="kl-bt\nkl-bt 24",
+    examples="kl-bt\nkl-bt 24\nkl-bt 24 --chain",
+    notes=(
+        "``--chain`` selects the ``kl-chain`` presentation, so the compact "
+        "view is reachable from the backtrace command itself."
+    ),
 )
-def kernlens_bt(depth: int = 8) -> None:
-    if not 1 <= depth <= 128:
-        print(message.error("depth must be between 1 and 128"))
+def kernlens_bt(depth: int = 8, chain: bool = False) -> None:
+    if not _valid_depth(depth):
+        return
+    if chain:
+        print(kdbg.color_chain(kdbg.chain(depth)))
         return
     try:
         frame = gdb.newest_frame()
@@ -456,8 +478,7 @@ _chain_parser.add_argument(
     examples="kl-chain\nkl-chain 12",
 )
 def kernlens_chain(depth: int = 8) -> None:
-    if not 1 <= depth <= 128:
-        print(message.error("depth must be between 1 and 128"))
+    if not _valid_depth(depth):
         return
     print(kdbg.color_chain(kdbg.chain(depth)))
 

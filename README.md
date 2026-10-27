@@ -231,17 +231,17 @@ arguments, and examples.  The full command table follows.
 | `kernlens-help [command]` | `kl-help` | list commands or explain one in detail |
 | `kernlens-status` | `kl-status` | version, color, KASLR, `_text`, layout bases, topology |
 | `kernlens-slab <list\|info\|contains\|details> [arg] [--verbose] [--cpu <id>] [--node <id>] [--partial] [--active]` | `kl-slab` | SLUB caches: `list`/`info`/`contains` (pwndbg form), `details` for the granular inspector; a bare address prints a cache's slab |
-| `kernlens-page <address>` | `kl-page` | classify an address; translate direct-map addresses |
+| `kernlens-page <address> [--verbose]` | `kl-page` | classify an address; translate direct-map addresses |
 | `kernlens-pte <page-table-entry> [virtual-address]` | `kl-pte` | decode PTE flags; show 4K/2M/1G leaf translations |
 | `kernlens-sym <address>` | `kl-sym` | resolve an address to symbol and source line |
-| `kernlens-bt [depth]` | `kl-bt` | formatted kernel backtrace |
+| `kernlens-bt [depth] [--chain]` | `kl-bt` | formatted kernel backtrace; `--chain` for the compact view |
 | `kernlens-chain [depth]` | `kl-chain` | compact `caller <- callee` chain |
 | `kernlens-read <address> [count] [--mode ascii]` | `kl-read` | dump 64-bit words with symbols; `--mode ascii` for bytes |
 | `kernlens-kvar <symbol>` | `kl-kvar` | read a KASLR-aware kernel global |
 | `kernlens-read-field <address> <type> <path>` | `kl-read-field` | read a struct field as an integer |
 | `kernlens-addr <address> [tag-mask]` | `kl-addr` | full KAddr analysis, including ERR_PTR/tags |
 | `kernlens-pt <virtual-address>` | `kl-pt` | 4/5-level page-table indices and huge-page bases |
-| `kernlens-walk <virtual-address> [4\|5]` | `kl-walk` | walk live page tables (CR3) and decode every level |
+| `kernlens-walk <virtual-address> [4\|5] [--pgd <table>]` | `kl-walk` | walk live page tables (CR3) and decode every level |
 | `kernlens-pagewalk <vaddr> [--pgd <table>]` | `kl-pagewalk` | pwndbg-style page walk (deepest level first) |
 | `kernlens-bits <value> [bit-index]` | `kl-bits` | BitOps popcount/scan and bit operations |
 | `kernlens-int <value> [width]` | `kl-int` | signed/unsigned and LE/BE integer views |
@@ -326,8 +326,11 @@ status      : kernel running
 `kl-kbase` is the lower-level diagnostic form of the same detector: it
 prints the base without changing state unless `--set` is given, and can
 also print the physical address with `--verbose` (pwndbg's name for the
-same output).  The manual overrides `kl-kaslr` and `kl-kaslr-offset`
-remain available for cases where the IDT cannot be read.
+same output).  The hidden `--text <addr>` and `--offset <slide>` extras
+set the slide here, at the point where the report already shows
+`kaslr=+0x...`; they are the equivalents of the manual overrides
+`kl-kaslr` and `kl-kaslr-offset`, which remain available for cases where
+the IDT cannot be read.
 
 The detector follows the same idea as pwndbg's `kbase`: the live IDT gate
 for exception 0 points at `asm_exc_divide_error` in kernel `.text`.

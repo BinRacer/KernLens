@@ -118,6 +118,19 @@ hide(_kbase_parser.add_argument(
     "-i", "--idt", nargs="?", type=int, const=16, default=None,
     metavar="COUNT", dest="idt",
 ))
+# KernLens-only: fold kl-kaslr / kl-kaslr-offset into kbase so the slide
+# can be corrected where it is *reported* (kbase already prints
+# ``kaslr=+0x...``).  Hidden like the other extras, so the pwndbg help
+# surface is unchanged.
+_kbase_apply = _kbase_parser.add_mutually_exclusive_group()
+hide(_kbase_apply.add_argument(
+    "--text", type=parse_int_arg, default=None, metavar="ADDR",
+    help="set the KASLR slide from a runtime _text address",
+))
+hide(_kbase_apply.add_argument(
+    "--offset", type=parse_int_arg, default=None, metavar="SLIDE",
+    help="set the KASLR slide directly (e.g. 0x18e00000)",
+))
 
 
 @Command(
@@ -131,8 +144,11 @@ hide(_kbase_parser.add_argument(
     ),
     notes=(
         "KernLens extras (hidden from --help): ``-s/--set`` applies the "
-        "derived KASLR slide to the session and ``-i/--idt [count]`` dumps "
-        "the interrupt descriptor table."
+        "derived KASLR slide to the session, ``-i/--idt [count]`` dumps "
+        "the interrupt descriptor table, and ``--text <addr>`` / "
+        "``--offset <slide>`` set the slide here (the equivalents of "
+        "``kl-kaslr`` and ``kl-kaslr-offset``), which is convenient "
+        "because the report above already prints ``kaslr=+0x...``."
     ),
 )
 def kernlens_kbase(
@@ -141,9 +157,17 @@ def kernlens_kbase(
     phys: bool = False,
     set_offset: bool = False,
     idt: int | None = None,
+    text: int | None = None,
+    offset: int | None = None,
 ) -> None:
     if idt is not None:
         _dump_idt(idt)
+        return
+    if text is not None:
+        kernlens_kaslr(text)
+        return
+    if offset is not None:
+        kernlens_kaslr_offset(offset)
         return
     result = kdbg.find_kbase()
     if result is None:

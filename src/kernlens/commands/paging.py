@@ -135,15 +135,27 @@ _page_parser = argparse.ArgumentParser(
 _page_parser.add_argument(
     "address", type=parse_int_arg, help="address or GDB expression to classify",
 )
+_page_parser.add_argument(
+    "-v", "--verbose", action="store_true",
+    help="add the full KAddr analysis (canonicality, alignment, tags)",
+)
 
 
 @Command(
     _page_parser,
     category=CommandCategory.PAGING,
     aliases=["kl-page"],
-    examples="kl-page 0xffff888000001000",
+    examples="kl-page 0xffff888000001000\nkl-page 0xffff888000001000 --verbose",
+    notes=(
+        "``-v/--verbose`` delegates to the ``kl-addr`` analysis, so the "
+        "full breakdown is available without knowing which of the two "
+        "commands reports more."
+    ),
 )
-def kernlens_page(address: int) -> None:
+def kernlens_page(address: int, verbose: bool = False) -> None:
+    if verbose:
+        kernlens_addr(address)
+        return
     page_offset = page_offset_base()
     vmemmap = vmemmap_base()
     text = _runtime_text()
@@ -295,17 +307,32 @@ _walk_parser.add_argument(
     "mode", nargs="?", choices=["4", "5"], default=None,
     help="force 4-level or 5-level paging (default: auto)",
 )
+_walk_parser.add_argument(
+    "-p", "--pgd", dest="root", type=parse_int_arg, default=None,
+    help="top-level table to start from (default: the live CR3)",
+)
 
 
 @Command(
     _walk_parser,
     category=CommandCategory.PAGING,
     aliases=["kl-walk"],
-    examples="kl-walk 0xffff888000001234\nkl-walk 0xffff800000201234 5",
+    examples=(
+        "kl-walk 0xffff888000001234\n"
+        "kl-walk 0xffff800000201234 5\n"
+        "kl-walk 0xffff888000001234 --pgd 0x10000"
+    ),
+    notes=(
+        "``-p/--pgd`` walks a table other than the live CR3 -- a saved or "
+        "foreign root, so a page table of another task can be followed "
+        "without switching to it."
+    ),
 )
-def kernlens_walk(va: int, mode: str | None = None) -> None:
+def kernlens_walk(
+    va: int, mode: str | None = None, root: int | None = None,
+) -> None:
     five_level = None if mode is None else mode == "5"
-    walk = kdbg.walk(va, five_level=five_level)
+    walk = kdbg.walk(va, five_level=five_level, root=root)
     indent = IndentContextManager()
     indent.print(indent.prefix("VA") + ": " + indent.addr_hex(walk.va))
     indent.print(

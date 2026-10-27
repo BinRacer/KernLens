@@ -223,17 +223,17 @@ try   : kl-help walk   (detailed help and examples)
 | `kernlens-help [command]`          | `kl-help`         | 列出命令，或查看某个命令的详细帮助            |
 | `kernlens-status`                  | `kl-status`       | 版本、颜色、KASLR、`_text`、布局基址、拓扑    |
 | `kernlens-slab <list\|info\|contains\|details> [arg] [--verbose] [--cpu <id>] [--node <id>] [--partial] [--active]` | `kl-slab` | SLUB cache：`list` / `info` / `contains`（pwndbg 形式）、`details` 细粒度 inspector；直接跟地址则打印该 slab |
-| `kernlens-page <address>`          | `kl-page`         | 地址分类；直接映射地址还会翻译物理地址和 page |
+| `kernlens-page <address> [--verbose]` | `kl-page`      | 地址分类；直接映射地址还会翻译物理地址和 page |
 | `kernlens-pte <page-table-entry> [virtual-address]` | `kl-pte` | 解码 PTE 标志；按 4K/2M/1G 三种 leaf 给出翻译 |
 | `kernlens-sym <address>`           | `kl-sym`          | 将地址解析为符号和源码位置                    |
-| `kernlens-bt [depth]`              | `kl-bt`           | 格式化内核调用栈                              |
+| `kernlens-bt [depth] [--chain]`    | `kl-bt`           | 格式化内核调用栈；`--chain` 输出紧凑调用链    |
 | `kernlens-chain [depth]`           | `kl-chain`        | 紧凑的 `caller <- callee` 调用链              |
 | `kernlens-read <address> [count] [--mode ascii]`  | `kl-read`         | 按 64 位字 dump 内存；`--mode ascii` 输出字节             |
 | `kernlens-kvar <symbol>`           | `kl-kvar`         | 读取 KASLR 感知的内核全局变量                 |
 | `kernlens-read-field <address> <type> <path>` | `kl-read-field` | 读取结构体字段（整数）              |
 | `kernlens-addr <address> [tag-mask]` | `kl-addr`       | 完整 KAddr 分析，包括 ERR_PTR/tag             |
 | `kernlens-pt <virtual-address>`    | `kl-pt`           | 4/5 级页表索引和大页基址                      |
-| `kernlens-walk <virtual-address> [4\|5]` | `kl-walk`   | 按 CR3 实际走页表并解码每一级                 |
+| `kernlens-walk <virtual-address> [4\|5] [--pgd <table>]` | `kl-walk`   | 按 CR3 实际走页表并解码每一级                 |
 | `kernlens-pagewalk <vaddr> [--pgd <table>]` | `kl-pagewalk` | pwndbg 风格页表遍历（最深一级在前） |
 | `kernlens-bits <value> [bit-index]` | `kl-bits`        | BitOps popcount/扫描和位操作                  |
 | `kernlens-int <value> [width]`     | `kl-int`          | 有符号/无符号和 LE/BE 整数视图                |

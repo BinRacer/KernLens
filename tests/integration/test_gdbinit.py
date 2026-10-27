@@ -957,6 +957,27 @@ class RegistrationTests(GdbinitTestBase):
         self.assertIn("usage:", out)
         self.assertIn("--help", out)
 
+    def test_kbase_help_keeps_the_pwndbg_surface(self) -> None:
+        # ``kbase`` is a pwndbg port, so every KernLens-only flag has to
+        # stay hidden: the help must show exactly pwndbg's options.  The
+        # extras are advertised in the Notes instead.
+        out = self.invoke("kl-kbase", "--help")
+        for option in ("-r, --rebase", "-v, --verbose"):
+            self.assertIn(option, out)
+        for option in ("--text", "--offset", "--set", "--phys", "--idt"):
+            self.assertNotIn(option, out.split("Examples:")[0])
+
+    def test_kbase_notes_advertise_the_hidden_extras(self) -> None:
+        out = self.invoke("kl-kbase", "--help")
+        self.assertIn("--text", out)
+        self.assertIn("--offset", out)
+
+    def test_walk_and_bt_help_show_their_new_flags(self) -> None:
+        # ``walk`` and ``bt`` are not pwndbg commands, so their new flags
+        # are ordinary, visible options.
+        self.assertIn("--pgd", self.invoke("kl-walk", "--help"))
+        self.assertIn("--chain", self.invoke("kl-bt", "--help"))
+
 
 class StatusTests(GdbinitTestBase):
     def test_status(self) -> None:
@@ -1023,6 +1044,33 @@ class PagingTests(GdbinitTestBase):
         self.assertIn("pgd", out)
         self.assertIn("Leaf", out)
         self.assertIn("4 KiB", out)
+
+    def test_walk_forwards_an_explicit_root(self) -> None:
+        # ``--pgd`` must reach ``kdbg.walk(root=...)`` so a foreign or
+        # saved root can be followed without switching to its task.
+        fake_kdbg.walk_value = self.walk()
+        out = self.invoke("kl-walk", f"{DIRECT_VIRT:#x} --pgd 0x20000")
+        self.assertIn("root=0x20000", out)
+
+    def test_walk_short_pgd_matches_pagewalk(self) -> None:
+        fake_kdbg.walk_value = self.walk()
+        self.assertIn("root=0x30000", self.invoke("kl-walk", f"{DIRECT_VIRT:#x} -p 0x30000"))
+
+    def test_walk_without_pgd_uses_the_live_root(self) -> None:
+        # The pre-existing behaviour: the fixture root is the live CR3.
+        fake_kdbg.walk_value = self.walk()
+        self.assertIn("root=0x10000", self.invoke("kl-walk", f"{DIRECT_VIRT:#x}"))
+
+    def test_page_verbose_delegates_to_addr(self) -> None:
+        out = self.invoke("kl-page", f"{DIRECT_VIRT:#x} --verbose")
+        self.assertIn("Canonical", out)
+        self.assertIn("Alignment", out)
+
+    def test_page_without_verbose_stays_compact(self) -> None:
+        # The default must not change: no Canonical/Alignment rows.
+        out = self.invoke("kl-page", f"{DIRECT_VIRT:#x}")
+        self.assertIn("Class", out)
+        self.assertNotIn("Canonical", out)
 
     def test_pagewalk(self) -> None:
         fake_kdbg.walk_value = self.walk()
@@ -1256,6 +1304,16 @@ class MemoryTests(GdbinitTestBase):
 
     def test_chain_defaults_to_eight_frames(self) -> None:
         self.assertIn("func_a <- func_b", self.invoke("kl-chain"))
+
+    def test_bt_chain_selects_the_compact_view(self) -> None:
+        out = self.invoke("kl-bt", "5 --chain")
+        self.assertIn("func_a <- func_b", out)
+        # It is the chain view, not the framed backtrace.
+        self.assertNotIn("bt: 5 frames", out)
+
+    def test_bt_chain_validates_the_depth(self) -> None:
+        out = self.invoke("kl-bt", "0 --chain")
+        self.assertIn("depth must be between 1 and 128", out)
 
     def test_sym_reports_an_unknown_address(self) -> None:
         out = self.invoke("kl-sym", "0x9999")
@@ -1582,6 +1640,23 @@ class KernelBaseTests(GdbinitTestBase):
     def test_kaslr_offset_masks_to_64_bits(self) -> None:
         self.invoke("kl-kaslr-offset", "0xffffffffffffffff")
         self.assertEqual(fake_kdbg.kaslr_offset, 0xFFFFFFFFFFFFFFFF)
+
+    def test_kbase_text_sets_the_slide(self) -> None:
+        # ``--text`` is the folded-in ``kl-kaslr``: the slide can be
+        # corrected where kbase reports it.
+        out = self.invoke("kl-kbase", f"--text {RUNTIME_TEXT:#x}")
+        self.assertIn("KASLR offset", out)
+        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+
+    def test_kbase_offset_sets_the_slide(self) -> None:
+        out = self.invoke("kl-kbase", f"--offset {KASLR_SLIDE:#x}")
+        self.assertIn("KASLR offset", out)
+        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+
+    def test_kbase_text_and_offset_are_mutually_exclusive(self) -> None:
+        fake_gdb.output.clear()
+        out = self.invoke("kl-kbase", "--text 0x1 --offset 0x2")
+        self.assertIn("not allowed with argument", out)
 
     def test_kaslr_reports_a_hint_when_a_slide_exists(self) -> None:
         out = self.invoke("kl-kbase")
