@@ -817,6 +817,26 @@ uv run python tools/gen_layouts.py --vmlinux /path/to/vmlinux   # report
 `--check` exits non-zero on any drift, so it can guard a table update in
 CI.
 
+`tools/abi_ranges.py` decides *which releases need their own row* before
+any of that.  The kernel has changed these structures across releases, so
+a row verified against one kernel is silently wrong for another -- the
+registry's `struct slab.slab_cache` was read from a 7.0 kernel and
+reports `0x8` on every release, while 5.17-6.1 really has `0x18`.  The
+tool reads a local `linux-stable` clone, resolves each release's struct
+body into a flat member list for one `CONFIG_*` set, and reports the
+ranges where that list is unchanged:
+
+```console
+uv run python tools/abi_ranges.py struct slab
+uv run python tools/abi_ranges.py --with-layouts --since v5.15 struct kmem_cache
+uv run python tools/abi_ranges.py --config-file /boot/config-$(uname -r)
+```
+
+It needs a `linux-stable` checkout (`--repo`, or `$KERNLENS_LINUX_STABLE`)
+and is a *scout*, not an oracle: a member list says which releases moved,
+never what the new offset is, so the values still have to come from
+`gen_layouts.py` on a real kernel.
+
 ## License
 
 GPL-3.0-or-later.  See [`LICENSE`](LICENSE).
