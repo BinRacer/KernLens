@@ -12,6 +12,39 @@ API, not how to trap the kernel — for that see
 | [`slab_snapshot.py`](slab_snapshot.py) | plain Python | a full slab report with no debugger at all |
 | [`gdbinit.example`](gdbinit.example) | `~/.gdbinit` | loading KernLens in every session |
 
+## Workflow tours
+
+Four scripts that drive a group of commands in the order an
+investigation actually uses them, rather than one command at a time.
+Each is a `gdb.Command`, so the whole tour is one word at the prompt, and
+each prints the command it is about to run so any line can be copied out
+and used alone.
+
+| Command | File | Covers |
+| --- | --- | --- |
+| `kfacts [symbol]` | [`kernel_facts.py`](kernel_facts.py) | `kl-kversion` `kl-kcmdline` `kl-kconfig` `kl-kchecksec` `kl-kmod` `kl-ksyscalls` `kl-klookup` `kl-kdmesg` |
+| `atour [addr]` | [`address_tour.py`](address_tour.py) | `kl-addr` `kl-page` `kl-pt` `kl-walk` `kl-pagewalk` `kl-pte` `kl-v2p` `kl-p2v` `kl-pageinfo` |
+| `stour [cache]` | [`slab_tour.py`](slab_tour.py) | `kl-slab` `kl-buddy` |
+| `ytour [symbol]` | [`symbols_tour.py`](symbols_tour.py) | `kl-klookup` `kl-sym` `kl-read` `kl-kvar` `kl-read-field` `kl-bt` `kl-chain` |
+
+**`kfacts`** starts from nothing and asks what the target is.  Run it
+before any other example: `CONFIG_SLAB_FREELIST_HARDENED=y` is the reason
+`stour` will show encoded freelist pointers, and `CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y`
+is the reason a fresh object reads as zeros.
+
+**`atour`** carries one address through all nine views.  The pair worth
+comparing is step 3 versus step 4: `kl-pt` is arithmetic and never fails,
+`kl-walk` reads memory and stops at the first absent entry, so an address
+that gets indices but no walk is unmapped.
+
+**`stour`** reads the allocator from the cache descriptor down to one
+object, and ends at the buddy order the slab itself occupies.
+
+**`ytour`** resolves a symbol, reads it raw, reads it typed, and prints
+the stack.  Step 1 returning eight symbols for `init_task` is expected --
+kallsyms is a substring search, so selecting by exact name is the
+caller's job.
+
 ## Start with `hello.py`
 
 It answers the two questions every new script hits:

@@ -8,9 +8,30 @@ streaming case see [`../tracing/`](../tracing/README.md).
 | --- | --- |
 | [`conditional.py`](conditional.py) | `kfree` is called on one specific object, and only then; it reports every other hit silently |
 | [`watchfield.py`](watchfield.py) | a struct field *becomes* a chosen value, e.g. a refcount reaches zero |
+| [`per_cpu.py`](per_cpu.py) | `schedule` runs on the CPU you asked for, and then reads *that* CPU's copy of a per-CPU variable |
 
-Both are commands, so they are used after the file is sourced, not by
+All three are commands, so they are used after the file is sourced, not by
 sourcing alone.
+
+## `per_cpu.py` — a breakpoint has to know which CPU it landed on
+
+```gdb
+(gdb) source /path/to/KernLens/examples/breakpoints/per_cpu.py
+(gdb) pbreak --cpu 2
+(gdb) continue
+```
+
+A per-CPU variable has one copy per CPU.  GDB shows a single "current"
+thread, so reading the symbol GDB knows gives you CPU 0's copy whichever
+CPU actually took the breakpoint -- wrong three times out of four on this
+target, and wrong silently.  `pbreak` resolves `kl-percpu current_task N`
+for every CPU, compares against what the kernel's own `current` points at,
+and then reports the matching one.
+
+It also prints the three commands that make per-CPU addressing legible
+(`kl-cpu`, `kl-percpu`, `kl-msr -l`) before installing the breakpoint,
+because `GS_BASE` and `TSC_AUX` are how the kernel finds the per-CPU area
+in the first place.
 
 ## `conditional.py` — break, test, decide
 

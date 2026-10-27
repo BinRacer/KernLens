@@ -169,29 +169,68 @@ def _leading_token(node: ast.AST) -> str:
     return ""
 
 
+def _executing_wrappers(tree: ast.AST) -> set[str]:
+    """Local functions that forward a string argument to ``gdb.execute``.
+
+    Examples wrap the call in a helper so each invocation can be echoed
+    before it runs -- ``_run("kl-base")`` reads better than the raw call
+    and, more importantly, a reader can copy the echoed line.  Without
+    this, every command behind a wrapper would be invisible and the
+    coverage number would be wrong in the pessimistic direction, which is
+    the opposite failure from the one that inflated the original estimate.
+
+    Only the direct, one-hop pattern is recognised: a function whose body
+    contains ``gdb.execute(<name>)`` for one of its own parameter names.
+    A wrapper that builds its command from other data is not guessed at.
+    """
+    wrappers: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        params = {a.arg for a in node.args.args + node.args.kwonlyargs}
+        for sub in ast.walk(node):
+            if (
+                isinstance(sub, ast.Call)
+                and isinstance(sub.func, ast.Attribute)
+                and sub.func.attr == "execute"
+                and sub.args
+                and isinstance(sub.args[0], ast.Name)
+                and sub.args[0].id in params
+            ):
+                wrappers.add(node.name)
+    return wrappers
+
+
 def executed_commands(path: pathlib.Path) -> set[str]:
     """Commands the script actually *runs*, not merely names.
 
-    Only the first argument of a ``gdb.execute(...)`` call counts.  This
-    is deliberately narrow: an example whose banner prints "try
+    Two call shapes count: a direct ``gdb.execute("kl-x")``, and a call
+    to a local wrapper that forwards its argument to ``gdb.execute``
+    (the ``_run("kl-x")`` pattern the tour examples use).
+
+    This is deliberately narrow.  An example whose banner prints "try
     ``kl-walk``" has not demonstrated ``kl-walk``, and treating the two
     the same is how the earlier "23 of 40 commands are covered" number
-    was inflated.  A dynamically built command (``f"kl-{name}"``) cannot
-    be resolved statically and is therefore not counted.
+    was inflated.  A command assembled dynamically (``f"kl-{name}"``)
+    cannot be resolved statically and is therefore not counted.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     canonical = set(canonical_commands())
     alias_to_canonical = {
         alias: name for name in canonical for alias in command_aliases(name)
     }
+    wrappers = _executing_wrappers(tree)
     found: set[str] = set()
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and node.args):
             continue
         func = node.func
-        if not (isinstance(func, ast.Attribute) and func.attr == "execute"):
+        if isinstance(func, ast.Attribute) and func.attr == "execute":
+            token = _leading_token(node.args[0])
+        elif isinstance(func, ast.Name) and func.id in wrappers:
+            token = _leading_token(node.args[0])
+        else:
             continue
-        token = _leading_token(node.args[0])
         if token in alias_to_canonical:
             found.add(alias_to_canonical[token])
     return found
@@ -221,6 +260,43 @@ def mentioned_commands(path: pathlib.Path) -> set[str]:
     return found
 
 
+def _local_names(tree: ast.AST) -> set[str]:
+    """Names bound by the script itself, rather than taken from the API.
+
+    A bare name is only a reference to a free function if the script did
+    not bind it first.  Without this the tour examples all appear to use
+    ``arg`` -- the facade's ``arg()`` helper for reading a register -- when
+    what they actually have is ``args = parser.parse_args(...)``, a local.
+    That false positive is worth excluding carefully rather than by
+    dropping the name from the surface, because ``arg()`` really is part
+    of the API and an example using it should be counted.
+    """
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            names.add(node.id)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            names.add(node.name)
+            for argument in (
+                node.args.posonlyargs + node.args.args + node.args.kwonlyargs
+            ):
+                names.add(argument.arg)
+            if node.args.vararg:
+                names.add(node.args.vararg.arg)
+            if node.args.kwarg:
+                names.add(node.args.kwarg.arg)
+        elif isinstance(node, ast.ClassDef):
+            names.add(node.name)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            names.add(node.name)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                names.add(alias.asname or alias.name.split(".")[0])
+        elif isinstance(node, ast.Global):
+            names.update(node.names)
+    return names
+
+
 def _references(path: pathlib.Path) -> tuple[set[str], set[str]]:
     """Return ``(qualified, bare)`` surface names referenced by a script.
 
@@ -229,9 +305,11 @@ def _references(path: pathlib.Path) -> tuple[set[str], set[str]]:
 
     Builtins are not filtered from ``bare``: a name only reaches the
     result if it is already a known surface name, so ``list`` and ``hex``
-    are excluded by construction rather than by a builtin list.
+    are excluded by construction rather than by a builtin list.  Names the
+    script binds itself are excluded too -- see :func:`_local_names`.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
+    bound = _local_names(tree)
     qualified: set[str] = set()
     bare: set[str] = set()
 
@@ -244,7 +322,8 @@ def _references(path: pathlib.Path) -> tuple[set[str], set[str]]:
             if base in CORE_CLASSES or base == "kdbg" or base in COMPONENTS:
                 qualified.add(f"{base}.{node.attr}")
         elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
-            bare.add(node.id)
+            if node.id not in bound:
+                bare.add(node.id)
 
     return qualified, bare
 
