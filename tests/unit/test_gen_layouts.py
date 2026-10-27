@@ -30,6 +30,81 @@ class BuildSpecTests(unittest.TestCase):
             self.assertEqual(paths, sorted(set(paths)))
 
 
+class ExpectedTypesTests(unittest.TestCase):
+    """The coverage check must not demand structs a release does not have.
+
+    This is the CI failure this class exists to prevent: a 7.0 runner was
+    asked for ``struct kmem_cache_cpu``, which the kernel replaced with
+    sheaves in that release, so a healthy probe was reported as broken.
+    """
+
+    def test_an_unknown_version_claims_everything(self) -> None:
+        # Nothing can be ruled out when the release is unidentified, so
+        # the strict reading is the safe one.
+        self.assertEqual(
+            gen_layouts.expected_types(None), set(layouts.type_names()),
+        )
+
+    def test_a_modern_release_does_not_claim_kmem_cache_cpu(self) -> None:
+        version = layouts.parse_version("Linux version 7.0.0")
+        expected = gen_layouts.expected_types(version)
+        self.assertNotIn("struct kmem_cache_cpu", expected)
+        self.assertIn("struct kmem_cache_node", expected)
+
+    def test_an_old_release_does_claim_kmem_cache_cpu(self) -> None:
+        version = layouts.parse_version("Linux version 6.1.134")
+        self.assertIn("struct kmem_cache_cpu", gen_layouts.expected_types(
+            version,
+        ))
+
+    def test_every_expected_type_is_a_registry_entry(self) -> None:
+        version = layouts.parse_version("Linux version 7.0.0")
+        self.assertLessEqual(
+            gen_layouts.expected_types(version), set(layouts.type_names()),
+        )
+
+    def test_expected_types_matches_what_compare_claims(self) -> None:
+        # The two must agree, or a struct could be silently exempt from
+        # both the coverage check and the offset check.
+        for text in ("Linux version 6.1.134", "Linux version 7.0.0"):
+            version = layouts.parse_version(text)
+            with self.subTest(version=text):
+                claimed = {
+                    entry.type_name for entry in layouts.entries()
+                    if any(v.matches(version, None) for v in entry.variants)
+                }
+                self.assertEqual(
+                    gen_layouts.expected_types(version), claimed,
+                )
+
+
+class CoverageCliTests(unittest.TestCase):
+    """``--coverage`` turns the expectation into an exit code."""
+
+    def _report_missing_cpu(self) -> dict:
+        return {
+            entry.type_name: {"fields": {}, "sizeof": None}
+            for entry in layouts.entries()
+            if entry.type_name != "struct kmem_cache_cpu"
+        }
+
+    def test_coverage_passes_on_a_complete_modern_report(self) -> None:
+        version = layouts.parse_version("Linux version 7.0.0")
+        expected = gen_layouts.expected_types(version)
+        report = {
+            name: {"fields": {}} for name in expected
+        }
+        self.assertEqual(expected - set(report), set())
+
+    def test_coverage_flags_a_struct_expected_but_not_probed(self) -> None:
+        version = layouts.parse_version("Linux version 6.1.134")
+        expected = gen_layouts.expected_types(version)
+        report = self._report_missing_cpu()
+        self.assertEqual(
+            sorted(expected - set(report)), ["struct kmem_cache_cpu"],
+        )
+
+
 class CompareTests(unittest.TestCase):
     """A report that matches the registry produces no differences."""
 
