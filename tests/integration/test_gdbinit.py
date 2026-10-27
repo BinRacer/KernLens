@@ -1425,6 +1425,44 @@ class MemoryTests(GdbinitTestBase):
         self.assertIn("Usercopy region offset: 0", out)
         self.assertIn(f"Usercopy region size: {KMALLOC_1K_SIZE}", out)
 
+    def test_slabs_info_default_has_no_extra_rows(self) -> None:
+        # The default block must stay pwndbg's, row for row: the extras
+        # only ever appear when their flag is given.
+        out = self.invoke("kl-slab", "info kmalloc-1k")
+        for label in ("inuse:", "random:", "reclaim:", "ctor:"):
+            with self.subTest(label=label):
+                self.assertNotIn(label, out)
+
+    def test_slabs_info_extra_flags_append_rows(self) -> None:
+        out = self.invoke(
+            "kl-slab", "info kmalloc-1k -i -r --reclaim --ctor",
+        )
+        self.assertIn("inuse:", out)
+        self.assertIn("random:", out)
+        self.assertIn("reclaim:", out)
+        self.assertIn("ctor:", out)
+
+    def test_slabs_info_inuse_flag_reports_the_stride(self) -> None:
+        out = self.invoke("kl-slab", "info kmalloc-1k -i")
+        self.assertIn(f"inuse: {KMALLOC_1K_SIZE}", out)
+
+    def test_slabs_info_reclaim_flag_reads_the_flag_bits(self) -> None:
+        cache = fake_kdbg.slab_cache("kmalloc-1k")
+        cache.flags = ("SLAB_RECLAIM_ACCOUNT",)
+        self.assertIn(
+            "reclaim: set", self.invoke("kl-slab", "info kmalloc-1k --reclaim"),
+        )
+        cache.flags = ()
+        self.assertIn(
+            "reclaim: clear",
+            self.invoke("kl-slab", "info kmalloc-1k --reclaim"),
+        )
+
+    def test_slabs_info_ctor_flag_reports_absence(self) -> None:
+        # `--ctor` must say "none" rather than print a zero address.
+        out = self.invoke("kl-slab", "info kmalloc-1k --ctor")
+        self.assertIn("ctor: none", out)
+
     def test_slabs_contains(self) -> None:
         out = self.invoke("kl-slab", f"contains {KMALLOC_1K_ADDR:#x}")
         self.assertIn("kmalloc-1k", out)

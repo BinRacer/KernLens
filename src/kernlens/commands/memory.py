@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 
 import gdb  # type: ignore[import-not-found]
 
@@ -69,12 +70,50 @@ _slab_parser.add_argument(
 _slab_parser.add_argument(
     "-a", "--active", action="store_true", help="displays the active list",
 )
+# KernLens-only extras for `info`.  They append rows to the default block
+# and never change it, so pwndbg parity holds when none is given.
+_slab_parser.add_argument(
+    "-i", "--inuse", action="store_true",
+    help="also show the object stride including metadata (with `info`)",
+)
+_slab_parser.add_argument(
+    "-r", "--random", action="store_true",
+    help="also show the freelist randomisation key (with `info`)",
+)
+_slab_parser.add_argument(
+    "--reclaim", action="store_true",
+    help="also show whether SLAB_RECLAIM_ACCOUNT is set (with `info`)",
+)
+_slab_parser.add_argument(
+    "--ctor", action="store_true",
+    help="also show the cache's constructor symbol (with `info`)",
+)
 # Legacy flag for the bare-address form (kept, hidden from --help).
 hide(_slab_parser.add_argument(
     "-d", "--detail", action="store_true", dest="detail",
 ))
 
 _SLAB_SUBCOMMANDS = ("list", "info", "contains", "details", "detail")
+
+
+@dataclass(frozen=True, slots=True)
+class _SlabExtras:
+    """KernLens-only `slab info` rows, off unless the user asks.
+
+    Grouped so the command body stays readable as the set grows, and so
+    the default output -- which is pwndbg's, row for row -- cannot be
+    changed by accident: every row here is appended after it.
+    """
+
+    inuse: bool = False
+    random: bool = False
+    reclaim: bool = False
+    ctor: bool = False
+
+    @property
+    def any(self) -> bool:
+        """Whether at least one extra row was requested."""
+        return self.inuse or self.random or self.reclaim or self.ctor
 
 
 @Command(
@@ -98,11 +137,19 @@ def kernlens_slab(
     partial: bool = False,
     active: bool = False,
     detail: bool = False,
+    inuse: bool = False,
+    random: bool = False,
+    reclaim: bool = False,
+    ctor: bool = False,
 ) -> None:
+    extras = _SlabExtras(
+        inuse=inuse, random=random, reclaim=reclaim, ctor=ctor,
+    )
     tokens = list(args or [])
     if tokens and tokens[0] in _SLAB_SUBCOMMANDS:
         _slab_dispatch(
             tokens[0], tokens[1:], verbose, cpu, node, partial, active,
+            extras,
         )
         return
     # Legacy form: the first token is an object/slab address.
@@ -124,6 +171,7 @@ def _slab_dispatch(
     node: int | None,
     partial: bool,
     active: bool,
+    extras: "_SlabExtras",
 ) -> None:
     """Run a pwndbg-parity ``slab`` subcommand from raw tokens."""
     if command == "list":
@@ -138,7 +186,9 @@ def _slab_dispatch(
         if not partial and not active:
             partial = active = True
         for name in tokens:
-            _slabs_info_cmd(name, verbose, cpu, node, partial, active)
+            _slabs_info_cmd(
+                name, verbose, cpu, node, partial, active, extras,
+            )
         return
     if command == "contains":
         if not tokens:
@@ -353,6 +403,63 @@ def _cache_field_u64(cache: int, field: str) -> int | None:
     return _safe_read_u64(cache + offset)
 
 
+def _slab_extra_rows(
+    indent: IndentContextManager,
+    cache: object,
+    extras: "_SlabExtras | None",
+) -> None:
+    """Append the KernLens-only `slab info` rows that were asked for.
+
+    Every row is *appended* after the pwndbg block, so the default output
+    stays byte-identical to pwndbg's.
+    """
+    if extras is None or not extras.any:
+        return
+    address = cache.address  # type: ignore[attr-defined]
+    if extras.inuse:
+        # `inuse` is the object stride including metadata; it differs
+        # from `object_size` only when the cache carries a constructor,
+        # poisoning, red zoning or an RCU type-safe marker.
+        indent.print(
+            indent.prefix("inuse") + ": "
+            + (
+                str(cache.inuse)  # type: ignore[attr-defined]
+                if getattr(cache, "inuse", None)
+                else message.warn("?")
+            )
+        )
+    if extras.random:
+        value = kdbg.freeptr_random(address)
+        indent.print(
+            indent.prefix("random") + ": "
+            + (indent.aux_hex(value) if value is not None else message.warn("?"))
+        )
+    if extras.reclaim:
+        flags = getattr(cache, "flags", ())
+        on = "SLAB_RECLAIM_ACCOUNT" in flags
+        indent.print(
+            indent.prefix("reclaim") + ": "
+            + (message.on("set") if on else message.off("clear"))
+            + "  (SLAB_RECLAIM_ACCOUNT)"
+        )
+    if extras.ctor:
+        offset = kdbg.u64(
+            "(unsigned long)&((struct kmem_cache *)0)->ctor"
+        )
+        pointer = (
+            _safe_read_u64(address + offset) if offset is not None else None
+        )
+        if not pointer:
+            indent.print(
+                indent.prefix("ctor") + ": " + message.off("none")
+            )
+        else:
+            indent.print(
+                indent.prefix("ctor") + ": " + indent.addr_hex(pointer)
+                + " " + message.notice(kdbg.sym(pointer))
+            )
+
+
 # =========================================================================
 # slab helper commands (list / info / contains bodies)
 # =========================================================================
@@ -385,6 +492,7 @@ def _slabs_info_cmd(
     node: int | None = None,
     partial: bool = False,
     active: bool = False,
+    extras: "_SlabExtras | None" = None,
 ) -> None:
     cache = kdbg.slab_cache(name)
     if cache is None:
@@ -427,6 +535,7 @@ def _slabs_info_cmd(
             indent.prefix("oo_order") + f": {cache.oo_order}"
             + f"  oo_objects={cache.oo_objects}"
         )
+        _slab_extra_rows(indent, cache, extras)
         # pwndbg displays the per-CPU active cache for `info` by default
         # (it forces --partial/--active on), so the per-CPU walk runs
         # unless the user narrowed the request to one CPU/node.
