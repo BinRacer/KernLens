@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Loading KernLens no longer silently hands a command to another plugin.
+  GDB does not protect command names: re-defining one replaces the
+  previous definition without an error (even a built-in), so whichever
+  plugin loads last wins.  `register_all()` previously swallowed the
+  "already exists" error and recorded the name as registered anyway,
+  which meant `kl-help` could list a command that actually ran someone
+  else's implementation.  Registration now asks GDB for the exact list of
+  pre-existing user commands (`help user-defined`) and reports any name
+  it does not own:
+
+  ```
+  kernlens: alias 'kl-bits' is already defined by another plugin; the
+  built-in definition is shadowed. Load KernLens last, or rename the
+  conflicting definition.
+  ```
+
+  - A name that is genuinely taken is left alone and is **not** added to
+    `command_names`, so `kl-help` never advertises a definition KernLens
+    does not control.  `framework.conflicts()` returns the shadowed names.
+  - Re-sourcing `gdbinit.py` stays silent: the owner of each name is
+    recorded in a session map on the `gdb` module itself (a reload builds
+    a fresh `framework` module, so the map cannot live there), and only a
+    name owned by something else is reported.
+  - `gdb.execute("help <name>")` was rejected as the probe: GDB's `help`
+    matches abbreviations *and* prefixes, so `kernlens-pt` also resolves
+    `kernlens-pte` and a bare `pt` resolves the built-in `ptype`.  The
+    first cut reported seven of KernLens' own commands as squatters.
+  - Consequence worth noting: sharing a session with pwndbg stays
+    warning-free, because pwndbg registers bare names (`pagewalk`,
+    `kbase`, `slab`, …) while KernLens registers only `kernlens-*` and
+    `kl-*`; the two namespaces do not intersect.
+
 ### Changed
 
 - The CI actions were bumped off the deprecated Node 20 runtime (GitHub

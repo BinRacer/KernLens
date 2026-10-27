@@ -74,6 +74,28 @@ _ALIASES: dict[str, str] = {}
 #: Registered canonical command names.
 command_names: set[str] = set()
 
+#: Name -> the id of the module that registered it in this GDB session.
+#:
+#: GDB keeps no record of who owns a command, and re-sourcing ``gdbinit.py``
+#: silently *replaces* the previous registration (last writer wins, no
+#: error).  Because a reload creates a fresh instance of this module, the
+#: map cannot live here -- it has to survive on the ``gdb`` module itself
+#: (a singleton for the session) so a second ``register_all()`` can tell
+#: "the existing ``kl-bits`` is still mine" from "something else took
+#: ``kl-bits``".  Without that distinction a reload would either warn
+#: spuriously about its own leftovers or, worse, stay silent when another
+#: plugin really did squat the name.
+_OWNERS_ATTR = "_kernlens_command_owners"
+
+
+def _owners() -> dict[str, str]:
+    """Return this session's command-owner map (created on first use)."""
+    owners = getattr(gdb, _OWNERS_ATTR, None)
+    if not isinstance(owners, dict):
+        owners = {}
+        setattr(gdb, _OWNERS_ATTR, owners)
+    return owners
+
 
 # =========================================================================
 # Argument helpers
@@ -428,13 +450,104 @@ def _slug(command_name: str) -> str:
     return "".join(part.capitalize() for part in command_name.split("-"))
 
 
-def _register(command_type: type[gdb.Command]) -> None:
-    """Instantiate a command unless it already exists."""
+#: Names taken over by something that is not this module instance.
+_conflicts: set[str] = set()
+
+
+def conflicts() -> frozenset[str]:
+    """Names that were already registered by something else.
+
+    Populated by :func:`register_all`; a non-empty result means one of our
+    commands is *shadowed* -- calling the name runs the other definition.
+    """
+    return frozenset(_conflicts)
+
+
+def _user_commands() -> frozenset[str]:
+    """The exact names GDB currently lists as user-defined commands.
+
+    ``gdb.execute("help <name>")`` must *not* be used to test one name:
+    GDB's ``help`` resolves abbreviations and prefixes (``kernlens-pt``
+    also matches ``kernlens-pte``, and a bare ``pt`` matches the built-in
+    ``ptype``), which would report false conflicts between our own
+    commands.  ``help user-defined`` prints the exact list instead, and it
+    covers every command a plugin -- or we -- registered as
+    ``gdb.Command``.
+    """
+    try:
+        text = gdb.execute("help user-defined", to_string=True)
+    except Exception:  # noqa: BLE001 - no list is safer than a wrong one
+        return frozenset()
+    names = set()
+    for line in text.splitlines():
+        name, sep, _ = line.partition(" -- ")
+        name = name.strip()
+        if sep and name and " " not in name:
+            names.add(name)
+    return frozenset(names)
+
+
+def _notify(text: str) -> None:
+    """Emit a load-time notice, preferring ``gdb.write``.
+
+    The bootstrap registers commands before anything can be printed
+    colour-aware, and GDB halts a sourced *script* when an exception
+    escapes Python.  ``gdb.write`` is always available, so a notice can
+    never abort the load; ``print`` is only the fallback.
+    """
+    message.set_color_enabled(True)
+    text = message.error(text)
+    try:
+        gdb.write(text + "\n")
+    except (gdb.error, AttributeError, TypeError):  # pragma: no cover
+        print(text)
+
+
+def _instantiate(
+    command_type: type[gdb.Command], name: str, kind: str,
+    taken: frozenset[str],
+) -> bool:
+    """Register one name, reporting a shadowed registration.
+
+    Returns ``True`` when *name* ends up bound to this module instance.
+    *kind* is ``"command"`` for a canonical ``kernlens-*`` name or
+    ``"alias"`` for a ``kl-*`` one, and only calibrates the wording.
+    *taken* is the snapshot of pre-existing user commands from before the
+    loop, so a name we just registered is never mistaken for a squatter.
+
+    Three cases are distinguished:
+
+    * the name was recorded as *ours* -- a reload; re-register silently;
+    * the name was recorded as *someone else's* -- report and leave it;
+    * nothing is recorded yet (first load into this session) -- consult
+      *taken*, because a plugin that loaded *before* us left no trace in
+      our map.
+    """
+    owner = _owners().get(name)
+    if owner == __name__:
+        foreign = False
+    elif owner is not None:
+        foreign = True
+    else:
+        foreign = name in taken
+    if foreign:
+        _conflicts.add(name)
+        _notify(
+            f"kernlens: {kind} {name!r} is already defined by another "
+            f"plugin; the built-in definition is shadowed. Load KernLens "
+            "last, or rename the conflicting definition."
+        )
+        return False
     try:
         command_type()
     except gdb.error as exc:
+        # A GDB that refuses duplicates outright is benign; anything else
+        # is a real bug and must surface.
         if "already exists" not in str(exc).lower():
             raise
+    else:
+        _owners()[name] = __name__
+    return True
 
 
 def registry() -> tuple[CommandDefinition, ...]:
@@ -448,8 +561,16 @@ def aliases() -> dict[str, str]:
 
 
 def register_all() -> None:
-    """Instantiate every command and its ``kl-`` alias."""
+    """Instantiate every command and its ``kl-`` alias.
+
+    Idempotent: sourcing ``gdbinit.py`` twice re-owns the names instead of
+    reporting them as conflicts, because GDB replaces a duplicate command
+    silently rather than refusing it.  A name held by anything other than
+    this module instance is left alone and reported via :func:`conflicts`.
+    """
     command_names.clear()
+    _conflicts.clear()
+    taken = _user_commands()
     for definition in _COMMANDS:
         base = cast(
             "type[KernLensBaseCommand]",
@@ -462,15 +583,18 @@ def register_all() -> None:
                 },
             ),
         )
-        _register(base)
-        command_names.add(definition.command_name)
+        if _instantiate(base, definition.command_name, "command", taken):
+            command_names.add(definition.command_name)
         for alias in definition.aliases:
-            _register(
+            _instantiate(
                 type(
                     f"{base.__name__}Alias",
                     (base,),
                     {"command_name": alias},
-                )
+                ),
+                alias,
+                "alias",
+                taken,
             )
 
 
@@ -484,6 +608,7 @@ __all__ = [
     "OnlyWithKernelSymbols",
     "aliases",
     "command_names",
+    "conflicts",
     "func_name",
     "lex_args",
     "parse_int_arg",

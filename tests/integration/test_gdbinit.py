@@ -215,6 +215,21 @@ class FakeGdb(types.ModuleType):
     def execute(self, command: str, to_string: bool = False) -> str:
         del to_string
         self.executed.append(command)
+        if command == "help user-defined":
+            # ``register_all`` snapshots the pre-existing user commands
+            # this way (``help <name>`` is unusable: GDB matches prefixes,
+            # so ``kernlens-pt`` would also hit ``kernlens-pte``).  Emit
+            # the exact list in GDB's ``name -- help`` form.
+            lines = [
+                "User-defined commands.",
+                "The commands in this class are those defined by the user.",
+                "",
+                "List of commands:",
+                "",
+            ]
+            lines += [f"{name} -- This command is not documented."
+                      for name in sorted(self.registry)]
+            return "\n".join(lines) + "\n"
         if command.startswith("set "):
             name, _, value = command[4:].partition(" = ")
             self.expressions[name.strip()] = int(value, 0)
@@ -788,6 +803,10 @@ class GdbinitTestBase(unittest.TestCase):
         fake_gdb.expressions.clear()
         fake_gdb.registry.clear()
         fake_gdb.instances.clear()
+        # Drop the session owner map too: it lives on the ``gdb`` module
+        # by design, so it would otherwise leak between tests.
+        setattr(fake_gdb, framework._OWNERS_ATTR, {})
+        framework._conflicts.clear()
         # Restore every canned answer the previous test may have mutated.
         fake_kdbg.reset()
         # Re-register the commands the tests cleared.
@@ -856,6 +875,76 @@ class RegistrationTests(GdbinitTestBase):
     def test_register_all_is_idempotent(self) -> None:
         gdbinit._register_all()
         self.assertEqual(len(self._canonical()), len(CANONICAL_COMMANDS))
+
+    def test_reloading_owns_its_own_names_without_conflicts(self) -> None:
+        # Sourcing ``gdbinit.py`` twice is a normal reload: the second
+        # pass re-registers the same names and must not report them as
+        # taken by "another plugin".  This is the regression guard for the
+        # prefix-matching trap -- ``help kl-ks`` also matches
+        # ``kl-ksyscalls``, so a per-name ``help`` probe used to flag our
+        # own commands as squatters.
+        before = dict(framework._owners())
+        try:
+            framework.register_all()
+            self.assertEqual(framework.conflicts(), frozenset())
+        finally:
+            framework._owners().clear()
+            framework._owners().update(before)
+
+    def test_a_foreign_registration_is_reported(self) -> None:
+        # A name owned by anything that is not this module instance is a
+        # real shadow -- GDB would silently run the other definition.
+        framework._owners()["kernlens-bits"] = "some-other-plugin"
+        try:
+            fake_gdb.output.clear()
+            framework.register_all()
+            self.assertIn("kernlens-bits", framework.conflicts())
+            self.assertIn("kernlens-bits", "".join(fake_gdb.output))
+        finally:
+            framework._owners()["kernlens-bits"] = framework.__name__
+
+    def test_a_name_taken_before_load_is_reported(self) -> None:
+        # A plugin that loaded *before* KernLens leaves no trace in the
+        # owner map, so the snapshot from ``help user-defined`` is the
+        # only thing that can catch it.
+        class Foreign(fake_gdb.Command):  # type: ignore[misc, valid-type]
+            def __init__(self) -> None:  # pragma: no cover - not invoked
+                super().__init__("kl-quux", fake_gdb.COMMAND_USER)
+
+        framework._owners().pop("kl-quux", None)
+        try:
+            fake_gdb.output.clear()
+            registered = framework._instantiate(
+                Foreign, "kl-quux", "alias", frozenset({"kl-quux"}),
+            )
+            self.assertFalse(registered)
+            self.assertIn("kl-quux", framework.conflicts())
+            self.assertIn("kl-quux", "".join(fake_gdb.output))
+        finally:
+            framework._conflicts.discard("kl-quux")
+            framework._owners().pop("kl-quux", None)
+
+    def test_the_snapshot_lists_exact_names_only(self) -> None:
+        # Regression guard for the probe itself.  ``help <name>`` matches
+        # abbreviations and prefixes differently (``help kl-ks`` also
+        # reports ``kl-ksyscalls``, ``help pt`` reports the built-in
+        # ``ptype``), so a per-name probe flagged our own commands as
+        # squatters.  ``help user-defined`` must yield exactly the
+        # registered names.
+        self.assertEqual(
+            framework._user_commands(), frozenset(fake_gdb.registry),
+        )
+
+    def test_a_foreign_registration_is_not_claimed(self) -> None:
+        framework._owners()["kernlens-bits"] = "some-other-plugin"
+        try:
+            framework.register_all()
+            # ``command_names`` feeds ``kl-help``; listing a name KernLens
+            # does not actually own would send users to the wrong help.
+            self.assertNotIn("kernlens-bits", framework.command_names)
+        finally:
+            framework._owners()["kernlens-bits"] = framework.__name__
+            gdbinit._register_all()
 
     def test_load_disables_logger_tags(self) -> None:
         self.assertFalse(fake_kdbg.logger.show_tag)
