@@ -520,11 +520,141 @@ def check_coverage() -> list[Failure]:
     return []
 
 
+def _guarded_lines(tree: ast.AST) -> set[int]:
+    """Line numbers inside a ``try`` that can absorb "no target attached".
+
+    A host-runnable example is allowed to *use* the target when one is
+    there -- that is the interesting half of `bitops_tour`'s CPU-mask
+    section, which reads the real `__cpu_online_mask` in GDB and falls
+    back to the recorded topology on the host.  What makes that safe is
+    the handler, not the absence of the call.
+
+    A bare ``except`` counts, as does one naming ``NameError`` -- which is
+    what an uninstalled facade raises.  Anything narrower does not: a
+    ``gdb.error`` handler would let a missing target escape.
+    """
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Try) or not node.body:
+            continue
+        catches_missing = any(
+            handler.type is None
+            or (
+                isinstance(handler.type, ast.Name)
+                and handler.type.id == "NameError"
+            )
+            or (
+                isinstance(handler.type, ast.Tuple)
+                and any(
+                    isinstance(elt, ast.Name) and elt.id == "NameError"
+                    for elt in handler.type.elts
+                )
+            )
+            for handler in node.handlers
+        )
+        if not catches_missing:
+            continue
+        start = node.body[0].lineno
+        end = node.body[-1].end_lineno or start
+        lines.update(range(start, end + 1))
+    return lines
+
+
+def _unguarded_target_refs(path: pathlib.Path) -> list[str]:
+    """Target-only names a host-runnable file uses outside a safe ``try``.
+
+    ``kdbg.*`` needs an installed facade and a live reader; ``bp_*``
+    helpers build breakpoints.  Both are fine inside the guarded block
+    that a host-runnable example is expected to carry, and both are a bug
+    outside it: the file would raise in the very test that claims to run
+    it.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    guarded = _guarded_lines(tree)
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        if not isinstance(node.value, ast.Name):
+            continue
+        if node.value.id not in ("kdbg", "bp_spec"):
+            continue
+        if node.lineno in guarded:
+            continue
+        spelling = f"{node.value.id}.{node.attr}"
+        if spelling not in found:
+            found.append(spelling)
+    return sorted(found)
+
+
+def check_runner_declarations() -> list[Failure]:
+    """Every row claims a place it can run, and the claim is possible.
+
+    ``runs_on`` is what turns "this example is tested" from a wish into a
+    statement: ``tests/integration/test_examples_pure.py`` executes every
+    ``host`` row.  A row that claims ``host`` while importing ``gdb``
+    without a fallback, or while reaching for a target outside the
+    ``try`` that is supposed to protect it, would fail there instead of
+    here -- so it is checked here, where the message can say why.
+    """
+    failures: list[Failure] = []
+    for example in manifest.EXAMPLES:
+        if example.runs_on not in ("host", "gdb"):
+            failures.append(Failure(
+                example.path,
+                f"runs_on={example.runs_on!r} is neither 'host' nor 'gdb'",
+            ))
+            continue
+        # A config file is not executed at all, so neither claim applies.
+        if example.kind != "script":
+            if example.runs_on != "gdb":
+                failures.append(Failure(
+                    example.path,
+                    "a config file is not executable; leave runs_on at "
+                    "the default",
+                ))
+            if example.argv:
+                failures.append(Failure(
+                    example.path, "a config file cannot take argv",
+                ))
+            continue
+        if example.runs_on != "host":
+            if example.argv:
+                failures.append(Failure(
+                    example.path,
+                    "argv is only meaningful for a host-run example",
+                ))
+            continue
+        path = _ROOT / example.path
+        if not path.is_file():
+            continue  # check_existence already reports this
+        text = path.read_text(encoding="utf-8")
+        # The two ways an example stops being host-runnable.  Both are
+        # real: `trace.py` imports gdb unconditionally, and `bitops_tour`
+        # reaches for `kdbg.nr_cpus()` from inside a guarded block on
+        # purpose.  The difference is the handler, not the call.
+        if "import gdb" in text and "except ImportError" not in text:
+            failures.append(Failure(
+                example.path,
+                "claims runs_on='host' but imports gdb without a fallback",
+            ))
+        unguarded = _unguarded_target_refs(path)
+        if unguarded:
+            failures.append(Failure(
+                example.path,
+                "claims runs_on='host' but uses "
+                + ", ".join(unguarded)
+                + " outside a try that catches NameError",
+            ))
+    return failures
+
+
 def check_all() -> list[Failure]:
     """Run every check, in the order a reader would fix them."""
     failures: list[Failure] = []
     failures += check_existence()
     failures += check_readme_links()
+    failures += check_runner_declarations()
     failures += check_claims()
     failures += check_commands()
     failures += check_coverage()

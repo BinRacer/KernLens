@@ -28,6 +28,7 @@ import unittest
 
 import check_examples
 import example_manifest
+import gen_examples_readme
 from contract_spec import CANONICAL_COMMANDS
 
 
@@ -573,6 +574,137 @@ class CliTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             with contextlib.redirect_stderr(io.StringIO()):
                 check_examples.main([])
+
+
+class RunnerDeclarationTests(unittest.TestCase):
+    """The manifest's ``runs_on`` claim is checked, and can fail.
+
+    ``runs_on="host"`` is the promise ``tests/integration/
+    test_examples_pure.py`` relies on to know what to execute.  These
+    tests pin the checks that make the promise safe to depend on -- the
+    schema check, the import check, and the guard check -- each against a
+    temporary tree, because the real one is supposed to pass.
+    """
+
+    def _tree(self, body: str) -> pathlib.Path:
+        """Write ``body`` as an example in a scratch directory tree."""
+        root = pathlib.Path(tempfile.mkdtemp())
+        target = root / "examples/api/scratch.py"
+        target.parent.mkdir(parents=True)
+        target.write_text(body, encoding="utf-8")
+        (root / "examples/api/README.md").write_text(
+            "[scratch](scratch.py)\n", encoding="utf-8",
+        )
+        self.addCleanup(lambda: __import__("shutil").rmtree(root, True))
+        return root
+
+    def _failures(self, root: pathlib.Path, **kwargs: object) -> list[str]:
+        """Run the runner check against a scratch manifest."""
+        example = example_manifest.Example(
+            path="examples/api/scratch.py",
+            purpose="scratch",
+            readme="examples/api/README.md",
+            **kwargs,  # type: ignore[arg-type]
+        )
+        original_root = check_examples._ROOT
+        original = example_manifest.EXAMPLES
+        try:
+            check_examples._ROOT = root
+            example_manifest.EXAMPLES = (example,)
+            return [f.message for f in check_examples.check_runner_declarations()]
+        finally:
+            check_examples._ROOT = original_root
+            example_manifest.EXAMPLES = original
+
+    def test_a_host_claim_with_an_unconditional_gdb_import_fails(self) -> None:
+        root = self._tree("import gdb\nprint('hi')\n")
+        messages = self._failures(root, runs_on="host")
+        self.assertTrue(
+            any("without a fallback" in m for m in messages), messages,
+        )
+
+    def test_a_host_claim_reaching_for_kdbg_unguarded_fails(self) -> None:
+        root = self._tree("print(kdbg.nr_cpus())\n")
+        messages = self._failures(root, runs_on="host")
+        self.assertTrue(
+            any("outside a try" in m for m in messages), messages,
+        )
+
+    def test_the_same_call_inside_a_nameerror_guard_is_accepted(self) -> None:
+        """Which is the whole point: the handler makes it safe, not the call."""
+        root = self._tree(
+            "try:\n"
+            "    n = kdbg.nr_cpus()\n"
+            "except NameError:\n"
+            "    n = 1\n"
+            "print(n)\n"
+        )
+        self.assertEqual(self._failures(root, runs_on="host"), [])
+
+    def test_a_narrow_handler_does_not_count_as_safe(self) -> None:
+        """`gdb.error` would let a missing target escape on the host."""
+        root = self._tree(
+            "try:\n"
+            "    n = kdbg.nr_cpus()\n"
+            "except gdb.error:\n"
+            "    n = 1\n"
+            "print(n)\n"
+        )
+        self.assertTrue(self._failures(root, runs_on="host"))
+
+    def test_an_unknown_runner_fails(self) -> None:
+        root = self._tree("print('hi')\n")
+        messages = self._failures(root, runs_on="windows")
+        self.assertTrue(any("neither 'host' nor 'gdb'" in m for m in messages))
+
+    def test_argv_on_a_gdb_example_fails(self) -> None:
+        root = self._tree("print('hi')\n")
+        messages = self._failures(root, argv=("--flag",))
+        self.assertTrue(any("host-run example" in m for m in messages))
+
+    def test_a_config_file_cannot_claim_the_host(self) -> None:
+        root = self._tree("")
+        messages = self._failures(root, kind="config", runs_on="host")
+        self.assertTrue(any("not executable" in m for m in messages))
+
+
+class GeneratedCoverageTests(unittest.TestCase):
+    """The README's coverage block is generated, and provably so.
+
+    The block used to be typed by hand and had already gone stale.  Now it
+    is rendered from the measurement, so the only way it can be wrong is
+    if nobody re-ran the generator -- which is what these tests notice.
+    """
+
+    def test_the_block_matches_the_measurement(self) -> None:
+        with contextlib.redirect_stdout(io.StringIO()):
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(gen_examples_readme.main(["--check"]), 0)
+
+    def test_the_block_lists_every_component(self) -> None:
+        """A component missing from the table is a silent coverage hole."""
+        text = gen_examples_readme._table()
+        for component in check_examples.surface_groups():
+            self.assertIn(f"`{component}`", text)
+
+    def test_a_stale_block_fails(self) -> None:
+        """Editing a number in the README must break the check."""
+        original = gen_examples_readme._table
+        gen_examples_readme._table = lambda: "| Component | Covered | Size |"
+        try:
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                status = gen_examples_readme.main(["--check"])
+        finally:
+            gen_examples_readme._table = original
+        self.assertEqual(status, 1)
+        self.assertIn("stale", err.getvalue())
+
+    def test_one_mode_is_required(self) -> None:
+        """Neither zero modes nor both: the two would disagree silently."""
+        for argv in ([], ["--write", "--check"]):
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                self.assertEqual(gen_examples_readme.main(argv), 2)
+            self.assertIn("exactly one", err.getvalue())
 
 
 class FreelistWalkRegressions(unittest.TestCase):

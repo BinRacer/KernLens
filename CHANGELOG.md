@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The examples are now *executed* by CI, not merely inspected.  Three
+  questions that fail in three different ways, each with its own
+  mechanism:
+  - `Example.runs_on` in `tools/example_manifest.py` declares where a
+    file can run, defaulting to the weaker claim.  `"host"` is a promise
+    a test enforces, so a file that quietly stops being portable fails
+    instead of keeping a claim nobody checks.
+    `check_runner_declarations()` rejects a `host` row that imports
+    `gdb` without a fallback, or that reaches for `kdbg.*` outside a
+    `try` catching `NameError` -- the handler is what makes the call
+    safe, not its absence.
+  - `tests/integration/test_examples_pure.py` runs every `host` row in a
+    subprocess and asserts the section headings its output must contain,
+    so a script printing nothing and exiting 0 fails too.
+  - `tools/run_examples_gdb.py` replays the twelve target-dependent
+    examples from inside GDB and records what each printed.
+    `tools/check_example_capture.py` then checks -- without a kernel --
+    that every heading a recorded real run produced is still in the
+    source that produced it.  That is the compromise CI needs: it cannot
+    re-run these, but it can notice a section renamed out of existence.
+- Two examples are declared source-only with a stated reason.
+  `trace-start` installs breakpoints and waits for the kernel to reach
+  them, so a batch run blocks; `kwatch-field` installs a *hardware*
+  watchpoint, which the QEMU gdbstub rejects outright.  Both are still
+  sourced, so a tracer that no longer loads is caught.
+- `tools/gen_examples_readme.py` generates the coverage block in
+  `examples/README.md` from the measurement, and `--check` fails when the
+  two drift.  The hand-written version had already gone stale: it claimed
+  `facade bound 34/140` when the measured figure was 51.
+- 19 tests: `RunnerDeclarationTests` (7, exercising each rejection path
+  against a scratch tree, including that a *narrow* `except gdb.error`
+  does not count as safe) and `GeneratedCoverageTests` (4).
+
 ### Fixed
 
 - `examples/api/freelist_walk.py` had four defects that only a live
