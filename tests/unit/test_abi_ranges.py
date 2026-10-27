@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import unittest
 
+from kernlens.gdb import layouts
+
 import abi_ranges
 
 
@@ -270,12 +272,25 @@ class GitBackedTests(unittest.TestCase):
         self.assertEqual(spans[0].first, "v3.0")
         self.assertEqual(spans[0].last, "v7.3")
 
-    def test_the_registry_is_told_it_needs_a_row_for_old_slab(self) -> None:
-        spans = abi_ranges.derive(self.repo, "struct slab", self.tags)
-        notes = abi_ranges.registry_notes("struct slab", spans[1], spans)
-        self.assertTrue(
-            any("need their own row" in note for note in notes), notes,
+    def test_the_registry_knows_slab_before_6_2(self) -> None:
+        # The tool's whole purpose: the registry used to give 0x08 for
+        # every release, so a 5.17-6.1 kernel got the wrong offset.
+        self.assertEqual(
+            layouts.offset("struct slab", "slab_cache", (6, 1, 0)), 0x18,
         )
+        self.assertEqual(
+            layouts.offset("struct slab", "slab_cache", (6, 2, 0)), 0x08,
+        )
+
+    def test_the_registry_has_a_row_for_every_slab_span(self) -> None:
+        spans = abi_ranges.derive(self.repo, "struct slab", self.tags)
+        for span in spans:
+            if not span.members:
+                continue
+            low, _high = span.as_range()
+            self.assertIsNotNone(
+                layouts.offset("struct slab", "slab_cache", low), span.label(),
+            )
 
 
 if __name__ == "__main__":
