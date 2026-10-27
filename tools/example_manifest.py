@@ -59,21 +59,12 @@ EXAMPLE_ROOTS: tuple[str, ...] = ("api", "tracing", "breakpoints")
 #: primitives are reachable from Python and have no command of their own.
 #: Raising this number without adding a command would be a lie; the
 #: surface totals are what Phase 3 moved.
-REQUIRED_COMMAND_COVERAGE: int = 35
+REQUIRED_COMMAND_COVERAGE: int = 37
 
-#: Commands no example executes yet, and why.  Recorded so that "35 of 40"
+#: Commands no example executes yet, and why.  Recorded so that "37 of 40"
 #: reads as a decision rather than an oversight -- and so that whoever
 #: closes the gap knows what the gap is.
 UNCOVERED_COMMANDS: dict[str, str] = {
-    "kernlens-bits": (
-        "the BitOps primitives are covered as Python API by bitops_tour.py, "
-        "but the command form has no example of its own"
-    ),
-    "kernlens-int": (
-        "the IntCodec/IntFmt primitives are covered as Python API by "
-        "intcodec_tour.py and intfmt_tour.py, but the command form has "
-        "no example of its own"
-    ),
     "kernlens-buddydump": "needs a workload that leaves free blocks at a known order",
     "kernlens-kbpf": "needs BPF programs loaded in the target",
     "kernlens-kdmabuf": "needs a DMA-buf exporter; nothing exports on an idle VM",
@@ -394,6 +385,41 @@ EXAMPLES: tuple[Example, ...] = (
             "BitOps.unsigned_range",
             "kdbg.kvar_addr",
             "kdbg.nr_cpus",
+        ),
+    ),
+    _example(
+        "api", "bits_tour.py",
+        purpose="read a packed word with the calls kl-bits makes",
+        # `kl-bits` needs no debuggee: it is `BitOps` on a number the
+        # caller supplies.  That made "the command form has no example"
+        # an odd gap -- the barrier was not the missing target, it was
+        # that nobody had written the example.
+        runs_on="host",
+        commands=("kernlens-bits",),
+        surface=(
+            "BitOps.bit_test",
+            "BitOps.cpumask_count",
+            "BitOps.cpumask_first",
+            "BitOps.cpumask_next",
+            "BitOps.extract_bits",
+            "BitOps.first_set",
+            "BitOps.is_power_of_2",
+            "BitOps.last_set",
+            "BitOps.log2_floor",
+            "BitOps.popcount",
+        ),
+    ),
+    _example(
+        "api", "int_tour.py",
+        purpose="one value as every width, the way kl-int shows it",
+        runs_on="host",
+        commands=("kernlens-int",),
+        surface=(
+            "IntCodec.is_in_range",
+            "IntCodec.pack_array",
+            "IntCodec.pack_u32",
+            "IntCodec.unpack_i32",
+            "IntCodec.unpack_u32",
         ),
     ),
     # --- tracing/ -------------------------------------------------------

@@ -71,6 +71,16 @@ EXPECTED_OUTPUT: dict[str, tuple[str, ...]] = {
         "CPU masks",
         "sign and width",
     ),
+    "examples/api/bits_tour.py": (
+        "A page-table entry",
+        "Packed slab counters",
+        "A CPU mask",
+    ),
+    "examples/api/int_tour.py": (
+        "Why the width is not cosmetic",
+        "as U32",
+        "read as I32",
+    ),
 }
 
 

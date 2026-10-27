@@ -74,6 +74,8 @@ host, and only the memory reads need a target.
 | `icodec` | [`intcodec_tour.py`](intcodec_tour.py) | every integer width, both byte orders, arrays, offsets |
 | `ifmt` | [`intfmt_tour.py`](intfmt_tour.py) | addresses, sizes, byte dumps, signed/masked values, times |
 | `btour` | [`bitops_tour.py`](bitops_tour.py) | alignment, field packing, single bits, CPU masks, sign extension |
+| `bittour` | [`bits_tour.py`](bits_tour.py) | the `kl-bits` command's own calls on three real words |
+| `inttour` | [`int_tour.py`](int_tour.py) | the `kl-int` command's own calls on three awkward values |
 
 **`icodec`** round-trips `u8` through `u64` and `i8` through `i64`, in
 both byte orders, printing the *bytes* as well as the decoded value.  That
@@ -93,6 +95,20 @@ frozen:1` from a 6.1.134 `struct slab` -- and checks the round trip
 closes.  It uses `kdbg.kvar_addr` rather than `gdb.parse_and_eval` to read
 `__cpu_online_mask`, because the macro spelling has no symbol and the
 variable only resolves once the slide is applied.
+
+**`bittour`** and **`inttour`** are the command forms of the two tours
+above.  `kl-bits` and `kl-int` were the two commands with no example,
+and the recorded reason was that they are "covered as Python API" -- but
+they are also the two commands that need **no debuggee at all**, so that
+reason described the gap without explaining it.  These files run on the
+host as scripts and execute the real command when sourced inside GDB, so
+the two paths are compared rather than assumed equal.
+
+`bittour` is worth reading for the index convention alone: `first_set`
+and `last_set` report **1-based** bit numbers, following the kernel's
+own `ffs`/`fls`, so a `last_set` of 64 means bit 63.  `inttour` shows the
+same four bytes decoded as `4294967295` and as `-1`, which is the width
+mistake the command exists to catch.
 
 **`kfacts`** starts from nothing and asks what the target is.  Run it
 before any other example: `CONFIG_SLAB_FREELIST_HARDENED=y` is the reason
