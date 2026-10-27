@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`KernelStyler` has tests.**  The class produces the text of every
+  SLUB and symbol line a user reads, and `src/kernlens/gdb/styler.py` sat
+  at 27% coverage while its sibling `src/kernlens/output/styler.py` was
+  at 99% -- so the gap was not "styling is hard to test".  `KernelStyler`
+  inherits from the pure-Python `Styler` and imports no `gdb`, which
+  means every method runs on the host with no debugger and no fake.
+  `test_kernel_styler.py` (21 tests) checks each formatter twice: with
+  colour off, where the output must be the plain text a log file is
+  diffed against, and with colour on, where the *choice* of colour is the
+  meaning.  A formatter that colours a dangerous value the same as a safe
+  one has broken the only thing it was for, and that failure is invisible
+  in the plain-text half.  `gdb/styler.py` is now at 100%.
 - **The tutorial can be regenerated on a different boot.**  The prose
   named twenty-five invocations with literal addresses, while its own
   docstring said the values "change between boots".  Both statements
