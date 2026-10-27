@@ -92,8 +92,11 @@ echo "source $(pwd)/KernLens/gdbinit.py" >> ~/.gdbinit
 地址，偏移没应用之前解析出来的东西一律不可信。加载 `gdbinit.py` 不会
 装任何断点，在 `file vmlinux` 之前 source 也安全。
 
-从 checkout 直接跑不需要安装 —— `gdbinit.py` 会把自己的 `src/` 加进
-`sys.path`。开发环境搭建见 [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)。
+源码 checkout 就是唯一的安装方式。KernLens 未发布到 PyPI，从那里安装
+也得不到能用的副本：快速开始里 source 的那个启动文件并不在 wheel 里。
+`gdbinit.py` 会把自己的 `src/` 加进 `sys.path`，所以没有东西需要安装，
+也没有版本需要对齐；升级就是 `git pull`。开发环境搭建见
+[`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)。
 
 ## 40 个命令
 
@@ -252,6 +255,9 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 Python 3.10+，以及一个用 Python 3.10+ 构建的 GDB。仅支持 x86_64 内核
 —— 页表与 `struct page` 的解码是针对该架构写的。Python 3.12 以下唯一
 的运行时依赖是 `typing-extensions`。
+
+不发布任何包。安装方式就是 `git clone`，见[快速开始](#快速开始)。
+PyPI 上的 `kernlens` 不是这个项目。
 
 GPL-3.0-or-later。见 [`LICENSE`](LICENSE)；第三方归属见
 [`CREDITS.md`](CREDITS.md)。

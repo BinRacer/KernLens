@@ -565,5 +565,69 @@ class ReadmeStructureTests(unittest.TestCase):
                 self.assertIn(f"({target})", self._readme("README.md"))
 
 
+class SourceOnlyDistributionTests(unittest.TestCase):
+    """The project is installed from a checkout, and says so.
+
+    There is no PyPI release, and the reason is concrete: every quickstart
+    path ends at ``source /path/to/gdbinit.py``, and that file is not in
+    the wheel.  The wheel is built from ``src/``; the startup file lives
+    beside it.  A published package would install cleanly and then be
+    impossible to use by following the documentation -- which teaches a
+    reader that the tool is broken, not that it is unpackaged.
+
+    That is a decision a future contributor could undo without noticing,
+    either by adding a badge that implies a package or by writing an
+    install command that cannot work.  These tests make both moves fail.
+    """
+
+    #: Write-ups people reach for when a project has a release.  None of
+    #: them can work here, so none of them may appear as an instruction.
+    FORBIDDEN = ("pip install kernlens", "uvx kernlens", "pipx install",
+                 "uv tool install kernlens")
+
+    def _docs(self) -> dict[str, str]:
+        return {
+            name: (ROOT / name).read_text(encoding="utf-8")
+            for name in (
+                "README.md", "README.zh-CN.md",
+                "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md",
+            )
+        }
+
+    def test_no_document_offers_an_install_command(self) -> None:
+        for name, text in self._docs().items():
+            for phrase in self.FORBIDDEN:
+                with self.subTest(document=name, phrase=phrase):
+                    self.assertNotIn(phrase, text)
+
+    def test_the_readme_says_where_installation_comes_from(self) -> None:
+        # Silence is not enough: a reader who has been told nothing will
+        # try the package manager, because that is what always works.
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                text = self._docs()[name]
+                self.assertIn("git clone", text)
+
+    def test_the_policy_is_stated_with_its_reason(self) -> None:
+        # The reason is the part that survives a rewrite.  "source only"
+        # reads like a temporary limitation; "the startup file is not in
+        # the wheel" is a fact a contributor can check and reason from.
+        for name in ("CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md"):
+            with self.subTest(document=name):
+                text = self._docs()[name]
+                self.assertIn("gdbinit.py", text)
+
+    def test_the_wheel_still_lacks_the_entry_point(self) -> None:
+        """Pins the fact the documentation is built on.
+
+        If someone later ships ``gdbinit.py`` as package data, this test
+        fails on purpose: the prose and the packaging must change
+        together, and this is the tripwire that forces them to.
+        """
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertNotIn("[project.scripts]", pyproject)
+        self.assertNotIn("[project.entry-points", pyproject)
+
+
 if __name__ == "__main__":
     unittest.main()

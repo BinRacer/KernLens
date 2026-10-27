@@ -25,6 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Verified by rebooting -- slide `0x14000000` -> `0x17400000`, direct
   map `0xffff8fe6c0400000` -> `0xffff992880400000` -- and regenerating
   all 40 pages without a source edit.
+- **The distribution policy is stated, and enforced.**  KernLens is
+  installed from a checkout and is not published to PyPI.  The previous
+  release commit recorded that as an open question; this closes it, with
+  the reason a reader can check: every quickstart path ends at `source
+  gdbinit.py`, and `gdbinit.py` is not in the wheel, which is built from
+  `src/` alone.  A published package would install cleanly and then be
+  unusable by following the documentation -- which reads as a broken
+  tool, not an unpackaged one.
+  Both READMEs now say so where a reader looks for installation, both
+  CONTRIBUTING files carry the reason, and `SourceOnlyDistributionTests`
+  (4) makes the reversal fail: no document may offer an install command
+  that cannot work, the README must still say `git clone`, the policy
+  must still be stated with its cause, and `pyproject.toml` must still
+  have no console-script entry point.  That last one is the tripwire --
+  shipping `gdbinit.py` as package data later fails the test on purpose,
+  so the prose and the packaging have to change together.
 - `ReadmeStructureTests` (3 tests) pinning the three properties that
   made the rewrite worth doing: the front page stays under a line
   ceiling, it shows real captured output, and the material moved out of

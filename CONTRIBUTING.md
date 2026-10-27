@@ -4,6 +4,24 @@ Development notes for KernLens.  If you only want to *use* it, the
 [README](README.md) has the three-step quickstart and the command
 table; nothing here is needed for that.
 
+## Distribution
+
+KernLens is distributed as a source checkout, not as a package.  There is
+no PyPI release and there will not be one while the entry point is a file
+you source rather than a module you import.
+
+The reason is not laziness.  Every quickstart path ends at `source
+/path/to/gdbinit.py`, and `gdbinit.py` is not in the wheel: the wheel is
+built from `src/`, and the startup file lives beside it.  Publishing
+today would produce a package that installs cleanly and then cannot be
+made to work by following the documentation, which is worse than
+publishing nothing.
+
+Publishing would require making the startup file package data and adding
+an entry point that prints its path -- a real change with its own tests,
+not a metadata edit.  Until that happens, `git pull` is the upgrade path
+and `uv sync` is for development only.
+
 ## Testing and development
 
 The test suite is `unittest`-compatible and also runs under pytest.
