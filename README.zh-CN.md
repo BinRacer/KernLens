@@ -43,7 +43,10 @@ kernlens/                          # 仓库根
 ├── tests/
 │   ├── unit/                     # 纯 Python 测试
 │   └── integration/              # 基于 fake 的适配层 + gdbinit 测试
-├── examples/                     # slab_snapshot, gdb_tracer, trace, cve_2025_38616_trace
+├── examples/                     # 可运行脚本，按用途分组
+│   ├── api/                      #   写脚本、调用 API
+│   ├── tracing/                  #   跟踪内核运行时的行为
+│   └── breakpoints/              #   在恰当的时刻停下或注意到
 ├── gdbinit.py                    # 可选的 ~/.gdbinit 入口
 ├── docs/
 │   ├── architecture.md           # 结构、API 地图与设计说明
@@ -195,7 +198,8 @@ local_config = KERNLENS_CLASSES["DebugConfig"]()
 `FACADE_FUNCTIONS` 列出 facade 自由函数，其余无状态别名来自
 `BitOps`、`IntCodec`、`KAddr`、`KPageTable` 和 `IntFmt`。`kdbg`
 仍是首选的面向对象入口。可运行的示例见
-[`examples/trace.py`](examples/trace.py)。
+[`examples/api/trace.py`](examples/api/trace.py)；最小起步脚本见
+[`examples/api/hello.py`](examples/api/hello.py)。
 
 ### 获取帮助
 
@@ -346,8 +350,9 @@ KASLR 变化继续工作。`kl-base` 与 `kl-kbase --set` 仍可用于显式
 固定 slide。
 
 原有 `kernlens-*` 命令保持不变，`kl-*` 只是别名。
-示例配置见 [`examples/gdbinit.example`](examples/gdbinit.example)。
-重复加载 `gdbinit.py` 是安全的；示例 `examples/gdb_tracer.py` 把自己的
+示例配置见 [`examples/api/gdbinit.example`](examples/api/gdbinit.example)。
+重复加载 `gdbinit.py` 是安全的；示例
+[`examples/tracing/gdb_tracer.py`](examples/tracing/gdb_tracer.py) 把自己的
 命令注册在 `kernlens-tracer-` 前缀下，不会与自带的
 `kernlens-slab` / `kernlens-color` 冲突。
 
@@ -665,23 +670,57 @@ kdbg.disable_color()           # 同时关闭 logger 与 styler
 
 ## 示例
 
-- [`examples/slab_snapshot.py`](examples/slab_snapshot.py)：不依赖
+[`examples/`](examples/README.md) 按**你想做什么**分组，而不是按它
+导入了什么。所有脚本都假定同样的启动方式（先 `source gdbinit.py`，
+再加载 vmlinux 或连接目标）。这些脚本不属于包对外接口的一部分。
+
+| 目录 | 适用场景 |
+| --- | --- |
+| [`examples/api/`](examples/api/README.md) | 想写一个调用 API 的脚本 |
+| [`examples/tracing/`](examples/tracing/README.md) | 想跟踪内核运行时的行为 |
+| [`examples/breakpoints/`](examples/breakpoints/README.md) | 想在恰当的时刻停下或注意到 |
+
+### 写脚本
+
+- [`examples/api/hello.py`](examples/api/hello.py)：最小可用脚本，也是
+  最适合照抄的那一份。它展示了三件事：名字从哪里来（`gdbinit.py`
+  安装进 `__main__`）、在 GDB 之外运行时如何回退、以及四个不需要目标
+  的纯 Python 调用。两种环境下输出完全一致。
+- [`examples/api/trace.py`](examples/api/trace.py)：在 `gdbinit.py` 之后
+  `source`，直接使用已安装的公共 API，不写 `from kernlens import ...`。
+- [`examples/api/slab_snapshot.py`](examples/api/slab_snapshot.py)：不依赖
   gdb，渲染一份 slab 报告；默认使用真实测试内核的取值（一个直接映射
   页及其页表里真实的 PTE，以及真实的 `kmalloc-1k` 形态），可用
   `--head` / `--page-offset-base` / `--vmemmap-base` 指向其它内核。
-- [`examples/gdb_tracer.py`](examples/gdb_tracer.py)：在 gdb 内安装
+- [`examples/api/gdbinit.example`](examples/api/gdbinit.example)：加载项目根
+  `gdbinit.py` 的 `~/.gdbinit` 示例。
+
+### 跟踪
+
+- [`examples/tracing/gdb_tracer.py`](examples/tracing/gdb_tracer.py)：在 gdb 内安装
   `kfree` 断点，并提供 `kernlens-tracer-slab` / `kernlens-tracer-color`
-  命令（带前缀，避免遮蔽同用途的 KernLens 命令）。
-- [`examples/trace.py`](examples/trace.py)：在 `gdbinit.py` 之后
-  `source`，直接使用已安装的公共 API，不写 `from kernlens import ...`。
-- [`examples/cve_2025_38616_trace.py`](examples/cve_2025_38616_trace.py)：
+  命令（带前缀，避免遮蔽同用途的 KernLens 命令）。它读取
+  `KERNLENS_SYMBOL` / `KERNLENS_ARG`，因此在不改文件的前提下就能跟踪
+  任意钩子点。
+- [`examples/tracing/cve_2025_38616_trace.py`](examples/tracing/cve_2025_38616_trace.py)：
   CVE-2025-38616 KTLS UAF tracer，直接复用 `gdbinit.py` 已注册的
   API 和命令；`trace-start` 会调用已注册的 `kl-base` 自动选择基址，
   并在安装断点前应用 KASLR。手工配置需先设置非零的
   `kl-kaslr` / `kl-kaslr-offset`，再执行 `trace-start manual`；
   旧的 `kaslr-text` / `kaslr-offset` 名称保留为这些已注册命令的包装。
-- [`examples/gdbinit.example`](examples/gdbinit.example)：加载项目根
-  `gdbinit.py` 的 `~/.gdbinit` 示例。
+
+### 断点调试
+
+- [`examples/breakpoints/conditional.py`](examples/breakpoints/conditional.py)：
+  安装 `kbp-object <address>`——一个只在特定对象上停下的 `kfree`
+  断点，其它命中静默放行。它比较的是**对象起点**而非原始参数，
+  因为 `kfree` 合法地会收到指向对象内部的指针，而这正是
+  use-after-free 产生的那些释放。
+- [`examples/breakpoints/watchfield.py`](examples/breakpoints/watchfield.py)：
+  安装 `kwatch-field <type> <field> <address> --expect N`——字段
+  watchpoint，只在字段**变成**指定值时报告（引用计数归零但对象仍在
+  链表上，就是 use-after-free）。它需要支持硬件 watchpoint 的目标；
+  QEMU 的 gdbstub 没有，该命令会明确说明而不是含糊失败。
 
 ## 组合示例
 

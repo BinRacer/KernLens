@@ -104,10 +104,17 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   └── naming.md         # command and Python naming rules
 ├── gdbinit.py            # thin bootstrap sourced by GDB
 ├── examples/
-│   ├── slab_snapshot.py  # pure-Python report
-│   ├── gdb_tracer.py     # GDB breakpoint / command example
-│   ├── trace.py          # script sourced after gdbinit.py
-│   ├── cve_2025_38616_trace.py  # CVE-specific KTLS tracer
+│   ├── api/                # scripting the API
+│   │   ├── hello.py        # minimal script: names + fallback + pure calls
+│   │   ├── trace.py        # script sourced after gdbinit.py
+│   │   ├── slab_snapshot.py        # pure-Python report
+│   │   └── gdbinit.example         # sample ~/.gdbinit
+│   ├── tracing/            # breakpoints that log and keep running
+│   │   ├── gdb_tracer.py   # GDB breakpoint / command example
+│   │   └── cve_2025_38616_trace.py  # CVE-specific KTLS tracer
+│   └── breakpoints/        # breakpoints whose purpose is to stop
+│       ├── conditional.py  # break only on one object
+│       └── watchfield.py   # watch a field reach a value
 │   └── gdbinit.example   # sample ~/.gdbinit
 ├── images/banner.svg
 ├── pyproject.toml
@@ -566,7 +573,7 @@ core.
   the frozen set — so the internal package layout can be restructured
   without silently changing the public surface.
 - **Examples** are intentionally small and can be run as smoke tests
-  (`uv run python examples/slab_snapshot.py` from a checkout).
+  (`uv run python examples/api/slab_snapshot.py` from a checkout).
 
 Development is managed with uv.  `uv sync` installs the project and the
 `dev` dependency group from the committed `uv.lock`; run tests with

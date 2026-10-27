@@ -35,6 +35,6 @@
 # imports.  Class-qualified forms such as BitOps.byte_swap64 and
 # BitOps_byte_swap64 avoid collisions; logger, styler, reader, and
 # other stateful components are default kdbg instances:
-#   (gdb) source /path/to/KernLens/examples/trace.py
+#   (gdb) source /path/to/KernLens/examples/api/trace.py
 # `trace.py` is an example; replace it with your own tracer.
 source /path/to/KernLens/gdbinit.py

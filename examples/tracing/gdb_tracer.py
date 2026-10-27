@@ -3,7 +3,7 @@
 
 Usage (inside GDB, with ``vmlinux`` and the target loaded)::
 
-    source /path/to/repo/examples/gdb_tracer.py
+    source /path/to/repo/examples/tracing/gdb_tracer.py
 
 Environment variables read at install time:
 

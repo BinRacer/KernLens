@@ -43,7 +43,10 @@ kernlens/                          # repository root
 ├── tests/
 │   ├── unit/                     # pure-Python tests
 │   └── integration/              # adapter + gdbinit tests against fakes
-├── examples/                     # slab_snapshot, gdb_tracer, trace, cve_2025_38616_trace
+├── examples/                     # runnable scripts, grouped by intent
+│   ├── api/                      #   write a script against the API
+│   ├── tracing/                  #   trace behaviour as the kernel runs
+│   └── breakpoints/              #   stop, or notice, at the right moment
 ├── gdbinit.py                    # optional ~/.gdbinit entry point
 ├── docs/
 │   ├── architecture.md           # layout, API map, and design notes
@@ -203,7 +206,9 @@ global `logger`, `styler`, or `config` instances.
 Facade free functions are listed in `FACADE_FUNCTIONS`; stateless core
 aliases come from `BitOps`, `IntCodec`, `KAddr`, `KPageTable`, and
 `IntFmt`.  `kdbg` remains the preferred object-oriented entry point.
-See [`examples/trace.py`](examples/trace.py) for a runnable example.
+See [`examples/api/trace.py`](examples/api/trace.py) for a runnable
+example, or [`examples/api/hello.py`](examples/api/hello.py) for the
+smallest starting point.
 
 ### Getting help
 
@@ -366,11 +371,11 @@ dma-buf, ...) keep working across a KASLR change.  `kl-base` and
 `kl-kbase --set` remain the explicit way to pin the slide.
 
 The original `kernlens-*` names are kept; `kl-*` is only an alias.
-See [`examples/gdbinit.example`](examples/gdbinit.example) for a sample
-`~/.gdbinit`.  Loading `gdbinit.py` twice is safe, and the example
-`examples/gdb_tracer.py` registers its own commands under the
-`kernlens-tracer-` prefix so they never clash with the shipped
-`kernlens-slab` / `kernlens-color`.
+See [`examples/api/gdbinit.example`](examples/api/gdbinit.example) for a
+sample `~/.gdbinit`.  Loading `gdbinit.py` twice is safe, and the
+example [`examples/tracing/gdb_tracer.py`](examples/tracing/gdb_tracer.py)
+registers its own commands under the `kernlens-tracer-` prefix so they
+never clash with the shipped `kernlens-slab` / `kernlens-color`.
 
 ## Constants
 
@@ -691,19 +696,44 @@ the configuration prefix is available separately as `indent_str`.
 
 ## Examples
 
-- [`examples/slab_snapshot.py`](examples/slab_snapshot.py) renders a
-  slab report with no gdb dependency, using the real test-kernel values
-  (a direct-map page and the PTE its live page tables hold, plus the
-  real `kmalloc-1k` shape); `--head`, `--page-offset-base`, and
-  `--vmemmap-base` point it at any kernel.
-- [`examples/gdb_tracer.py`](examples/gdb_tracer.py) installs a
-  `kfree` breakpoint plus the `kernlens-tracer-slab` and
-  `kernlens-tracer-color` commands inside gdb (prefixed so they do not
-  shadow the KernLens commands of the same purpose).
-- [`examples/trace.py`](examples/trace.py) is sourced after
+[`examples/`](examples/README.md) groups its scripts by what you are
+trying to do, not by what they import.  Every one assumes the same
+startup (`source gdbinit.py`, then a vmlinux or a live target); nothing
+here is part of the package surface.
+
+| Directory | Use it when you want to |
+| --- | --- |
+| [`examples/api/`](examples/api/README.md) | write a script against the API |
+| [`examples/tracing/`](examples/tracing/README.md) | trace behaviour as the kernel runs |
+| [`examples/breakpoints/`](examples/breakpoints/README.md) | stop, or notice, at the right moment |
+
+### Scripting the API
+
+- [`examples/api/hello.py`](examples/api/hello.py) is the smallest
+  useful script and the one to copy: it shows where the names come from
+  (installed into `__main__` by `gdbinit.py`), how to fall back when the
+  file is run outside GDB, and four pure-Python calls that need no
+  target.  It runs in both contexts and prints the same answers.
+- [`examples/api/trace.py`](examples/api/trace.py) is sourced after
   `gdbinit.py` and uses the installed public API directly, without
   `from kernlens import ...`.
-- [`examples/cve_2025_38616_trace.py`](examples/cve_2025_38616_trace.py)
+- [`examples/api/slab_snapshot.py`](examples/api/slab_snapshot.py)
+  renders a slab report with no gdb dependency at all, using the real
+  test-kernel values (a direct-map page and the PTE its live page tables
+  hold, plus the real `kmalloc-1k` shape); `--head`,
+  `--page-offset-base`, and `--vmemmap-base` point it at any kernel.
+- [`examples/api/gdbinit.example`](examples/api/gdbinit.example) is a
+  sample `~/.gdbinit` that loads the project-level `gdbinit.py`.
+
+### Tracing
+
+- [`examples/tracing/gdb_tracer.py`](examples/tracing/gdb_tracer.py)
+  installs a `kfree` breakpoint plus the `kernlens-tracer-slab` and
+  `kernlens-tracer-color` commands inside gdb (prefixed so they do not
+  shadow the KernLens commands of the same purpose).  It reads
+  `KERNLENS_SYMBOL` / `KERNLENS_ARG` so it can trace any hook point
+  without editing the file.
+- [`examples/tracing/cve_2025_38616_trace.py`](examples/tracing/cve_2025_38616_trace.py)
   is a CVE-2025-38616 KTLS use-after-free tracer that reuses the API and
   commands already installed by `gdbinit.py`; `trace-start` calls the
   registered `kl-base` command for automatic base selection; it refuses
@@ -712,8 +742,21 @@ the configuration prefix is available separately as `indent_str`.
   `kl-kaslr` / `kl-kaslr-offset` selection.  The old
   `kaslr-text` / `kaslr-offset` names remain as thin wrappers around
   those registered commands.
-- [`examples/gdbinit.example`](examples/gdbinit.example) is a sample
-  `~/.gdbinit` that loads the project-level `gdbinit.py`.
+
+### Breakpoint debugging
+
+- [`examples/breakpoints/conditional.py`](examples/breakpoints/conditional.py)
+  installs `kbp-object <address>`, a `kfree` breakpoint that stops only
+  for one object and passes every other hit through silently.  It
+  compares the *slab object start* rather than the raw argument, because
+  `kfree` legitimately receives interior pointers -- exactly the frees a
+  use-after-free produces.
+- [`examples/breakpoints/watchfield.py`](examples/breakpoints/watchfield.py)
+  installs `kwatch-field <type> <field> <address> --expect N`, a field
+  watchpoint that reports only the transition *into* a chosen value
+  (a refcount reaching zero while the object is still on a list is a
+  use-after-free).  It needs a target with hardware watchpoints; QEMU's
+  gdbstub has none, and the command says so instead of failing obscurely.
 
 ## Combined example
 
