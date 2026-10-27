@@ -1714,6 +1714,35 @@ class MemoryTests(GdbinitTestBase):
         out = self.invoke("kl-buddy", "pfn:0x400")
         self.assertIn("Status: free", out)
 
+    def test_kl_buddy_accepts_a_direct_map_address(self) -> None:
+        # A direct-map address must translate exactly once.  The
+        # regression this guards: `_address_forms` already subtracts
+        # page_offset_base, but the caller used to re-prefix the result
+        # with ``virt:``, which subtracted the base a second time and
+        # reported a negative physical address.
+        free_virt = PAGE_OFFSET_BASE + 0x400000   # pfn 0x400, the fixture block
+        out = self.invoke("kl-buddy", f"info {free_virt:#x}")
+        self.assertNotIn("-0x", out)
+        self.assertIn("phys=0x400000", out)
+        self.assertIn("Status: free", out)
+        self.assertIn("Order: 10", out)
+
+    def test_kl_buddy_accepts_a_vmemmap_page_address(self) -> None:
+        # The other transformed form: a ``struct page`` pointer.  It sits
+        # above page_offset_base, so the vmemmap reading must be tried
+        # first or the address is mistaken for a direct-map one.
+        page = VMEMMAP_BASE + 0x400 * 64
+        out = self.invoke("kl-buddy", f"info {page:#x}")
+        self.assertIn("phys=0x400000", out)
+        self.assertIn("Status: free", out)
+
+    def test_kl_buddy_rejects_a_wild_physical_address(self) -> None:
+        # Below every base and far past any RAM: no reading is plausible,
+        # so the command reports that it cannot resolve the value rather
+        # than guessing at a page.
+        out = self.invoke("kl-buddy", f"info {1 << 60:#x}")
+        self.assertIn("cannot resolve", out)
+
     def test_kdmabuf(self) -> None:
         out = self.invoke("kl-kdmabuf")
         self.assertIn("DMA-buf", out)
@@ -2616,10 +2645,15 @@ class FrameworkInvokeTests(GdbinitTestBase):
 
     def test_blank_line_uses_the_defaults(self) -> None:
         # ``kl-color`` has only optional arguments; a bare invocation
-        # runs the body with its defaults.
+        # runs the body with its defaults and reports the current state.
+        # Assert on the body's own phrasing: the rejection path prints
+        # "kl-color: error: argument state: invalid choice ... (choose
+        # from 'on', 'off', 'toggle')", which also contains "color:"
+        # and "off", so a looser assertion cannot tell them apart.
         out = self.invoke("kl-color")
-        self.assertIn("color:", out)
-        self.assertIn("off", out)
+        self.assertIn("KernLens color:", out)
+        self.assertNotIn("invalid choice", out)
+        self.assertNotIn("usage :", out)
 
 
 class LayoutFallbackWarningTests(GdbinitTestBase):
