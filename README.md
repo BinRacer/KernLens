@@ -235,7 +235,7 @@ arguments, and examples.  The full command table follows.
 |---------|-------------|---------|
 | `kernlens-help [command]` | `kl-help` | list commands or explain one in detail |
 | `kernlens-status` | `kl-status` | version, color, KASLR, `_text`, layout bases, topology |
-| `kernlens-slab <list\|info\|contains\|details> [arg] [--verbose] [--cpu <id>] [--node <id>] [--partial] [--active]` | `kl-slab` | SLUB caches: `list`/`info`/`contains` (pwndbg form), `details` for the granular inspector; a bare address prints a cache's slab |
+| `kernlens-slab <list\|info\|contains\|details> [arg] [--verbose] [--cpu <id>] [--node <id>] [--partial] [--active] [--inuse] [--random] [--reclaim] [--ctor]` | `kl-slab` | SLUB caches: `list`/`info`/`contains` (pwndbg form), `details` for the granular inspector; a bare address prints a cache's slab |
 | `kernlens-page <address> [--verbose]` | `kl-page` | classify an address; translate direct-map addresses |
 | `kernlens-pte <page-table-entry> [virtual-address]` | `kl-pte` | decode PTE flags; show 4K/2M/1G leaf translations |
 | `kernlens-sym <address>` | `kl-sym` | resolve an address to symbol and source line |
