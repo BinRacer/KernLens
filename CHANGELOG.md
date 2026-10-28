@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **One command installs a checkout, and one command checks it.**
+  `install.sh` clones to `${XDG_DATA_HOME:-~/.local/share}/kernlens`,
+  writes a single marked block into `~/.gdbinit`, and leaves a
+  `kernlens` wrapper in `~/.local/bin`; re-running it updates the
+  checkout instead of appending a second block, and `--uninstall`
+  removes the block and the wrapper without touching the checkout.
+  `kernlens doctor` (also `python -m kernlens.doctor`) reports the host
+  Python, the Python GDB embeds, whether `~/.gdbinit` sources an
+  existing startup file, whether a real `gdb --batch` can import
+  `kernlens`, and whether a target is attached.  `kl-status --doctor`
+  adds the in-session half (objfile, DWARF/BTF, inferior) as a flag
+  rather than a 41st command, so the frozen command surface is
+  unchanged.  `InstallScriptTests` (8) run the installer against a local
+  git repository: clone, idempotent rewrite, dry run, wrapper, and
+  uninstall.
+- **The front page shows the tool running, and the command table is
+  generated.**  `docs/assets/demo.svg` is an animated terminal replaying
+  `kl-walk` and `kl-slab details` from the 6.1.134 capture, with
+  `docs/assets/demo.cast` for `asciinema play`; both are rendered by
+  `tools/gen_demo.py`, whose `--check` fails when the animation and the
+  capture disagree.  The 40-row table moved out of both READMEs into
+  `docs/commands.md`, rendered from `tools/tutorial_meta.json` by
+  `tools/gen_commands.py --check`, so the page and `kl-help` share one
+  order and one source.  `DemoAssetTests` (6) and
+  `CommandReferenceTests` (4) pin both.
+- **The README's captured output now matches the capture.**  The
+  page-walk, 5-level, SLUB, and freelist blocks were typed during an
+  earlier front-page rewrite; they now use the exact lines recorded in
+  `tools/tutorial_capture.json` (same addresses, same `freeptr` and
+  `decoded=` fields), and `ReadmeStructureTests` asserts those markers
+  instead of the old hand-written `stored word` text.
+
 - **The `py.typed` marker is now backed by a checker, not just an empty
   file.**  The marker promised that a type checker could read this
   package, but nothing ran one, and `KernelDebugger` republished its whole
