@@ -145,11 +145,20 @@ sources an existing startup file, whether GDB can actually import
 `kernlens`, and whether a target is attached. `kl-status --doctor` adds
 the in-session half. Paste the report into an issue.
 
-There is no PyPI release yet. A wheel would install into the host
-Python, while GDB runs its own interpreter and reads its own `sys.path`;
-until the startup file ships inside the package, a checkout is the
-supported install, and `git pull` (or re-running the installer) is the
-upgrade path. Contributor setup is in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+There is no PyPI release yet. The startup file is package data now and a
+`kernlens` console script prints its path, so a wheel built from this
+checkout is loadable even though GDB runs its own interpreter:
+
+```console
+pip install .
+gdb -q -ex "source $(kernlens path)"
+```
+
+`kernlens install` writes the same marked block as `install.sh`, and
+`kernlens path` prints the file without touching anything. Until the
+first release is published, the installer above is the shorter path, and
+`git pull` (or re-running it) is the upgrade. Contributor setup is in
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## The 40 commands
 
@@ -226,6 +235,10 @@ because the alternative is prose that is correct on the day it is written:
 - The repository tree in `docs/architecture.md` and the numbers in
   `examples/README.md` are checked against the real tree and the real
   measurement, not typed by hand.
+- The wheel is checked, not assumed: CI builds it and
+  `tools/check_wheel.py` fails when the startup file or the console
+  script is missing -- the exact failure the old source-only policy
+  existed to prevent.
 
 The `kl-*` command count on this page is checked against the command
 registry by the test suite, so it cannot quietly become false.
@@ -253,10 +266,10 @@ failure. x86_64 kernels only -- the page-table and `struct page` decoding
 are written against that architecture. On Python below 3.12 the only
 runtime dependency is `typing-extensions`.
 
-No package is published. Installation is the one-line installer or a
-`git clone`; see [Install](#install). A wheel cannot work until the
-startup file ships inside it, because GDB sources that file from its own
-interpreter.
+No package is published yet. Installation is the one-line installer, a
+`git clone`, or a wheel built from this checkout; see [Install](#install).
+The wheel ships the startup file and `kernlens path` prints it, because
+GDB sources that file from its own interpreter.
 
 GPL-3.0-or-later. See [`LICENSE`](LICENSE); third-party attribution is in
 [`CREDITS.md`](CREDITS.md).

@@ -136,9 +136,18 @@ kernlens doctor
 存在的启动文件、GDB 是否真的能 import `kernlens`，以及是否已经连上目标。
 `kl-status --doctor` 补充会话内的那一半。提 issue 时把这份报告贴进去。
 
-目前没有 PyPI 发布。wheel 会装进宿主 Python，而 GDB 运行自己的解释器、
-读自己的 `sys.path`；在启动文件随包发布之前，checkout 是受支持的安装
-方式，升级就是 `git pull`（或重跑安装脚本）。开发环境搭建见
+目前没有 PyPI 发布。启动文件现在是 package data，`kernlens` 控制台脚本会
+打印它的路径，所以从这个 checkout 构建的 wheel 可以直接加载，即使 GDB
+运行的是自己的解释器：
+
+```console
+pip install .
+gdb -q -ex "source $(kernlens path)"
+```
+
+`kernlens install` 写出的标记块与 `install.sh` 相同，`kernlens path` 只
+打印路径、不改任何文件。在第一次发布之前，上面的安装脚本仍是更短的路径，
+升级就是 `git pull`（或重跑安装脚本）。开发环境搭建见
 [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)。
 
 ## 40 个命令
@@ -209,6 +218,9 @@ KAddr.is_direct_map(0xffff888000001234)  # True
   都把记录和源码比对。
 - `docs/architecture.md` 里的目录树、`examples/README.md` 里的数字，都
   与实际树和实际测量比对，而不是手写。
+- wheel 是**检查过**的，不是假设的：CI 构建 wheel，缺少启动文件或控制台
+  脚本时 `tools/check_wheel.py` 会失败 —— 这正是过去"仅源码分发"政策
+  想避免的故障。
 
 本页出现的 `kl-*` 命令数由测试对命令注册表校验，所以它不会悄悄变成假的。
 
@@ -234,9 +246,9 @@ Python 3.10+，以及一个用 Python 3.10+ 构建的 GDB。这是两个解释�
 `struct page` 的解码是针对该架构写的。Python 3.12 以下唯一的运行时依赖
 是 `typing-extensions`。
 
-不发布任何包。安装方式是上面的一条命令或 `git clone`，见[安装](#安装)。
-在启动文件随包发布之前，wheel 无法工作，因为 GDB 要用自己的解释器
-source 那个文件。
+尚未发布任何包。安装方式是上面的一条命令、`git clone`，或从这个 checkout
+构建 wheel，见[安装](#安装)。wheel 里带有启动文件，`kernlens path` 会打印
+它的路径，因为 GDB 要用自己的解释器 source 那个文件。
 
 GPL-3.0-or-later。见 [`LICENSE`](LICENSE)；第三方归属见
 [`CREDITS.md`](CREDITS.md)。
