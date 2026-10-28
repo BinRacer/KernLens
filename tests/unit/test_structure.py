@@ -663,7 +663,8 @@ class ReadmeStructureTests(unittest.TestCase):
                 text = self._readme(name)
                 self.assertIn("Paging: 4-level", text)
                 self.assertIn("huge leaf", text)
-                self.assertIn("stored word", text)
+                self.assertIn("freeptr:", text)
+                self.assertIn("decoded=", text)
 
     def test_the_reference_and_contributor_docs_exist(self) -> None:
         """The material moved out of the README must still be reachable.

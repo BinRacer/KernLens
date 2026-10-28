@@ -16,11 +16,9 @@
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="许可证：GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
-    <img src="https://img.shields.io/badge/GDB-introspection-informational" alt="GDB introspection">
+    <img src="https://img.shields.io/badge/commands-40-informational" alt="40 个命令">
   </p>
 </div>
-
-## 概览
 
 KernLens 给 GDB 增加 **40 个命令**，用来读一个正在运行的 Linux 内核。
 每个命令都通过同一个 reader 读真实内存，用可以手算核对的算术解码，并把
@@ -30,15 +28,26 @@ KernLens 给 GDB 增加 **40 个命令**，用来读一个正在运行的 Linux 
 `core/` 与 `output/` 是纯 Python，完全不依赖 GDB；只有 `gdb/` 需要
 调试目标。
 
+## 看它跑一遍
+
+<p align="center">
+  <img src="docs/assets/demo.svg" alt="kl-walk 解码一个 2 MiB 页表映射，kl-slab details 解码一个 SLUB 空闲链表指针" width="100%">
+</p>
+
+这是 6.1.134 捕获的重放，不是实时录像：文字逐字来自
+[`tools/tutorial_capture.json`](tools/tutorial_capture.json)，同一段会话也
+保存在 [`docs/assets/demo.cast`](docs/assets/demo.cast)，可以用
+`asciinema play` 播放。所有数字都在运行时从内核重新推导，而不是假设。
+
 ## 它长什么样
 
 一个 2 MiB 映射，逐级走查。走查停下的位置和硬件一致：
 
 ```text
-VA: 0xffff8cb880400000
-Paging: 4-level  root=0x6ad2000
-pgd      : idx=0x119 entry=0x6ad28c8 value=0x4a01067 -> 0x4a01000
-pud      : idx=0xe2 entry=0x4a01710 value=0x4a02067 -> 0x4a02000
+VA: 0xffff975280400000
+Paging: 4-level  root=0x3010000
+pgd      : idx=0x12e entry=0x3010970 value=0x4a01067 -> 0x4a01000
+pud      : idx=0x14a entry=0x4a01a50 value=0x4a02067 -> 0x4a02000
 pmd      : idx=0x2 entry=0x4a02010 value=0x80000000004000e3 (huge leaf)
 Leaf: 2 MiB huge pa=0x400000 offset=0x0
 Flags: P RW A D PAT PS NX
@@ -48,12 +57,15 @@ Flags: P RW A D PAT PS NX
 `PS` 位就是没有 `pte` 那一行的原因。同一个地址强制按 5 级页表走查：
 
 ```text
-pgd      : idx=0x1ff entry=0x6ad2ff8 value=0x3015067 -> 0x3015000
-p4d      : idx=0x119 entry=0x30158c8 value=0x0
+VA: 0xffff975280400000
+Paging: 5-level  root=0x3010000
+pgd      : idx=0x1ff entry=0x3010ff8 value=0x3015067 -> 0x3015000
+p4d      : idx=0x12e entry=0x3015970 value=0x0
 Note: p4d entry is not present
 ```
 
-SLUB 分配器，其中 `Size` 与 `Obj Size` 的差值就是每个对象的额外开销：
+SLUB 分配器，其中 `Size` 与 `Obj Size` 的差值就是每个对象的额外开销
+（170 个 cache 中的三行）：
 
 ```text
 Name                         # Objects  Size  Obj Size  order
@@ -63,23 +75,45 @@ MPTCPv6                      15         2112  2064      3
 ```
 
 以及空闲链表的编码 —— 这是 use-after-free 追踪器必须算对的部分。
-槽位里存的**不是指针**：
+槽位里存的**不是指针**；`freeptr` 和解码后的 `next` 会一起打印：
 
 ```text
-cpu 0 first object : 0xffff911c466b5000
-  slot address   : 0xffff911c466b5200   (object + offset 512)
-  stored word    : 0xfa9c7eb28ed8d5fb
-  decoded next   : 0xffff911c466b5800
-  the arithmetic : 0xffff911c466b5800 ^ 0x53184e8d4227204 ^ swab(0xffff911c466b5200) = 0xfa9c7eb28ed8d5fb
-  check          : 0xfa9c7eb28ed8d5fb
+Slab @ 0xffff975286c57840 page: 0xffffee5d001b15c0
+    cache: 0xffff975284e1bc00 dentry  page_bytes=64
+    freeptr: offset=96 random=0xae939aafdb096690
+    freelist: 0xffff975286c57c00
+    objects: 21  inuse=19  frozen=1
+    state: frozen
+    slab_size: 0x1000
+    next: 0x3110c87b0f5be96f decoded=0xffff975286c57000
 ```
 
-## 快速开始
+算术是 `next = stored ^ random ^ swab(slot_address)`；`kl-slab details`
+把操作数都打印出来，方便手算复核。其余行（`cpu`、`node`）这里省略，
+命令的完整输出里有。
+
+## 安装
+
+在 shell 里一条命令：
+
+```console
+curl -fsSL https://raw.githubusercontent.com/BinRacer/KernLens/main/install.sh | sh
+```
+
+它把 checkout 克隆到 `~/.local/share/kernlens`，往 `~/.gdbinit` 写一个
+带标记的块，并在 `~/.local/bin` 生成 `kernlens` 包装脚本。重复执行只会
+更新 checkout，不会追加第二个块；`sh install.sh --uninstall` 会移除这个块
+和包装脚本，但保留 checkout。和任何安装脚本一样，建议先读
+[`install.sh`](install.sh) 再管道执行。
+
+如果你更愿意自己管理 checkout：
 
 ```console
 git clone https://github.com/BinRacer/KernLens
 echo "source $(pwd)/KernLens/gdbinit.py" >> ~/.gdbinit
 ```
+
+然后：
 
 ```gdb
 (gdb) file vmlinux
@@ -92,101 +126,38 @@ echo "source $(pwd)/KernLens/gdbinit.py" >> ~/.gdbinit
 地址，偏移没应用之前解析出来的东西一律不可信。加载 `gdbinit.py` 不会
 装任何断点，在 `file vmlinux` 之前 source 也安全。
 
-源码 checkout 就是唯一的安装方式。KernLens 未发布到 PyPI，从那里安装
-也得不到能用的副本：快速开始里 source 的那个启动文件并不在 wheel 里。
-`gdbinit.py` 会把自己的 `src/` 加进 `sys.path`，所以没有东西需要安装，
-也没有版本需要对齐；升级就是 `git pull`。开发环境搭建见
+在调试内核之前，先检查加载路径：
+
+```console
+kernlens doctor
+```
+
+它会报告宿主 Python、GDB 内嵌的 Python、`~/.gdbinit` 是否 source 了一个
+存在的启动文件、GDB 是否真的能 import `kernlens`，以及是否已经连上目标。
+`kl-status --doctor` 补充会话内的那一半。提 issue 时把这份报告贴进去。
+
+目前没有 PyPI 发布。wheel 会装进宿主 Python，而 GDB 运行自己的解释器、
+读自己的 `sys.path`；在启动文件随包发布之前，checkout 是受支持的安装
+方式，升级就是 `git pull`（或重跑安装脚本）。开发环境搭建见
 [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)。
 
 ## 40 个命令
 
 分组与 `kl-help` 完全一致。`kl-` 形式是你在提示符下敲的；规范的
-`kernlens-` 形式是脚本和生成式教程用的。两者始终都能用。
+`kernlens-` 形式是脚本和生成式教程用的。两者始终都能用。每个命令的
+全部别名和一句话说明在 [`docs/commands.md`](docs/commands.md)。
 
-### 内核元信息 (8)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-kchecksec` | `kl-kchecksec` | 内核加固项审计 |
-| `kernlens-kcmdline` | `kl-kcmdline` | 启动命令行 |
-| `kernlens-kconfig` | `kl-kconfig` | 内核配置项 |
-| `kernlens-kdmesg` | `kl-kdmesg` | 内核日志 |
-| `kernlens-klookup` | `kl-klookup` | 符号搜索 |
-| `kernlens-kmod` | `kl-kmod` | 已加载模块 |
-| `kernlens-ksyscalls` | `kl-ksyscalls` | 系统调用表 |
-| `kernlens-kversion` | `kl-kversion` | 内核版本 |
-
-### 地址与页表 (9)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-addr` | `kl-addr` | 地址分类 |
-| `kernlens-p2v` | `kl-p2v` | 物理地址转虚拟 |
-| `kernlens-page` | `kl-page` | 地址所属页 |
-| `kernlens-pageinfo` | `kl-pageinfo` | 解析 struct page |
-| `kernlens-pagewalk` | `kl-pagewalk` | 页表走查（pwndbg 格式） |
-| `kernlens-pt` | `kl-pt` | 页表索引 |
-| `kernlens-pte` | `kl-pte` | 解码页表项 |
-| `kernlens-v2p` | `kl-v2p` | 虚拟地址转物理 |
-| `kernlens-walk` | `kl-walk` | 逐级走查页表 |
-
-### 内存与符号 (11)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-bt` | `kl-bt` | 调用栈 |
-| `kernlens-buddy` | `kl-buddy` | 在伙伴系统中定位地址 |
-| `kernlens-buddydump` | `kl-buddydump` | 伙伴系统空闲链转储 |
-| `kernlens-chain` | `kl-chain` | 精简调用链 |
-| `kernlens-kbpf` | `kl-kbpf` | BPF 程序与映射 |
-| `kernlens-kdmabuf` | `kl-kdmabuf` | dma-buf 对象 |
-| `kernlens-kvar` | `kl-kvar` | 读取内核变量 |
-| `kernlens-read` | `kl-read` | 内存转储 |
-| `kernlens-read-field` | `kl-read-field` | 读取结构体字段 |
-| `kernlens-slab` | `kl-slab` | SLUB 缓存检查 |
-| `kernlens-sym` | `kl-sym` | 地址转符号 |
-
-### 内核基址与 KASLR (4)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-base` | `kl-base` | 当前基址与偏移 |
-| `kernlens-kaslr` | `kl-kaslr` | 由运行时地址求偏移 |
-| `kernlens-kaslr-offset` | `kl-kaslr-offset` | 直接设置偏移 |
-| `kernlens-kbase` | `kl-kbase` | 查找内核基址 |
-
-### CPU 拓扑 (3)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-cpu` | `kl-cpu` | CPU 拓扑 |
-| `kernlens-msr` | `kl-msr` | MSR 寄存器 |
-| `kernlens-percpu` | `kl-percpu` | per-CPU 符号地址 |
-
-### 位与整数原语 (2)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-bits` | `kl-bits` | 按位查看 |
-| `kernlens-int` | `kl-int` | 按整数查看 |
-
-### 总览 (1)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-status` | `kl-status` | 会话状态 |
-
-### 输出 (1)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-color` | `kl-color` | 颜色开关 |
-
-### 帮助 (1)
-
-| 命令 | 别名 | 输出内容 |
-| --- | --- | --- |
-| `kernlens-help` | `kl-help` | 命令参考 |
+| 分类 | 命令 |
+| --- | --- |
+| overview (1) 总览 | `kl-status` |
+| kernel base & KASLR (4) 基址与偏移 | `kl-base`, `kl-kbase`, `kl-kaslr`, `kl-kaslr-offset` |
+| kernel metadata (8) 内核元信息 | `kl-kchecksec`, `kl-kcmdline`, `kl-kconfig`, `kl-kdmesg`, `kl-klookup`, `kl-kmod`, `kl-ksyscalls`, `kl-kversion` |
+| addresses & page tables (9) 地址与页表 | `kl-addr`, `kl-p2v`, `kl-page`, `kl-pageinfo`, `kl-pagewalk`, `kl-pt`, `kl-pte`, `kl-v2p`, `kl-walk` |
+| memory & symbols (11) 内存与符号 | `kl-bt`, `kl-buddy`, `kl-buddydump`, `kl-chain`, `kl-kbpf`, `kl-kdmabuf`, `kl-kvar`, `kl-read`, `kl-read-field`, `kl-slab`, `kl-sym` |
+| CPU topology (3) CPU 拓扑 | `kl-cpu`, `kl-msr`, `kl-percpu` |
+| bit & integer primitives (2) 位与整数 | `kl-bits`, `kl-int` |
+| output (1) 输出 | `kl-color` |
+| help (1) 帮助 | `kl-help` |
 
 每个命令在 [`docs/tutorial/`](docs/tutorial/) 都有一页：真实捕获的输出、
 全部选项，以及如何读这个结果。
@@ -228,6 +199,9 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 
 - `docs/tutorial/` 是**生成**的，来自在真实内核上的捕获；
   `gen_tutorial.py --check` 在页面与捕获不一致时失败。
+- README 的演示和 `docs/commands.md` 也是生成的：
+  `tools/gen_demo.py --check` 比对动画与捕获，
+  `tools/gen_commands.py --check` 比对命令表与注册的元数据。
 - 示例覆盖度在 `tools/example_manifest.py` 中声明，由
   `tools/check_examples.py --check` 强制执行：声明了但代码里没有会失败，
   只在散文里提到却从未执行的命令同样会失败。
@@ -243,6 +217,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 | 文档 | 内容 |
 | --- | --- |
 | [`docs/tutorial/`](docs/tutorial/) | 每个命令一页，真实输出 |
+| [`docs/commands.md`](docs/commands.md) | 每个命令与别名，生成式 |
 | [`docs/api.zh-CN.md`](docs/api.zh-CN.md) | Python API 参考 |
 | [`docs/architecture.md`](docs/architecture.md) | 包结构、API 映射、设计说明 |
 | [`examples/`](examples/README.md) | 可运行脚本，按意图分组 |
@@ -253,12 +228,15 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 
 ## 环境要求与许可
 
-Python 3.10+，以及一个用 Python 3.10+ 构建的 GDB。仅支持 x86_64 内核
-—— 页表与 `struct page` 的解码是针对该架构写的。Python 3.12 以下唯一
-的运行时依赖是 `typing-extensions`。
+Python 3.10+，以及一个用 Python 3.10+ 构建的 GDB。这是两个解释器，
+不是一个：`kernlens doctor` 会把两者都打印出来，因为"GDB 内嵌的 Python
+看不到这个包"是最常见的一次性失败。仅支持 x86_64 内核 —— 页表与
+`struct page` 的解码是针对该架构写的。Python 3.12 以下唯一的运行时依赖
+是 `typing-extensions`。
 
-不发布任何包。安装方式就是 `git clone`，见[快速开始](#快速开始)。
-PyPI 上的 `kernlens` 不是这个项目。
+不发布任何包。安装方式是上面的一条命令或 `git clone`，见[安装](#安装)。
+在启动文件随包发布之前，wheel 无法工作，因为 GDB 要用自己的解释器
+source 那个文件。
 
 GPL-3.0-or-later。见 [`LICENSE`](LICENSE)；第三方归属见
 [`CREDITS.md`](CREDITS.md)。
