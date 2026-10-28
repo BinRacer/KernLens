@@ -25,7 +25,13 @@ KernLens 以源码 checkout 的形式分发，不作为包发布。没有 PyPI �
 uv sync
 uv run pytest --cov=kernlens --cov-report=term-missing
 uv run ruff check .
+uv run pyright
+uv run mypy
 ```
+
+`pyright` 与 `mypy` 都是闸门：包内是空的 `py.typed`，而两个检查器
+经常互相发现对方接受的注解问题。它们读取的都是 `types-gdb` 开发依赖
+提供的 `gdb` stub，因此运行时不需调试器。
 
 仍可在 uv 环境中使用 stdlib runner：
 

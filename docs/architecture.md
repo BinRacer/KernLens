@@ -369,10 +369,15 @@ debugger-independent:
 
 `KernelDebugger` composes one instance of each component and republishes
 the commonly used methods directly onto the facade.  The republication
-is driven by a single `_BINDINGS` table (125 rows of `(public_name,
+is driven by a single `_BINDINGS` table (140 rows of `(public_name,
 component, member, free_function)`); `api.FACADE_FUNCTIONS` and
 `api.INSTANCE_NAMES` are derived from it, so the public surface is
-declared exactly once.  Component accessors (`kdbg.logger`,
+declared exactly once.  Each row is bound as
+`self.<name>: Final = self.<component>.<member>`, which keeps the
+component method's real signature (parameter names and defaults
+included) and gives `pyright --verifytypes` a declared type instead of
+an inference; `tests/unit/test_structure.py` fails if a binding is
+added without the `Final` annotation.  Component accessors (`kdbg.logger`,
 `kdbg.styler`, `kdbg.reader`, `kdbg.symbols`, `kdbg.kaslr`, `kdbg.kbase`,
 `kdbg.cpu`, `kdbg.walker`, `kdbg.kernel`, `kdbg.slub`) remain available.
 
@@ -401,10 +406,10 @@ combines them behind one API.
 | `dmabuf.py` | the dma-buf list (`debugfs_list` / `db_list`) and scatterlists |
 
 Every mixin declares `__slots__ = ()`; the cache slots live only on
-`KernelInspector` (multiple bases with non-empty slots would raise
-"instance lay-out conflict").  `tests/unit/test_structure.py` enforces
-the package shape and that the inspectors never import `kernel`,
-`facade`, or `api`.
+`InspectorBase`, the one base they all share (two sibling bases with
+non-empty slots would raise "instance lay-out conflict").
+`tests/unit/test_structure.py` enforces the package shape and that the
+inspectors never import `kernel`, `facade`, or `api`.
 
 #### Struct-offset resolution
 
