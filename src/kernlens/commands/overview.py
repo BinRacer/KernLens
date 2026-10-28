@@ -10,6 +10,9 @@
 from __future__ import annotations
 
 import argparse
+import sys
+
+import gdb
 
 from .. import __version__
 from ..gdb.facade import kdbg
@@ -20,15 +23,77 @@ from .framework import Command, CommandCategory
 _status_parser = argparse.ArgumentParser(
     description="Shows the KernLens version, color mode, KASLR slide, and layout."
 )
+_status_parser.add_argument(
+    "--doctor",
+    action="store_true",
+    help=(
+        "also print what GDB loaded: the object file, DWARF/BTF "
+        "availability, and whether a target is attached"
+    ),
+)
+
+
+def _doctor_lines() -> list[tuple[str, str]]:
+    """The load-path facts ``kl-status --doctor`` adds.
+
+    Every probe is defensive: this is the command a user runs *because*
+    something is wrong, so a missing ``gdb`` attribute must produce a
+    line, not an exception.
+    """
+    lines: list[tuple[str, str]] = [
+        ("gdb", str(getattr(gdb, "VERSION", "unknown"))),
+        ("python", sys.version.split()[0]),
+    ]
+    try:
+        progspace = gdb.current_progspace()
+        filename = getattr(progspace, "filename", None)
+    except (AttributeError, gdb.error):
+        filename = None
+    lines.append(("objfile", str(filename) if filename else "none"))
+
+    lookup = getattr(gdb, "lookup_type", None)
+    if callable(lookup):
+        try:
+            lookup("struct page")
+        except gdb.error:
+            lines.append((
+                "dwarf",
+                "struct page not found; load a vmlinux with debug info",
+            ))
+        else:
+            lines.append(("dwarf", "struct page resolved"))
+    else:
+        lines.append(("dwarf", "not checked"))
+
+    try:
+        from ..gdb.btf import find_in_gdb
+
+        btf = find_in_gdb()
+    except (ImportError, AttributeError, TypeError, ValueError, gdb.error):
+        btf = None
+    lines.append((
+        "btf",
+        "loaded image has .BTF" if btf is not None else "no .BTF in the loaded image",
+    ))
+
+    try:
+        pid = int(getattr(gdb.selected_inferior(), "pid", 0))
+    except (AttributeError, TypeError, ValueError, gdb.error):
+        pid = 0
+    lines.append((
+        "target",
+        f"attached (pid {pid})" if pid else "no target; use target remote :1234",
+    ))
+    return lines
 
 
 @Command(
     _status_parser,
     category=CommandCategory.OVERVIEW,
     aliases=["kl-status"],
-    examples="kl-status",
+    examples="kl-status\nkl-status --doctor",
 )
-def kernlens_status() -> None:
+def kernlens_status(doctor: bool = False) -> None:
     indent = IndentContextManager()
     color = kdbg.color_enabled
     indent.print(
@@ -86,6 +151,9 @@ def kernlens_status() -> None:
             indent.prefix("topology")
             + f": nr_cpus={kdbg.nr_cpus()} nr_nodes={kdbg.nr_nodes()}"
         )
+        if doctor:
+            for name, value in _doctor_lines():
+                indent.print(indent.prefix(name) + ": " + value)
     print()
     print(
         message.hint("kl-help")
