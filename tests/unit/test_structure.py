@@ -250,9 +250,68 @@ class SingleRegistryTests(unittest.TestCase):
         self.assertIn("COMPONENT_NAMES", text)
 
     def test_facade_has_the_single_binding_table(self) -> None:
+        """``_BINDINGS`` stays the source of truth for the flat surface.
+
+        The facade binds each name with an explicit
+        ``self.<name>: Final = self.<component>.<member>`` assignment so a
+        type checker can see the method signature; a ``setattr`` loop left
+        the whole surface invisible.  Those assignments are a second spelling
+        of the table, so this compares the two and fails on any drift in
+        either direction.  (See ``CHANGELOG.md``: a facade that calls
+        ``kdbg.info`` must not report an attribute error.)
+        """
         text = (SRC / "gdb" / "facade.py").read_text(encoding="utf-8")
-        self.assertIn("_BINDINGS", text)
-        self.assertNotIn("self.debug = self.logger.debug", text)
+        tree = ast.parse(text)
+        bindings: tuple[tuple[str, str, str, bool], ...] = ()
+        init: ast.FunctionDef | None = None
+        for node in tree.body:
+            if (
+                isinstance(node, ast.AnnAssign)
+                and getattr(node.target, "id", "") == "_BINDINGS"
+            ):
+                bindings = ast.literal_eval(node.value)
+            elif isinstance(node, ast.ClassDef) and node.name == "KernelDebugger":
+                for item in node.body:
+                    if isinstance(item, ast.FunctionDef) and item.name == "__init__":
+                        init = item
+        self.assertTrue(bindings)
+        self.assertIsNotNone(init)
+        self.assertNotIn(
+            "_free in _BINDINGS", text,
+            "the facade must bind explicitly; a setattr loop is invisible "
+            "to type checkers",
+        )
+        bound: list[tuple[str, str, str]] = []
+        for node in ast.walk(init):
+            # ``self.<name>: Final = self.<component>.<member>``.  ``Final``
+            # is what makes ``pyright --verifytypes`` count the binding as a
+            # declared type instead of an inference; the annotation is part
+            # of the contract this test guards.
+            if not isinstance(node, ast.AnnAssign) or node.value is None:
+                continue
+            target, value = node.target, node.value
+            if not (
+                isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name)
+                and target.value.id == "self"
+                and isinstance(value, ast.Attribute)
+                and isinstance(value.value, ast.Attribute)
+                and isinstance(value.value.value, ast.Name)
+                and value.value.value.id == "self"
+            ):
+                continue
+            if not (
+                isinstance(node.annotation, ast.Name)
+                and node.annotation.id == "Final"
+            ):
+                self.fail(
+                    "facade binding is not declared Final: "
+                    + ast.unparse(node)
+                )
+            bound.append((target.attr, value.value.attr, value.attr))
+        self.assertEqual(
+            bound, [(name, component, member) for name, component, member, _ in bindings]
+        )
 
 
 class ColorRoleTests(unittest.TestCase):
