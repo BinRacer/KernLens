@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use KernLens in work that gets published, cite this file."
+title: KernLens
+abstract: >-
+  Linux kernel debugging from Python and GDB: page tables at every level,
+  SLUB caches and object chains, struct page, symbols, and KASLR, read
+  through a single memory reader.
+type: software
+authors:
+  - name: "BinRacer"
+    email: "native.lab@outlook.com"
+repository-code: "https://github.com/BinRacer/KernLens"
+url: "https://github.com/BinRacer/KernLens"
+license: "GPL-3.0-or-later"
+version: 0.3.0
+date-released: 2026-10-28
+keywords:
+  - linux
+  - kernel
+  - debugging
+  - gdb
+  - page-tables
+  - slub
+  - kaslr
