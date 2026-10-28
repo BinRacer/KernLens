@@ -78,3 +78,6 @@ back-patched; the tool is a development aid, not a long-lived service.
 | `main` | yes |
 | newest tag | yes |
 | older tags | no |
+
+The environments that have actually been exercised, and the ones that are
+only expected to work, are in [`docs/compatibility.md`](docs/compatibility.md).

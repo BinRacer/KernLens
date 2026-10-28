@@ -105,6 +105,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   └── integration/      # adapter, gdbinit and host-runnable examples
 ├── docs/
 │   ├── architecture.md   # layout, API map, and design notes
+│   ├── compatibility.md  # measured / expected / unsupported environments
 │   ├── api.md            # Python API reference
 │   ├── api.zh-CN.md      # the same, in Chinese
 │   ├── commands.md       # generated command/alias table

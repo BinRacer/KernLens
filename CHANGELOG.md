@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `kernlens install --uninstall` removes only the block and leaves the
   rest of `~/.gdbinit` byte-for-byte intact.
 
+- **`docs/compatibility.md` says what has actually been run.**  The
+  README stated "Python 3.10+ and a GDB built with Python 3.10+" and left
+  it there, which reads as a promise about every distribution.  The new
+  page separates four claims -- `measured`, `measured in tests`,
+  `expected`, `unsupported` -- and gives each row its evidence, so a
+  reader can tell a capture from a requirement.  It also makes the two
+  interpreters explicit: the host Python runs the console script, GDB's
+  embedded Python runs the startup file, and what crosses between them is
+  files on disk, not the interpreter.  `tests/unit/test_compatibility.py`
+  checks the vocabulary, the Python range against `pyproject.toml` and the
+  CI matrix, and the measured kernel against the tutorial capture.
 - **One command installs a checkout, and one command checks it.**
   `install.sh` clones to `${XDG_DATA_HOME:-~/.local/share}/kernlens`,
   writes a single marked block into `~/.gdbinit`, and leaves a

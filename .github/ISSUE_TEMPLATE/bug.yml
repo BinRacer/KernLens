@@ -25,6 +25,9 @@ the traceback, or the command and what it did instead of working
 
 `gdb --version` and the Python version inside GDB matter more than they
 look: the tool is imported by GDB's interpreter, not by the shell's.
+[`docs/compatibility.md`](https://github.com/BinRacer/KernLens/blob/main/docs/compatibility.md)
+says which combinations have actually been run; if yours is not one of
+them, say so -- that is how a row gets measured.
 
 ```
 gdb --version | head -1
