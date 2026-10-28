@@ -96,6 +96,10 @@ jobs:
           uv run --frozen python tools/gen_tutorial_index.py \
             --capture tools/tutorial_capture.json \
             --meta tools/tutorial_meta.json --check
+          # The README demo and the command table are generated from the
+          # same capture/metadata.  A hand edit to either asset fails here.
+          uv run --frozen python tools/gen_demo.py --check
+          uv run --frozen python tools/gen_commands.py --check
 
       - name: Verify the examples match their manifest
         run: |
