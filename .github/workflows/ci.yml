@@ -62,6 +62,24 @@ jobs:
       - name: Lint
         run: uv run --frozen ruff check .
 
+      - name: Type check
+        # ``py.typed`` claims this package can be checked; this is the job
+        # that keeps the claim true.  It is not covered by pytest because
+        # pyright resolves ``gdb`` through the ``types-gdb`` dev stub.
+        # The config pins pythonVersion, so one matrix entry is enough.
+        if: matrix.python-version == '3.10'
+        run: uv run --frozen pyright
+
+      - name: Type check (mypy)
+        # A second checker over the same `py.typed` claim.  pyright and
+        # mypy disagree on some inferences, and every disagreement found
+        # so far was a real defect (see `[tool.mypy]` in pyproject.toml).
+        # `types-gdb` is a dev dependency, so both read the same `gdb`
+        # stub and check the same code; like pyright, one entry is enough
+        # because the target version is pinned in the config.
+        if: matrix.python-version == '3.10'
+        run: uv run --frozen mypy
+
       - name: Test
         run: uv run --frozen pytest --cov=kernlens --cov-report=term-missing
 
@@ -173,4 +191,23 @@ jobs:
             --coverage --version "$release"
 
       - name: Build distributions
-        run: uv build
+        run: |
+          set -eu
+          uv build
+          # The py.typed source file is only a claim about the checkout;
+          # the marker has to be inside the artifacts for a pip user to
+          # benefit.  Assert both, because package-data and MANIFEST.in
+          # are separate switches and either can silently stop applying.
+          uv run --frozen python - <<'PY'
+          import glob, tarfile, zipfile
+
+          wheel = glob.glob("dist/*.whl")[0]
+          with zipfile.ZipFile(wheel) as archive:
+              assert "kernlens/py.typed" in archive.namelist(), wheel
+
+          sdist = glob.glob("dist/*.tar.gz")[0]
+          with tarfile.open(sdist) as archive:
+              names = archive.getnames()
+          assert any(name.endswith("/src/kernlens/py.typed") for name in names), sdist
+          print("py.typed shipped in wheel and sdist")
+          PY
