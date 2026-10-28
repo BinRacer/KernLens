@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="1000" height="640" viewBox="0 0 1000 640" role="img" aria-labelledby="demo-title demo-desc">
+  <title id="demo-title">KernLens reading a live kernel</title>
+  <desc id="demo-desc">A replay of two commands from the 6.1.134 capture: kl-walk decodes a 2 MiB page-table mapping, and kl-slab details decodes a SLUB freelist pointer.</desc>
+  <style>
+    text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 13px; white-space: pre; }
+    .cmd { fill: #e6edf3; }
+    .out { fill: #c9d1d9; }
+    .hl { fill: #e3b341; }
+    .accent { fill: #79c0ff; }
+    .flags { fill: #a5d6ff; }
+    .prompt { fill: #7ee787; }
+    .meta { fill: #8b949e; font-size: 11px; }
+    .cursor { fill: #e6edf3; animation: blink 1.1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      text { animation: none !important; opacity: 1 !important; }
+    }
+    @keyframes k0 { 0% { opacity: 0; } 8.571% { opacity: 0; } 11.714% { opacity: 1; } }
+    @keyframes k1 { 0% { opacity: 0; } 16.429% { opacity: 0; } 19.571% { opacity: 1; } }
+    @keyframes k2 { 0% { opacity: 0; } 17.857% { opacity: 0; } 21.000% { opacity: 1; } }
+    @keyframes k3 { 0% { opacity: 0; } 19.286% { opacity: 0; } 22.429% { opacity: 1; } }
+    @keyframes k4 { 0% { opacity: 0; } 20.714% { opacity: 0; } 23.857% { opacity: 1; } }
+    @keyframes k5 { 0% { opacity: 0; } 22.143% { opacity: 0; } 25.286% { opacity: 1; } }
+    @keyframes k6 { 0% { opacity: 0; } 23.571% { opacity: 0; } 26.714% { opacity: 1; } }
+    @keyframes k7 { 0% { opacity: 0; } 25.000% { opacity: 0; } 28.143% { opacity: 1; } }
+    @keyframes k8 { 0% { opacity: 0; } 26.429% { opacity: 0; } 29.571% { opacity: 1; } }
+    @keyframes k9 { 0% { opacity: 0; } 37.857% { opacity: 0; } 41.000% { opacity: 1; } }
+    @keyframes k10 { 0% { opacity: 0; } 45.714% { opacity: 0; } 48.857% { opacity: 1; } }
+    @keyframes k11 { 0% { opacity: 0; } 47.143% { opacity: 0; } 50.286% { opacity: 1; } }
+    @keyframes k12 { 0% { opacity: 0; } 48.571% { opacity: 0; } 51.714% { opacity: 1; } }
+    @keyframes k13 { 0% { opacity: 0; } 50.000% { opacity: 0; } 53.143% { opacity: 1; } }
+    @keyframes k14 { 0% { opacity: 0; } 51.429% { opacity: 0; } 54.571% { opacity: 1; } }
+    @keyframes k15 { 0% { opacity: 0; } 52.857% { opacity: 0; } 56.000% { opacity: 1; } }
+    @keyframes k16 { 0% { opacity: 0; } 54.286% { opacity: 0; } 57.429% { opacity: 1; } }
+    @keyframes k17 { 0% { opacity: 0; } 55.714% { opacity: 0; } 58.857% { opacity: 1; } }
+    @keyframes k18 { 0% { opacity: 0; } 57.143% { opacity: 0; } 60.286% { opacity: 1; } }
+    @keyframes k19 { 0% { opacity: 0; } 58.571% { opacity: 0; } 61.714% { opacity: 1; } }
+    @keyframes k20 { 0% { opacity: 0; } 60.000% { opacity: 0; } 63.143% { opacity: 1; } }
+    @keyframes k21 { 0% { opacity: 0; } 61.429% { opacity: 0; } 64.571% { opacity: 1; } }
+    @keyframes k22 { 0% { opacity: 0; } 62.857% { opacity: 0; } 66.000% { opacity: 1; } }
+  </style>
+  <rect width="1000" height="640" rx="12" fill="#0d1117"/>
+  <rect width="1000" height="42" rx="12" fill="#161b22"/>
+  <rect y="30" width="1000" height="12" fill="#161b22"/>
+  <circle cx="24" cy="21" r="6" fill="#ff5f56"/>
+  <circle cx="46" cy="21" r="6" fill="#ffbd2e"/>
+  <circle cx="68" cy="21" r="6" fill="#27c93f"/>
+  <text x="500" y="26" text-anchor="middle" class="meta">gdb — KernLens</text>
+  <text x="30" y="92"><tspan class="prompt">(gdb) </tspan><tspan class="cmd">kl-walk 0xffff975280400000</tspan></text>
+  <text x="30" y="114" class="out">VA: 0xffff975280400000</text>
+  <text x="30" y="136" class="out">Paging: 4-level  root=0x3010000</text>
+  <text x="30" y="158" class="out" style="animation: k3 7.00s linear infinite both">pgd      : idx=0x12e entry=0x3010970 value=0x4a01067 -&gt; 0x4a01000</text>
+  <text x="30" y="180" class="out" style="animation: k4 7.00s linear infinite both">pud      : idx=0x14a entry=0x4a01a50 value=0x4a02067 -&gt; 0x4a02000</text>
+  <text x="30" y="202" class="hl" style="animation: k5 7.00s linear infinite both">pmd      : idx=0x2 entry=0x4a02010 value=0x80000000004000e3 (huge leaf)</text>
+  <text x="30" y="224" class="hl" style="animation: k6 7.00s linear infinite both">Leaf: 2 MiB huge pa=0x400000 offset=0x0</text>
+  <text x="30" y="246" class="flags" style="animation: k7 7.00s linear infinite both">Flags: P RW A D PAT PS NX</text>
+  <text x="30" y="290" style="animation: k9 7.00s linear infinite both"><tspan class="prompt">(gdb) </tspan><tspan class="cmd">kl-slab details 0xffff975286c57840</tspan></text>
+  <text x="30" y="312" class="out" style="animation: k10 7.00s linear infinite both">Slab @ 0xffff975286c57840 page: 0xffffee5d001b15c0</text>
+  <text x="30" y="334" class="out" style="animation: k11 7.00s linear infinite both">    cache: 0xffff975284e1bc00 dentry  page_bytes=64</text>
+  <text x="30" y="356" class="accent" style="animation: k12 7.00s linear infinite both">    freeptr: offset=96 random=0xae939aafdb096690</text>
+  <text x="30" y="378" class="accent" style="animation: k13 7.00s linear infinite both">    freelist: 0xffff975286c57c00</text>
+  <text x="30" y="400" class="out" style="animation: k14 7.00s linear infinite both">    objects: 21  inuse=19  frozen=1</text>
+  <text x="30" y="422" class="out" style="animation: k15 7.00s linear infinite both">    state: frozen</text>
+  <text x="30" y="444" class="out" style="animation: k16 7.00s linear infinite both">    slab_size: 0x1000</text>
+  <text x="30" y="466" class="accent" style="animation: k17 7.00s linear infinite both">    next: 0x3110c87b0f5be96f decoded=0xffff975286c57000</text>
+  <text x="30" y="488" class="out" style="animation: k18 7.00s linear infinite both">    cpu 0: active=0xffffee5d001b15c0 freelist=0xffff975286c57840</text>
+  <text x="30" y="510" class="out" style="animation: k19 7.00s linear infinite both">    cpu 1: active=0xffffee5d001b1740 freelist=0xffff975286c5de40</text>
+  <text x="30" y="532" class="out" style="animation: k20 7.00s linear infinite both">    cpu 2: active=0xffffee5d001b06c0 freelist=0xffff975286c1b9c0</text>
+  <text x="30" y="554" class="out" style="animation: k21 7.00s linear infinite both">    cpu 3: active=0xffffee5d001b2940 freelist=0xffff975286ca5540</text>
+  <text x="30" y="576" class="out" style="animation: k22 7.00s linear infinite both">    node 0: partial=8 head=0xffffee5d001b1500 in_partial=False</text>
+  <rect x="30" y="587" width="8" height="14" class="cursor"/>
+  <text x="30" y="622" class="meta">replay of the 6.1.134 capture — docs/tutorial/</text>
+</svg>
