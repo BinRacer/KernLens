@@ -41,6 +41,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files on disk, not the interpreter.  `tests/unit/test_compatibility.py`
   checks the vocabulary, the Python range against `pyproject.toml` and the
   CI matrix, and the measured kernel against the tutorial capture.
+- **The documentation has a site, and every command has a stable URL.**
+  `mkdocs.yml` builds the same Markdown the checkout already had, so the
+  generated tutorial gives each of the 40 commands a linkable address
+  instead of a path inside a repository.  Two things had to become
+  generated rather than copied: `docs/index.md` and `docs/zh-CN.md` come
+  from the two READMEs with their links rewritten (a checkout path means
+  one thing on GitHub and another under mkdocs), and `docs/llms.txt`
+  comes from the nav, so a page cannot be published and stay unlisted.
+  `tools/gen_docs_site.py --check` runs in CI next to `mkdocs build
+  --strict`, which turns a broken internal link or a missing page into a
+  failure.  The theme is a separate dependency group, so `uv sync` does
+  not download it.  The site is deployed to GitHub Pages by
+  `.github/workflows/docs.yml`; the README badge and the `Documentation`
+  project URL wait for the first deploy, because until then they would
+  point at a 404.
 - **One command installs a checkout, and one command checks it.**
   `install.sh` clones to `${XDG_DATA_HOME:-~/.local/share}/kernlens`,
   writes a single marked block into `~/.gdbinit`, and leaves a
