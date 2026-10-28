@@ -9,11 +9,13 @@ never pretends a missing prerequisite is fine.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from kernlens import doctor
 
@@ -41,6 +43,29 @@ def _options(**overrides: object) -> argparse.Namespace:
     }
     values.update(overrides)
     return argparse.Namespace(**values)
+
+
+class RunnerTests(unittest.TestCase):
+    def test_run_command_drops_the_launchers_pythonpath(self) -> None:
+        # ``bin/kernlens`` exports PYTHONPATH so its own import works.
+        # If the GDB probe inherited it, ``import kernlens`` would pass
+        # even when the startup file failed to load.
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "show.py"
+            script.write_text(
+                "import os\n"
+                "print(os.environ.get('PYTHONPATH', 'unset'))\n",
+                encoding="utf-8",
+            )
+            with mock.patch.dict(
+                os.environ, {"PYTHONPATH": "/should/not/leak"},
+            ):
+                status, output = doctor.run_command(
+                    [sys.executable, str(script)],
+                    env=None,
+                )
+        self.assertEqual(status, 0, output)
+        self.assertEqual(output, "unset")
 
 
 class RenderTests(unittest.TestCase):
@@ -129,6 +154,26 @@ class GdbinitCheckTests(unittest.TestCase):
 
 
 class LoadCheckTests(unittest.TestCase):
+    def test_the_source_line_is_not_quoted(self) -> None:
+        # GDB's ``source`` does not strip quotes: ``source "/path"``
+        # looks for a file whose name begins with a quote.  The probe has
+        # to send the bare path, which also keeps spaces working.
+        seen: list[list[str]] = []
+
+        def runner(command: list[str]) -> tuple[int, str]:
+            seen.append(list(command))
+            return 0, "KLVER=0.3.0"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            startup = Path(tmp) / "with space" / "gdbinit.py"
+            startup.parent.mkdir()
+            startup.write_text("", encoding="utf-8")
+            doctor.check_gdb_load("/usr/bin/gdb", startup, runner=runner)
+        source = next(
+            item for item in seen[0] if item.startswith("source ")
+        )
+        self.assertEqual(source, f"source {startup}")
+
     def test_success_reports_the_loaded_version(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             startup = Path(tmp) / "gdbinit.py"
@@ -185,6 +230,14 @@ class VmlinuxCheckTests(unittest.TestCase):
 
 
 class CollectTests(unittest.TestCase):
+    def test_default_startup_is_the_packaged_file(self) -> None:
+        path = doctor.default_startup()
+        self.assertTrue(path.is_file())
+        self.assertEqual(
+            path.parent, Path(doctor.__file__).resolve().parent,
+        )
+        self.assertIn("def bootstrap", path.read_text(encoding="utf-8"))
+
     def test_collects_every_probe(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             startup = Path(tmp) / "gdbinit.py"

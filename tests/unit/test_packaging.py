@@ -72,11 +72,18 @@ class PyTypedMarkerTests(unittest.TestCase):
         sets ``pythonpath = ["src"]``, so it cannot notice a package-data
         entry that was dropped from ``pyproject.toml``.  These two lines
         are what put the marker in the wheel and the sdist.
+
+        ``gdbinit.py`` is in the same package-data list for the same
+        reason: GDB sources it from the installed package, and a wheel
+        without it would install cleanly and then have no startup file.
         """
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('kernlens = ["py.typed"]', pyproject)
+        self.assertIn(
+            'kernlens = ["py.typed", "gdbinit.py"]', pyproject,
+        )
         manifest = (ROOT / "MANIFEST.in").read_text(encoding="utf-8")
         self.assertIn("include src/kernlens/py.typed", manifest)
+        self.assertIn("include gdbinit.py", manifest)
 
     def test_version_is_exported(self) -> None:
         self.assertIsInstance(kernlens.__version__, str)

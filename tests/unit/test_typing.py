@@ -97,9 +97,18 @@ import typing
 
 import kernlens
 
+#: Modules that only make sense inside GDB.  ``kernlens.gdbinit`` is
+#: *sourced*, not imported: it raises ``SystemExit`` when no ``gdb`` is in
+#: ``sys.modules``, which is the readable error a user sees.  That is not
+#: an import failure, so the probe steps over it by name instead of
+#: treating ``SystemExit`` as "skip everything".
+GDB_ONLY = frozenset({"kernlens.gdbinit"})
+
 checked = 0
 failures = []
 for info in pkgutil.walk_packages(kernlens.__path__, "kernlens."):
+    if info.name in GDB_ONLY:
+        continue
     try:
         module = importlib.import_module(info.name)
     except ImportError:
