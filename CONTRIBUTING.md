@@ -24,11 +24,12 @@ file, `kernlens install` edits `~/.gdbinit`, `kernlens doctor` checks the
 load path, and `kernlens version` prints the version.  None of them
 imports `kernlens.gdb`, because the host interpreter has no `gdb` module.
 
-Publishing is a release step, not a code step: TestPyPI first, then PyPI
-through trusted publishing.  `tools/check_wheel.py` is the gate that the
-built wheel actually contains the startup file and the console script;
-until it runs in CI against a real build, a green test suite says nothing
-about the package.
+Publishing is a release step, not a code step.  The order, the checks,
+and the one-time trusted-publishing setup are in
+[`docs/releasing.md`](docs/releasing.md).  `tools/check_wheel.py` is the
+gate that the built wheel actually contains the startup file and the
+console script; until it runs in CI against a real build, a green test
+suite says nothing about the package.
 
 ## Testing and development
 

@@ -74,6 +74,7 @@ nav:
   - Python API (中文): api.zh-CN.md
   - Architecture: architecture.md
   - Compatibility: compatibility.md
+  - Releasing: releasing.md
   - Naming: naming.md
   # Outside the site directory, so these stay on GitHub rather than
   # becoming a second copy that drifts.

@@ -21,10 +21,10 @@ KernLens 从同一棵树以两种方式分发。`install.sh` 克隆 checkout，�
 `kernlens version` 打印版本。它们都不 import `kernlens.gdb`，因为宿主
 解释器里没有 `gdb` 模块。
 
-发布是 release 步骤，不是代码步骤：先 TestPyPI，再通过 trusted
-publishing 发到 PyPI。`tools/check_wheel.py` 是"构建出的 wheel 真的含有
-启动文件和控制台脚本"的闸门；在 CI 用它检查真实构建之前，测试全绿并不能
-说明包是好的。
+发布是 release 步骤，不是代码步骤。顺序、检查项与一次性的 trusted
+publishing 配置见 [`docs/releasing.md`](docs/releasing.md)。
+`tools/check_wheel.py` 是"构建出的 wheel 真的含有启动文件和控制台脚本"的
+闸门；在 CI 用它检查真实构建之前，测试全绿并不能说明包是好的。
 
 ## 测试与开发
 

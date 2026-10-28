@@ -258,6 +258,7 @@ registry by the test suite, so it cannot quietly become false.
 | [`docs/naming.md`](naming.md) | command and filename conventions |
 | [`CONTRIBUTING.md`](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md) | setup, tests, the layout generator |
 | [`SECURITY.md`](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md) | what counts as a vulnerability, and how to report one privately |
+| [`CITATION.cff`](https://github.com/BinRacer/KernLens/blob/main/CITATION.cff) | how to cite the project, and the version being cited |
 | [`CHANGELOG.md`](https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md) | every change, newest first |
 
 ## Requirements and license

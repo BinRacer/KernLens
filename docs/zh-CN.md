@@ -239,6 +239,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 | [`docs/naming.md`](naming.md) | 命令与文件名约定 |
 | [`CONTRIBUTING.zh-CN.md`](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.zh-CN.md) | 环境搭建、测试、布局生成器 |
 | [`SECURITY.md`](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md) | 什么算漏洞，以及如何私下报告 |
+| [`CITATION.cff`](https://github.com/BinRacer/KernLens/blob/main/CITATION.cff) | 如何引用本项目，以及被引用的版本 |
 | [`CHANGELOG.md`](https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md) | 全部变更，最新的在前 |
 
 ## 环境要求与许可

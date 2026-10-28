@@ -256,6 +256,7 @@ registry by the test suite, so it cannot quietly become false.
 | [`docs/naming.md`](docs/naming.md) | command and filename conventions |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | setup, tests, the layout generator |
 | [`SECURITY.md`](SECURITY.md) | what counts as a vulnerability, and how to report one privately |
+| [`CITATION.cff`](CITATION.cff) | how to cite the project, and the version being cited |
 | [`CHANGELOG.md`](CHANGELOG.md) | every change, newest first |
 
 ## Requirements and license
