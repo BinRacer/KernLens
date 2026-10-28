@@ -17,6 +17,7 @@
 - [Python API (中文)](https://binracer.github.io/KernLens/api.zh-CN/): the same API reference in Chinese
 - [Architecture](https://binracer.github.io/KernLens/architecture/): package layout, the loading path, and why the boundaries are there
 - [Compatibility](https://binracer.github.io/KernLens/compatibility/): which environments were measured, which are expected, and which are not claimed
+- [Releasing](https://binracer.github.io/KernLens/releasing/): what has to agree before a tag, and what the tag does
 - [Naming](https://binracer.github.io/KernLens/naming/): command, example, and filename conventions
 - [Contributing](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md)
 - [Security](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md)

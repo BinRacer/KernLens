@@ -38,6 +38,10 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 
 ```
 .
+├── .github/workflows/
+│   ├── ci.yml            # tests, typing, generators, wheel check
+│   ├── docs.yml          # builds the site strictly, deploys to Pages
+│   └── release.yml       # tag -> PyPI -> GitHub Release
 ├── src/kernlens/
 │   ├── __init__.py       # public re-exports and __version__
 │   ├── cli.py            # `kernlens` console script: path/install/doctor
@@ -106,6 +110,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── docs/
 │   ├── architecture.md   # layout, API map, and design notes
 │   ├── compatibility.md  # measured / expected / unsupported environments
+│   ├── releasing.md      # what has to agree before a tag
 │   ├── index.md          # generated from README.md (site front page)
 │   ├── zh-CN.md          # generated from README.zh-CN.md
 │   ├── llms.txt          # generated plain-text index of the site
@@ -147,6 +152,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │       └── per_cpu_bp.py             # `_bp`      `pbreak`
 ├── images/banner.svg
 ├── mkdocs.yml            # documentation site, built and deployed by CI
+├── CITATION.cff          # how to cite the project; version and date
 ├── pyproject.toml
 ├── tools/                            # generators and the example contract
 │   ├── example_manifest.py           # what each example must exercise
@@ -160,6 +166,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── gen_demo.py                   # renders docs/assets/demo.*
 │   ├── gen_docs_site.py              # renders docs/index.md, zh-CN.md, llms.txt
 │   ├── check_wheel.py                # the wheel contains the startup file
+│   ├── release.py                    # version gate + release notes
 │   ├── gen_layouts.py                # verifies struct layouts against BTF
 │   └── abi_ranges.py                 # struct-drift survey across releases
 ├── uv.lock

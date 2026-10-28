@@ -56,6 +56,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.github/workflows/docs.yml`; the README badge and the `Documentation`
   project URL wait for the first deploy, because until then they would
   point at a 404.
+- **A release is one tag, and the tag cannot disagree with the files.**
+  `.github/workflows/release.yml` runs on `v*`: it compares the tag with
+  `__version__`, the changelog section and `CITATION.cff` through
+  `tools/release.py check`, runs the suite against the tagged commit,
+  builds and checks the wheel and sdist, renders the release notes from
+  the changelog section, publishes to PyPI through trusted publishing,
+  and only then creates the GitHub Release with the wheel, the sdist and
+  the demo cast.  PyPI goes first on purpose: a release that points at
+  artifacts which failed to upload is worse than a package whose release
+  can be created by hand.  `twine` lives in a separate `release`
+  dependency group, so `uv sync` downloads neither it nor the docs theme.
+  The runbook, the one-time PyPI publisher setup, and the failure
+  recovery are in [`docs/releasing.md`](docs/releasing.md).
 - **One command installs a checkout, and one command checks it.**
   `install.sh` clones to `${XDG_DATA_HOME:-~/.local/share}/kernlens`,
   writes a single marked block into `~/.gdbinit`, and leaves a

@@ -81,6 +81,9 @@ PAGE_NOTES: dict[str, str] = {
         "which environments were measured, which are expected, and which "
         "are not claimed"
     ),
+    "releasing.md": (
+        "what has to agree before a tag, and what the tag does"
+    ),
     "naming.md": "command, example, and filename conventions",
 }
 
