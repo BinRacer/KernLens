@@ -18,9 +18,9 @@ field offsets.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from .._types import _IntConvertible, _StrLike
 from ._base import LIST_LIMIT, MASK64, PTRSIZE, InspectorBase
@@ -55,11 +55,11 @@ class ModulesInspector(InspectorBase):
     __slots__: tuple[str, ...] = ()
 
     #: Cached ``offsetof(struct module, name)``; ``False`` means not probed.
-    _module_name: "int | None | bool"
+    _module_name: "int | None | Literal[False]"
     #: Cached ``(mem_off, mem_size, size_off)``; ``False`` means not probed.
-    _mem_layout: "tuple[int, int, int] | None | bool"
+    _mem_layout: "tuple[int, int, int] | None | Literal[False]"
     #: Cached ``sys_call_table`` length; ``False`` means not probed.
-    _syscall_count: "int | None | bool"
+    _syscall_count: "int | None | Literal[False]"
 
     # --- modules --------------------------------------------------------
 
@@ -119,7 +119,7 @@ class ModulesInspector(InspectorBase):
         as a fallback for a build without debug info.
         """
         if self._module_name is not False:
-            return cast("int | None", self._module_name)
+            return self._module_name
         dwarf = self._layout_offset("struct module", "name")
         if dwarf is not None:
             self._module_name = dwarf
@@ -207,7 +207,7 @@ class ModulesInspector(InspectorBase):
     def syscall_count(self) -> int | None:
         """Return the ``sys_call_table`` entry count, or ``None``."""
         if self._syscall_count is not False:
-            return cast("int | None", self._syscall_count)
+            return self._syscall_count
         self._syscall_count = None
         try:
             value = gdb.parse_and_eval(
@@ -253,7 +253,7 @@ class ModulesInspector(InspectorBase):
         except (gdb.error, TypeError, ValueError):
             return None
         text = cast(_StrLike, raw)
-        if "No symbol" in text:  # pyright: ignore[reportOperatorIssue]
+        if "No symbol" in text:
             offset = self._reader.kaslr_offset
             if offset:
                 link = (addr - offset) & MASK64
@@ -264,11 +264,11 @@ class ModulesInspector(InspectorBase):
                 except (gdb.error, TypeError, ValueError):
                     return None
                 text = cast(_StrLike, raw)
-                if "No symbol" in text:  # pyright: ignore[reportOperatorIssue]
+                if "No symbol" in text:
                     return None
             else:
                 return None
-        name = text.split(" in section")[0].strip()  # pyright: ignore[reportOperatorIssue]
+        name = text.split(" in section")[0].strip()
         # GDB appends " + <offset>" for an interior address; drop it so
         # the result matches a bare symbol name.
         name = name.split(" + ")[0].strip()

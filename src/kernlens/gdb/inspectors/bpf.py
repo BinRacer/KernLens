@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import cast
 
 from ._base import PTRSIZE, InspectorBase
 
@@ -252,7 +251,12 @@ class BpfInspector(InspectorBase):
         func_off = self._layout_offset("struct bpf_prog", "bpf_func")
         aux_off = self._layout_offset("struct bpf_prog", "aux")
         insns_off = self._layout_offset("struct bpf_prog", "insns")
-        if None in (type_off, len_off, jited_off, insns_off):
+        if (
+            type_off is None
+            or len_off is None
+            or jited_off is None
+            or insns_off is None
+        ):
             return None
         prog_type = self._read_u32(addr + type_off, signed=False)
         attach = (
@@ -292,7 +296,12 @@ class BpfInspector(InspectorBase):
         key_off = self._layout_offset("struct bpf_map", "key_size")
         val_off = self._layout_offset("struct bpf_map", "value_size")
         max_off = self._layout_offset("struct bpf_map", "max_entries")
-        if None in (type_off, key_off, val_off, max_off):
+        if (
+            type_off is None
+            or key_off is None
+            or val_off is None
+            or max_off is None
+        ):
             return None
         map_type = self._read_u32(addr + type_off, signed=False)
         key_size = self._read_u32(addr + key_off, signed=False) or 0
@@ -321,7 +330,7 @@ class BpfInspector(InspectorBase):
         flexible-array offset without depending on field offsets.
         """
         if self._bpf_array_off is not False and self._bpf_array_off is not None:
-            return cast("int", self._bpf_array_off)
+            return self._bpf_array_off
         if map_type not in BPF_ARRAY_TYPES or max_entries <= 0:
             return None
         expected_elem = math.ceil(value_size / 8) * 8
@@ -330,8 +339,9 @@ class BpfInspector(InspectorBase):
             elem_size = self._read_u32(addr + 4 * index, signed=False)
             index_mask = self._read_u32(addr + 4 * (index + 1), signed=False)
             if elem_size == expected_elem and index_mask == expected_mask:
-                self._bpf_array_off = (index + 2) * 4 + PTRSIZE
-                return cast("int", self._bpf_array_off)
+                offset = (index + 2) * 4 + PTRSIZE
+                self._bpf_array_off = offset
+                return offset
         return None
 
 

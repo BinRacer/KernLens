@@ -50,9 +50,12 @@ Issues = "https://github.com/BinRacer/KernLens/issues"
 
 [dependency-groups]
 dev = [
+  "mypy>=2.4.0",
+  "pyright>=1.1.400",
   "pytest>=7.4",
   "pytest-cov>=4.1",
   "ruff>=0.6",
+  "types-gdb>=16.3.0.20260712",
 ]
 
 [tool.uv]
@@ -83,6 +86,32 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+
+[tool.pyright]
+# The package ships an empty ``py.typed``, which promises that checking it
+# is useful.  This is the gate behind that promise: ``uv run pyright`` is
+# part of CI, so an annotation that stops resolving fails a commit.
+#
+# Only the package is checked.  ``examples/`` are scripts written to be
+# sourced inside GDB and deliberately reach for globals GDB injects, so
+# they are validated by their own capture tests instead.
+include = ["src/kernlens"]
+typeCheckingMode = "standard"
+pythonVersion = "3.10"
+# ``gdb`` only exists inside GDB: it is shipped as a stub-only
+# distribution (``types-gdb``) so both checkers see the same types, and
+# there is never a runtime module next to it to fall back to.
+reportMissingModuleSource = "none"
+
+[tool.mypy]
+# Second opinion on the same ``py.typed`` promise.  pyright and mypy do
+# not agree on every inference, and the disagreements found so far were
+# real (cache slots the mixins could not assign, a ``**dict`` that hid a
+# dataclass constructor).  ``types-gdb`` gives mypy the same ``gdb``
+# stubs pyright resolves, so both check the same code.
+files = ["src/kernlens"]
+strict = true
+python_version = "3.10"
 
 [tool.ruff]
 target-version = "py310"

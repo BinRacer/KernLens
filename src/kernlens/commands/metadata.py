@@ -20,9 +20,10 @@ import argparse
 import time
 from typing import NamedTuple
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..gdb.facade import kdbg
+from ..gdb.inspectors import Module
 from ..output import message
 from .framework import (
     Command,
@@ -318,7 +319,7 @@ def kernlens_kmod(module_name: str | None = None, path: str | None = None) -> No
         _kmod_load(path, shown)
 
 
-def _kmod_load(path: str, shown: list) -> None:
+def _kmod_load(path: str, shown: list[Module]) -> None:
     """Load a module's symbols at its runtime base (pwndbg ``kmod -l``)."""
     if not shown:
         print(message.warn("No modules detected with the given filter."))

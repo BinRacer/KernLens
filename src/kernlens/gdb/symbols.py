@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import cast, final
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..output import Logger, Palette
 from ._types import _IntConvertible, _StrLike
@@ -94,6 +94,7 @@ class SymbolResolver:
     def _walk_pcs(self, depth: int) -> list[int]:
         """Collect up to ``depth`` pc values walking older frames."""
         pcs: list[int] = []
+        frame: gdb.Frame | None
         try:
             frame = gdb.newest_frame()
         except gdb.error:

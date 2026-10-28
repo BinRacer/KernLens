@@ -146,7 +146,14 @@ class DmabufInspector(InspectorBase):
             att_next = self._read_u64(first - (index + 2) * PTRSIZE)
             ops = self._read_u64(first - (index + 1) * PTRSIZE)
             vmap = self._read_u64(first - index * PTRSIZE)
-            if None in (size, file, att_prev, att_next, ops, vmap):
+            if (
+                size is None
+                or file is None
+                or att_prev is None
+                or att_next is None
+                or ops is None
+                or vmap is None
+            ):
                 continue
             if self._is_kernel(size) or self._is_kernel(vmap):
                 continue
@@ -173,7 +180,11 @@ class DmabufInspector(InspectorBase):
         priv_off = 0x90
         for index in range(0x30):
             priv = self._read_u64(base + index * PTRSIZE)
-            if self._is_kernel(priv) and self._dmabuf_sg_offset(priv, size) != 0x10:
+            if (
+                priv is not None
+                and self._is_kernel(priv)
+                and self._dmabuf_sg_offset(priv, size) != 0x10
+            ):
                 priv_off = index * PTRSIZE
                 break
         return _DmabufLayout(

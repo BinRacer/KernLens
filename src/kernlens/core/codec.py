@@ -78,7 +78,7 @@ class ByteOrder(Enum):
     @property
     def prefix(self) -> str:
         """Return the struct format prefix character."""
-        return cast(str, self.value)
+        return self.value
 
 
 # ---------------------------------------------------------------------
@@ -109,12 +109,12 @@ class IntType(Enum):
     @property
     def code(self) -> str:
         """Return the struct format character (e.g. ``"H"``)."""
-        return cast(str, self.value[0])
+        return self.value[0]
 
     @property
     def width(self) -> int:
         """Return the encoded width in bytes (1, 2, 4 or 8)."""
-        return cast(int, self.value[1])
+        return self.value[1]
 
     @property
     def bits(self) -> int:

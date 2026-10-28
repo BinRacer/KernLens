@@ -338,7 +338,7 @@ def kernlens_walk(
     indent.print(
         indent.prefix("Paging")
         + f": {5 if walk.five_level else 4}-level  root="
-        + indent.addr_hex(walk.root)
+        + indent.addr_hex(walk.root or 0)
     )
     for level in walk.levels:
         line = (

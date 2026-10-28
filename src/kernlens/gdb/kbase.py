@@ -27,7 +27,7 @@ import re
 from dataclasses import dataclass
 from typing import Final, final
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..core.addr import KAddr
 from .config import DebugConfig
@@ -171,12 +171,12 @@ class Kbase:
                     source="monitor",
                 )
 
-        base = self._reader.u64("$idt")
-        limit = self._reader.u64("$idt_limit")
-        if base:
+        reg_base = self._reader.u64("$idt")
+        reg_limit = self._reader.u64("$idt_limit")
+        if reg_base:
             return IdtInfo(
-                base=base & _MASK64,
-                limit=(limit if limit is not None else 0xFFF) & 0xFFFF,
+                base=reg_base & _MASK64,
+                limit=(reg_limit if reg_limit is not None else 0xFFF) & 0xFFFF,
                 source="register",
             )
 

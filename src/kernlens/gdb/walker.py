@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import cast, final
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..core.paging import KPageTable
 from ._types import _IntConvertible
@@ -92,22 +92,6 @@ class PageTableWalker:
         self._reader: MemoryReader = reader
 
     # --- paging roots ---------------------------------------------------
-
-    def _mapped_root(self, cr3: int) -> int:
-        """Map a physical ``CR3`` to a virtual address we can read.
-
-        ``$cr3`` holds a physical address, but the page tables live in
-        the direct map, so their entries are only readable at
-        ``page_offset_base + phys``.  Walking a physical address would
-        fail with "unreadable pgd entry".  ``init_top_pgt`` / ``swapper_pg_dir``
-        are already kernel-virtual, so this is a no-op for them.
-        """
-        if cr3 >= 0xFFFF800000000000:
-            return cr3
-        page_offset = self._reader.read_kvar("page_offset_base")
-        if not page_offset:
-            return cr3
-        return (page_offset + cr3) & _MASK64
 
     def _mapped_root(self, cr3: int) -> int:
         """Map a physical ``CR3`` to a virtual address we can read.

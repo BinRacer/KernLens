@@ -366,7 +366,7 @@ class CommandDefinition:
         # argparse's ``error()`` ends in ``sys.exit``, which would close
         # the GDB shell.  Every failure has to go through ``usage_error``
         # instead, so it is replaced on this parser instance.
-        self.parser.error = self._parser_error  # type: ignore[method-assign]
+        self.parser.error = self._parser_error  # type: ignore[method-assign,assignment]
         self.setup_epilog()
 
     @property
@@ -606,7 +606,7 @@ def _notify(text: str) -> None:
 
 
 def _instantiate(
-    command_type: type[gdb.Command], name: str, kind: str,
+    command_type: type[KernLensBaseCommand], name: str, kind: str,
     taken: frozenset[str],
 ) -> bool:
     """Register one name, reporting a shadowed registration.

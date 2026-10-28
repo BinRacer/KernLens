@@ -399,7 +399,7 @@ class Styler:
             )
         else:
             body = self.seq(
-                items,  # type: ignore[arg-type]
+                items,
                 open=op, close=cl,
                 item_color=value_color, bracket_color=bracket_color,
             )
@@ -486,8 +486,8 @@ class Styler:
             raise ValueError(
                 f"joints must be 5 characters, got {len(joints)!r}"
             )
-        tl, tr, bl, br, hz, vt = chars
-        top_joint, bottom_joint, mid_joint, mid_left, mid_right = joints
+        tl, tr, bl, br, hz, vt = tuple(chars)
+        top_joint, bottom_joint, mid_joint, mid_left, mid_right = tuple(joints)
         prepared, widths = _prepare_table(headers, rows, max_col_width)
         if not widths:
             return ""
@@ -602,7 +602,7 @@ class Styler:
             raise ValueError(
                 f"vertical must be exactly 1 character, got {vertical!r}"
             )
-        tl, tr, bl, br, hz = chars
+        tl, tr, bl, br, hz = tuple(chars)
         body = [str(line) for line in lines]
         natural = max(
             [len(title) + 2] + [len(line) + 2 for line in body]
@@ -677,7 +677,7 @@ class Styler:
         connector = self.style(assign, assign_color)
         return "\n".join(
             self.style(key.rjust(width), kc)
-            + connector + self.style(value, vc)
+            + connector + self.style(str(value), vc)
             for key, value in pairs
         )
 

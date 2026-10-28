@@ -25,15 +25,14 @@ debugger down.  :class:`BTF` exposes only what the inspectors need --
 from __future__ import annotations
 
 import struct
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 try:  # The parser is pure Python; only the GDB source needs the module.
-    import gdb  # type: ignore[import-not-found]
+    import gdb
 except ImportError:  # pragma: no cover - outside GDB (unit tests, tools)
     gdb = None  # type: ignore[assignment]
-
-_GDB_MISSING = gdb is None
 
 #: ``btf_header.magic`` (``0xEB9F``) as it appears in the byte stream.
 _BTF_MAGIC = 0xEB9F
@@ -365,10 +364,13 @@ def find_in_gdb() -> BTF | None:
     would silently describe the wrong kernel.  Returns ``None`` outside
     GDB (the parser is pure Python and unit-tested that way).
     """
-    if _GDB_MISSING:
+    if gdb is None:
         return None
     try:
-        objfiles = list(gdb.current_progspace().objfiles())
+        progspace = gdb.current_progspace()
+        if progspace is None:
+            return None
+        objfiles = list(progspace.objfiles())
     except (AttributeError, gdb.error, TypeError):
         return None
     for objfile in objfiles:
@@ -383,6 +385,8 @@ def find_in_gdb() -> BTF | None:
 
 def _read_btf_section(objfile: Any) -> bytes | None:
     """Read the ``.BTF`` section bytes of one objfile, or ``None``."""
+    if gdb is None:  # pragma: no cover - callers check first
+        return None
     section = _find_section(objfile, ".BTF")
     if section is None:
         return None
@@ -396,7 +400,8 @@ def _read_btf_section(objfile: Any) -> bytes | None:
     if end > start:
         try:
             inferior = gdb.selected_inferior()
-            return bytes(inferior.read_memory(start, end - start))
+            if inferior is not None:
+                return bytes(inferior.read_memory(start, end - start))
         except (AttributeError, gdb.error, TypeError, MemoryError):
             pass
     filename = getattr(objfile, "filename", None)
@@ -410,6 +415,8 @@ def _read_btf_section(objfile: Any) -> bytes | None:
 
 
 def _find_section(objfile: Any, name: str) -> Any:
+    if gdb is None:  # pragma: no cover - callers check first
+        return None
     sections = getattr(objfile, "sections", None)
     if sections is None:
         return None
@@ -419,7 +426,7 @@ def _find_section(objfile: Any, name: str) -> Any:
         except (gdb.error, TypeError):
             return None
     try:
-        iterator = iter(sections)
+        iterator = iter(cast("Iterable[Any]", sections))
     except TypeError:
         return None
     for section in iterator:

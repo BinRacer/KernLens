@@ -18,9 +18,23 @@ class _IntConvertible(Protocol):
 
 
 class _StrLike(Protocol):
-    """Protocol for string-like returns from ``gdb.execute``."""
+    """Protocol for string-like returns from ``gdb.execute``.
+
+    ``gdb.execute(..., to_string=True)`` is annotated as returning this
+    (opaque) type rather than ``str`` in the bundled ``gdb`` stub, so every
+    operation the code performs on the result has to be declared here.  A
+    missing member is not cosmetic: ``'"' in text`` was accepted by the
+    runtime and rejected by the checker, which is why the call sites used
+    to carry ``# pyright: ignore`` comments.
+    """
 
     def strip(self) -> str: ...
+
+    def split(
+        self, sep: str | None = None, maxsplit: int = -1
+    ) -> list[str]: ...
+
+    def __contains__(self, item: str) -> bool: ...
 
 
 __all__ = ["_IntConvertible", "_StrLike"]

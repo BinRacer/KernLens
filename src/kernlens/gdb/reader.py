@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import cast, final
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ._types import _IntConvertible
 from .config import DebugConfig
