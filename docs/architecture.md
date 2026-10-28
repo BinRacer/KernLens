@@ -106,6 +106,9 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── docs/
 │   ├── architecture.md   # layout, API map, and design notes
 │   ├── compatibility.md  # measured / expected / unsupported environments
+│   ├── index.md          # generated from README.md (site front page)
+│   ├── zh-CN.md          # generated from README.zh-CN.md
+│   ├── llms.txt          # generated plain-text index of the site
 │   ├── api.md            # Python API reference
 │   ├── api.zh-CN.md      # the same, in Chinese
 │   ├── commands.md       # generated command/alias table
@@ -143,6 +146,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │       ├── watchfield_bp.py          # `_bp`      `kwatch-field`
 │       └── per_cpu_bp.py             # `_bp`      `pbreak`
 ├── images/banner.svg
+├── mkdocs.yml            # documentation site, built and deployed by CI
 ├── pyproject.toml
 ├── tools/                            # generators and the example contract
 │   ├── example_manifest.py           # what each example must exercise
@@ -154,6 +158,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── gen_tutorial_index.py         # renders docs/tutorial/README.md
 │   ├── gen_commands.py               # renders docs/commands.md
 │   ├── gen_demo.py                   # renders docs/assets/demo.*
+│   ├── gen_docs_site.py              # renders docs/index.md, zh-CN.md, llms.txt
 │   ├── check_wheel.py                # the wheel contains the startup file
 │   ├── gen_layouts.py                # verifies struct layouts against BTF
 │   └── abi_ranges.py                 # struct-drift survey across releases
@@ -516,7 +521,7 @@ not.
 `gdbinit.py` is a thin bootstrap: it imports `kernlens.commands`, which
 registers the `kernlens-*` commands and their `kl-*` aliases, then calls
 `register_all()`.  The complete command table, aliases, and invocation
-examples live in the [project README](../README.md) and the generated
+examples live in the [project README](https://github.com/BinRacer/KernLens/blob/main/README.md) and the generated
 [command reference](commands.md); `kl-help` lists
 them grouped by category and `kl-help kl-<command>` (or
 `kl-help kernlens-<command>`) shows one in detail.

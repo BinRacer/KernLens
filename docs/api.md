@@ -4,7 +4,7 @@ Reference for the names `kernlens` exports.  This was part of the README
 until the front page was rewritten to lead with what the commands do;
 the text is unchanged, because it was accurate.
 
-For the command line instead, see [`tutorial/`](tutorial/) -- one
+For the command line instead, see [`tutorial/`](tutorial/README.md) -- one
 generated page per command, with real output from a running kernel.
 
 Every name below is importable from the package root:
@@ -299,7 +299,7 @@ print(sty.bar(4, 8, width=8))           # [████░░░░] 4/8
 ## gdb/ (gdb side)
 
 Not imported at package level.  Load inside gdb with a normal import
-(see [Install](#install)).  The package exposes
+(see [Install](index.md#install)).  The package exposes
 `DebugConfig`, `KernelStyler`, `MemoryReader`, `SymbolResolver`,
 `Kaslr`, `Kbase`, `IdtEntry`, `IdtInfo`, `KbaseResult`, `CpuInfo`,
 `PageTableWalker`, `PageWalk`, `WalkLevel`, `SlubInspector`,

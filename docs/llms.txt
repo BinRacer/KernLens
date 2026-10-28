@@ -1,0 +1,23 @@
+# KernLens
+
+> Linux kernel debugging from Python and GDB: 40 commands, a
+> pure-Python core, and a startup file sourced inside GDB.
+
+- Site: https://binracer.github.io/KernLens/
+- Source: https://github.com/BinRacer/KernLens
+- Install: https://github.com/BinRacer/KernLens/blob/main/install.sh
+
+## Pages
+
+- [Overview](https://binracer.github.io/KernLens/): what KernLens is, the demo, the install, and the command summary
+- [首页 (中文)](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
+- [Commands](https://binracer.github.io/KernLens/commands/): every command and alias, generated from the registry
+- [Tutorial](https://binracer.github.io/KernLens/tutorial/): one page per command, with output captured from a real kernel
+- [Python API](https://binracer.github.io/KernLens/api/): the Python API: classes, facade functions, and examples
+- [Python API (中文)](https://binracer.github.io/KernLens/api.zh-CN/): the same API reference in Chinese
+- [Architecture](https://binracer.github.io/KernLens/architecture/): package layout, the loading path, and why the boundaries are there
+- [Compatibility](https://binracer.github.io/KernLens/compatibility/): which environments were measured, which are expected, and which are not claimed
+- [Naming](https://binracer.github.io/KernLens/naming/): command, example, and filename conventions
+- [Contributing](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md)
+- [Security](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md)
+- [Changelog](https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md)
