@@ -125,6 +125,9 @@ class StructPageInspector(InspectorBase):
 
     __slots__: tuple[str, ...] = ()
 
+    #: Cached encoding probe; ``False`` means "not probed yet".
+    _page_is_enum: bool
+
     # --- encoding detection ---------------------------------------------
     #
     # Resolved once per session: the lookup walks DWARF then BTF, and the
@@ -154,10 +157,10 @@ class StructPageInspector(InspectorBase):
             # choice, since misreading ``PG_slab`` as a type bit would
             # report a slab page for an arbitrary free page.
             answer = True
-        try:
-            self._page_is_enum = answer
-        except AttributeError:
-            pass
+        # The slot exists on ``InspectorBase``; the assignment used to be
+        # wrapped in ``try/except AttributeError`` because no class declared
+        # it, which silently disabled the "resolved once" cache above.
+        self._page_is_enum = answer
         return answer
 
     def _slab_type_bit(self) -> int | None:
