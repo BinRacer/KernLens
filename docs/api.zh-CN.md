@@ -3,7 +3,7 @@
 本文件收录 `kernlens` 导出的名字。这部分内容原在 README 中；首页改为
 先讲命令能做什么之后，它移到了这里，正文未改（原本是准确的）。
 
-命令行参考见 [`tutorial/`](tutorial/) —— 每个命令一页，附真实运行输出。
+命令行参考见 [`tutorial/`](tutorial/README.md) —— 每个命令一页，附真实运行输出。
 
 以下名字均可从包根导入：
 
@@ -292,7 +292,7 @@ print(sty.bar(4, 8, width=8))           # [████░░░░] 4/8
 
 ## gdb/（gdb 侧）
 
-不在包级导入。gdb 内用正常 import（见[安装](#安装)）
+不在包级导入。gdb 内用正常 import（见[安装](zh-CN.md#安装)）
 加载；模块导出 `DebugConfig`、`KernelStyler`、`MemoryReader`、
 `SymbolResolver`、`Kaslr`、`Kbase`、`IdtEntry`、`IdtInfo`、
 `KbaseResult`、`CpuInfo`、`PageTableWalker`、`PageWalk`、

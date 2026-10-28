@@ -6,7 +6,7 @@ scripts and the generated tutorial use.  Both always work.
 
 This page is generated from `tools/tutorial_meta.json` by
 `tools/gen_commands.py`; edit the command's parser description, not
-this table.  Each command has a page in [`tutorial/`](tutorial/)
+this table.  Each command has a page in [`tutorial/`](tutorial/README.md)
 with captured output and a note on how to read it.
 
 ## overview (1)

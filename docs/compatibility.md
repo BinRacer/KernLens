@@ -97,5 +97,5 @@ against the capture.
 
 This is not a distribution support promise.  Fixes land on `main` and in
 the newest release; older releases are not back-patched.  See
-[`SECURITY.md`](../SECURITY.md) for what counts as a vulnerability and
+[`SECURITY.md`](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md) for what counts as a vulnerability and
 for the version table.
