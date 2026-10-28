@@ -1,0 +1,166 @@
+# Publish a release: tag -> checks -> PyPI -> GitHub Release.
+#
+# A tag is the release.  Nothing here runs for a branch, and nothing here
+# can publish a version that the three hand-written files disagree about:
+# `tools/release.py check` compares the tag, `__version__`, the changelog
+# section, and CITATION.cff before anything is built.
+#
+# PyPI does not accept a version twice, so the order matters: build and
+# check, publish to PyPI, then create the GitHub Release.  If the last
+# step fails, the package is live and the release can be created by hand;
+# if the order were reversed, a failed upload would leave a release whose
+# artifacts do not exist.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      index:
+        description: "Publish target for a rehearsal (nothing is released)"
+        type: choice
+        options: ["none", "testpypi"]
+        default: "none"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync
+        # The release group adds twine, which is the only thing here that
+        # is not needed to run the test suite.
+        run: uv sync --frozen --group release
+
+      - name: Check the release files
+        # On a tag, the tag must equal `__version__`.  On a manual run
+        # there is no tag, and the current version is checked alone.
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: uv run --frozen python tools/release.py check $TAG
+
+      - name: Test
+        # The tag can point at any commit, including one CI never saw.
+        run: uv run --frozen pytest -q
+
+      - name: Build and check the distributions
+        run: |
+          set -eu
+          rm -rf dist
+          uv build
+          # The wheel has to contain the startup file and the console
+          # script; a checkout cannot tell you that.
+          uv run --frozen python tools/check_wheel.py dist/*.whl
+          # Twine renders the README the way PyPI will.  A metadata error
+          # found here is a rejected upload found before it happens.
+          uv run --frozen twine check dist/*
+
+      - name: Render the release notes
+        run: uv run --frozen python tools/release.py notes > notes.md
+
+      - name: Upload the distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Upload the release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: notes.md
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.index == 'testpypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/kernlens
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/kernlens
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish
+        # Trusted publishing: no token is stored.  The PyPI project has
+        # to name this workflow and the `pypi` environment once.
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub Release
+    needs: [build, publish-pypi]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out
+        # Only for the demo cast that is attached to the release.
+        uses: actions/checkout@v7
+
+      - name: Download the distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Download the release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: notes
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          printf '\nFull history: https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md\n' >> notes.md
+          gh release create "$TAG" dist/* docs/assets/demo.cast \
+            --title "$TAG" --notes-file notes.md
