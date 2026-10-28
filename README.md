@@ -251,6 +251,7 @@ registry by the test suite, so it cannot quietly become false.
 | [`docs/commands.md`](docs/commands.md) | every command and alias, generated |
 | [`docs/api.md`](docs/api.md) | the Python API reference |
 | [`docs/architecture.md`](docs/architecture.md) | package layout, API map, design notes |
+| [`docs/compatibility.md`](docs/compatibility.md) | what has been run, what is expected, what is not claimed |
 | [`examples/`](examples/README.md) | runnable scripts, grouped by intent |
 | [`docs/naming.md`](docs/naming.md) | command and filename conventions |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | setup, tests, the layout generator |
@@ -264,7 +265,9 @@ interpreters, not one: `kernlens doctor` prints both, because a GDB whose
 embedded Python cannot see the package is the most common first-run
 failure. x86_64 kernels only -- the page-table and `struct page` decoding
 are written against that architecture. On Python below 3.12 the only
-runtime dependency is `typing-extensions`.
+runtime dependency is `typing-extensions`. Which combinations have
+actually been run, and which are only expected, is in
+[`docs/compatibility.md`](docs/compatibility.md).
 
 No package is published yet. Installation is the one-line installer, a
 `git clone`, or a wheel built from this checkout; see [Install](#install).

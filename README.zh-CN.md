@@ -232,6 +232,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 | [`docs/commands.md`](docs/commands.md) | 每个命令与别名，生成式 |
 | [`docs/api.zh-CN.md`](docs/api.zh-CN.md) | Python API 参考 |
 | [`docs/architecture.md`](docs/architecture.md) | 包结构、API 映射、设计说明 |
+| [`docs/compatibility.md`](docs/compatibility.md) | 实测过什么、预期可用什么、不承诺什么 |
 | [`examples/`](examples/README.md) | 可运行脚本，按意图分组 |
 | [`docs/naming.md`](docs/naming.md) | 命令与文件名约定 |
 | [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md) | 环境搭建、测试、布局生成器 |
@@ -244,7 +245,8 @@ Python 3.10+，以及一个用 Python 3.10+ 构建的 GDB。这是两个解释�
 不是一个：`kernlens doctor` 会把两者都打印出来，因为"GDB 内嵌的 Python
 看不到这个包"是最常见的一次性失败。仅支持 x86_64 内核 —— 页表与
 `struct page` 的解码是针对该架构写的。Python 3.12 以下唯一的运行时依赖
-是 `typing-extensions`。
+是 `typing-extensions`。哪些组合真的跑过、哪些只是预期可用，见
+[`docs/compatibility.md`](docs/compatibility.md)。
 
 尚未发布任何包。安装方式是上面的一条命令、`git clone`，或从这个 checkout
 构建 wheel，见[安装](#安装)。wheel 里带有启动文件，`kernlens path` 会打印
