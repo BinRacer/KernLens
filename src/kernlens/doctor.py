@@ -26,6 +26,7 @@ checkout and the installer both call it.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -34,6 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import __version__
+from .install import startup_path
 
 #: Status words, ordered by severity so the exit code is easy to derive.
 OK = "ok"
@@ -63,7 +65,17 @@ def run_command(
 
     Never raises: a missing binary or a hung GDB is reported as a status
     and a message, because a doctor that crashes is worse than no doctor.
+
+    ``PYTHONPATH`` and ``PYTHONHOME`` are dropped unless *env* is given.
+    The checkout launcher exports ``PYTHONPATH`` so its own import works,
+    but a probe that inherits it can prove only that the launcher works:
+    ``import kernlens`` would succeed even when the startup file failed
+    to load.  The check has to stand on the startup file alone.
     """
+    if env is None:
+        env = dict(os.environ)
+        env.pop("PYTHONPATH", None)
+        env.pop("PYTHONHOME", None)
     try:
         completed = subprocess.run(
             list(command),
@@ -189,8 +201,7 @@ def find_source_line(rc: Path) -> Path | None:
 
 def default_startup() -> Path:
     """The startup file shipped with this copy of KernLens."""
-    # ``src/kernlens/doctor.py`` -> the repository (or wheel) root.
-    return Path(__file__).resolve().parents[2] / "gdbinit.py"
+    return startup_path()
 
 
 def check_gdbinit(rc: Path, *, startup: Path | None = None) -> Check:
@@ -225,10 +236,11 @@ def check_gdb_load(
     if not startup.is_file():
         return Check("gdb-load", FAIL, f"startup file not found: {startup}")
     marker = "KLVER"
-    quoted = str(startup).replace("\\", "\\\\").replace('"', '\\"')
     status, output = runner([
         gdb, "--batch", "-nx",
-        "-ex", f'source "{quoted}"',
+        # Unquoted on purpose: GDB's ``source`` treats the rest of the
+        # line as the filename and does not strip quotes.
+        "-ex", f"source {startup}",
         "-ex", f"python import kernlens; print('{marker}=' + kernlens.__version__)",
     ])
     value = _probe_value(output, marker)

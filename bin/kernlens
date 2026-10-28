@@ -11,6 +11,7 @@
 # puts it on sys.path.
 #
 #     ./bin/kernlens doctor
+#     ./bin/kernlens path
 #
 # The installer writes an equivalent wrapper into ~/.local/bin.
 set -eu
@@ -18,13 +19,7 @@ set -eu
 self=$(readlink -f -- "$0" 2>/dev/null || printf '%s' "$0")
 root=$(CDPATH='' cd -- "$(dirname -- "$self")/.." && pwd)
 
-# ``kernlens`` with no subcommand is ``kernlens doctor``; the subcommand
-# spelling exists so the wrapper and the console script agree.
-if [ "${1-}" = "doctor" ]; then
-    shift
-fi
-
 PYTHONPATH="$root/src${PYTHONPATH:+:$PYTHONPATH}"
 export PYTHONPATH
 
-exec "${KERNLENS_PYTHON:-python3}" -m kernlens.doctor "$@"
+exec "${KERNLENS_PYTHON:-python3}" -m kernlens.cli "$@"
