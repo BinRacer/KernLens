@@ -40,15 +40,19 @@ import functools
 import shlex
 from collections.abc import Callable
 from enum import Enum
-from typing import Any, NoReturn, TypeVar, cast
+from typing import Any, NoReturn, ParamSpec, Protocol, TypeVar, cast
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..gdb.facade import kdbg
 from ..output import message
 
 P = TypeVar("P")
-T = TypeVar("T")
+
+#: Signature of the command body, preserved by :meth:`Command.__call__`
+#: and by the :class:`_Guard` decorators.
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 
 class CommandCategory(str, Enum):
@@ -207,14 +211,33 @@ def func_name(function: Callable[..., Any]) -> str:
 # Guards (pwndbg's Only* decorators)
 # =========================================================================
 
+class _Guard(Protocol):
+    """A decorator that wraps a command body and may bail out with ``None``.
+
+    Declaring it as a generic protocol (rather than as the
+    ``Callable[[Callable[...]], Callable[...]]`` that :func:`_guard`
+    returns) is what keeps the decorated function's own signature: the
+    command bodies are typed ``def kmod(module_name: str | None = None)``
+    and stay callable that way.  It also gives the three module-level
+    guards below a declared type, which is what
+    ``pyright --verifytypes`` requires -- an unannotated
+    ``OnlyWithKernelSymbols = _guard(...)`` was reported as "could be
+    inferred differently by type checkers".
+    """
+
+    def __call__(
+        self, function: Callable[_P, _R]
+    ) -> Callable[_P, _R | None]: ...
+
+
 def _guard(
     predicate: Callable[[], bool], failure: Callable[[str], str],
-) -> Callable[[Callable[..., T]], Callable[..., T | None]]:
+) -> _Guard:
     """Build a decorator that prints *failure* and returns when *predicate* fails."""
 
-    def decorate(function: Callable[..., T]) -> Callable[..., T | None]:
+    def decorate(function: Callable[_P, _R]) -> Callable[_P, _R | None]:
         @functools.wraps(function)
-        def wrapper(*args: Any, **kwargs: Any) -> T | None:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R | None:
             if predicate():
                 return function(*args, **kwargs)
             print(message.error(failure(func_name(function))))
@@ -226,7 +249,7 @@ def _guard(
 
 
 #: A matching ``vmlinux`` / kernel symbol file is loaded.
-OnlyWithKernelSymbols = _guard(
+OnlyWithKernelSymbols: _Guard = _guard(
     lambda: kdbg.link_text() is not None,
     lambda name: (
         f"{name}: this command needs kernel symbols; load a matching "
@@ -235,7 +258,7 @@ OnlyWithKernelSymbols = _guard(
 )
 
 #: The kernel release can be read (a minimal debug-info proxy).
-OnlyWithKernelDebugInfo = _guard(
+OnlyWithKernelDebugInfo: _Guard = _guard(
     lambda: kdbg.kconfig_get("DEBUG_INFO") is not None
     or kdbg.link_text() is not None,
     lambda name: (
@@ -245,7 +268,7 @@ OnlyWithKernelDebugInfo = _guard(
 )
 
 #: Paging is enabled (a CR3 is available).
-OnlyWhenPagingEnabled = _guard(
+OnlyWhenPagingEnabled: _Guard = _guard(
     lambda: kdbg.link_text() is not None,
     lambda name: f"{name}: this command needs paging to be enabled.",
 )
@@ -308,6 +331,19 @@ class CommandDefinition:
         "aliases", "category", "command_name", "examples", "function",
         "notes", "parser",
     )
+
+    #: The decorated command body, as written (signature erased on
+    #: purpose: definitions are stored, not called, through this slot).
+    function: Callable[..., Any]
+    #: The parser the decorator bound to the command.
+    parser: argparse.ArgumentParser
+    #: Canonical name the function registers under (``kernlens_kmod`` ->
+    #: ``kl-kmod`` style, derived from the function name).
+    command_name: str
+    category: CommandCategory
+    aliases: list[str]
+    examples: str
+    notes: str
 
     def __init__(
         self,
@@ -445,6 +481,14 @@ class _CommandHelpFormatter(argparse.RawDescriptionHelpFormatter):
 class Command:
     """Decorator binding a parser and metadata to a command function."""
 
+    #: Parser the decorated function is registered with.
+    parser: argparse.ArgumentParser
+    category: CommandCategory
+    #: Lower-case spellings that resolve to the same definition.
+    aliases: list[str]
+    examples: str
+    notes: str
+
     def __init__(
         self,
         parser: argparse.ArgumentParser,
@@ -468,7 +512,7 @@ class Command:
         # formatting, so only the description carries verbatim text.
         parser.formatter_class = _CommandHelpFormatter
 
-    def __call__(self, function: Callable[..., Any]) -> Callable[..., Any]:
+    def __call__(self, function: Callable[_P, _R]) -> Callable[_P, _R]:
         definition = CommandDefinition(
             function,
             self.parser,
