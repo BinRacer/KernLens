@@ -8,7 +8,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+import builtins
+from collections.abc import Callable, Iterable, Sequence
 from typing import ClassVar, Final
 
 from .palette import Palette
@@ -33,12 +34,19 @@ class Styler:
     default ``" "``.
     """
 
-    __slots__: tuple[str, ...] = (
+    # Builtin names are spelled ``builtins.<name>`` in this class body on
+    # purpose: this class exposes formatting methods called ``tuple``,
+    # ``dict``, ``list``, ``set`` and ``range``, and a bare ``tuple[str,
+    # ...]`` annotation in the class namespace resolves to *the method*
+    # rather than the builtin.  That is not cosmetic -- it made
+    # ``typing.get_type_hints(Styler)`` raise ``'function' object is not
+    # subscriptable`` and mypy reject the annotations outright.
+    __slots__: builtins.tuple[str, ...] = (
         "_color_enabled", "_key_color", "_value_color"
     )
 
     #: ``named`` / ``kv_seq`` style -> (open, close).
-    _STYLES: ClassVar[dict[str, tuple[str, str]]] = {
+    _STYLES: ClassVar[builtins.dict[str, builtins.tuple[str, str]]] = {
         "[]": ("[", "]"),
         "()": ("(", ")"),
         "{}": ("{", "}"),
@@ -308,7 +316,8 @@ class Styler:
         )
 
     def dict(
-        self, pairs: dict[object, object] | Iterable[tuple[object, object]], *,
+        self, pairs: builtins.dict[object, object]
+        | Iterable[builtins.tuple[object, object]], *,
         assign: str = ": ",
         key_color: Palette | str | None = None,
         value_color: Palette | str | None = None,
@@ -326,7 +335,8 @@ class Styler:
         return self.style("{", bc) + body + self.style("}", bc)
 
     def pairs(
-        self, pairs: dict[object, object] | Iterable[tuple[object, object]], *,
+        self, pairs: builtins.dict[object, object]
+        | Iterable[builtins.tuple[object, object]], *,
         assign: str = "=",
         key_color: Palette | str | None = None,
         value_color: Palette | str | None = None,
@@ -345,7 +355,9 @@ class Styler:
         item_color: Palette | str | None = None,
         bracket_color: Palette | str = Palette.DIM,
     ) -> str:
-        fmt = (lambda n: f"{n:#x}") if hex_fmt else (lambda n: str(n))
+        fmt: Callable[[int], str] = (
+            (lambda n: f"{n:#x}") if hex_fmt else (lambda n: str(n))
+        )
         return self.seq(
             [fmt(start), fmt(end)], open=open, close=close,
             item_color=item_color, bracket_color=bracket_color,
@@ -368,7 +380,7 @@ class Styler:
 
     def kv_seq(
         self, label: str,
-        items: Iterable[object] | dict[object, object], *,
+        items: Iterable[object] | builtins.dict[object, object], *,
         style: str = "[]",
         key_color: Palette | str | None = None,
         item_color: Palette | str | None = None,
@@ -496,7 +508,7 @@ class Styler:
             return self.style(left, bc) + body + self.style(right, bc)
 
         def _render(cells: Sequence[str], color: Palette | str) -> str:
-            rendered: list[str] = []
+            rendered: builtins.list[str] = []
             for i in range(ncols):
                 text = cells[i] if i < len(cells) else ""
                 rendered.append(
@@ -558,7 +570,7 @@ class Styler:
         ic = self._value_color if item_color is None else str(item_color)
         cell_w = max(len(text) for text in texts) + pad
         per_col_align = _normalize_aligns(aligns, n)
-        lines: list[str] = []
+        lines: builtins.list[str] = []
         for start in range(0, len(texts), n):
             chunk = texts[start:start + n]
             rendered = [
@@ -630,7 +642,7 @@ class Styler:
     # --- groups ---------------------------------------------------------
 
     def fields(
-        self, pairs: Iterable[tuple[str, object]], *,
+        self, pairs: Iterable[builtins.tuple[str, object]], *,
         sep: str = "  ",
         key_color: Palette | str | None = None,
         value_color: Palette | str | None = None,
@@ -644,7 +656,7 @@ class Styler:
         )
 
     def kv_group(
-        self, pairs: Iterable[tuple[str, object]], *,
+        self, pairs: Iterable[builtins.tuple[str, object]], *,
         assign: str = " = ",
         key_color: Palette | str | None = None,
         value_color: Palette | str | None = None,
