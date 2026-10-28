@@ -304,7 +304,7 @@ class BuddyInspector(InspectorBase):
         names = self._migratetype_table()
         if names:
             return names
-        fallback = list(MIGRATE_TYPES)
+        fallback: list[str] = list(MIGRATE_TYPES)
         if self.config_contains("CMA"):
             fallback.append(CMA_MIGRATETYPE)
         if self.config_contains("MEMORY_ISOLATION"):
@@ -561,10 +561,6 @@ class BuddyInspector(InspectorBase):
         page_offset = self._page_offset_base()
         page = (vmemmap + (pfn * page_size)) & MASK64
         span, hole = self.zone_of_pfn(pfn, spans)
-        base_fields = {
-            "phys": phys, "pfn": pfn, "page": page, "zone": span,
-            "hole": hole,
-        }
         for order in range(self._norders() - 1, -1, -1):
             size_pages = 1 << order
             if pfn & (size_pages - 1):
@@ -580,7 +576,7 @@ class BuddyInspector(InspectorBase):
             except ValueError:
                 head_virt = None
             return BlockLocation(
-                **base_fields,
+                phys=phys, pfn=pfn, page=page, zone=span, hole=hole,
                 order=order,
                 size_pages=size_pages,
                 base_pfn=pfn,
@@ -605,7 +601,7 @@ class BuddyInspector(InspectorBase):
             except ValueError:
                 head_virt = None
             return BlockLocation(
-                **base_fields,
+                phys=phys, pfn=pfn, page=page, zone=span, hole=hole,
                 order=order,
                 size_pages=size_pages,
                 base_pfn=base,
@@ -616,7 +612,7 @@ class BuddyInspector(InspectorBase):
                 is_block_head=False,
             )
         return BlockLocation(
-            **base_fields,
+            phys=phys, pfn=pfn, page=page, zone=span, hole=hole,
             order=None, size_pages=None, base_pfn=None, position=None,
             block_page=None, block_phys=None, block_virt=None,
             is_block_head=False,
