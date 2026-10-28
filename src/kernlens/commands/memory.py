@@ -18,11 +18,12 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from .. import IntFmt
 from ..core.constants import PAGE_SIZE
 from ..gdb.facade import kdbg
+from ..gdb.inspectors import BpfMap, BpfProg, SlabCache
 from ..output import message
 from ..output.tree import IndentContextManager
 from .framework import Command, CommandCategory, hide, parse_int_arg
@@ -314,7 +315,7 @@ def _slab_detail(head: int, focus_cpu: int | None) -> None:
 
 def _slabs_node_partial(
     indent: IndentContextManager,
-    cache: object,
+    cache: SlabCache,
     node: int | None,
     verbose: bool,
 ) -> None:
@@ -324,7 +325,7 @@ def _slabs_node_partial(
     given; the count/head come from the same ``partial_info`` the
     granular inspector uses.
     """
-    address = cache.address  # type: ignore[attr-defined]
+    address = cache.address
     nr_nodes = kdbg.nr_nodes()
     nodes = [node] if node is not None else (
         list(range(nr_nodes)) if nr_nodes > 0 else []
@@ -405,7 +406,7 @@ def _cache_field_u64(cache: int, field: str) -> int | None:
 
 def _slab_extra_rows(
     indent: IndentContextManager,
-    cache: object,
+    cache: SlabCache,
     extras: "_SlabExtras | None",
 ) -> None:
     """Append the KernLens-only `slab info` rows that were asked for.
@@ -415,7 +416,7 @@ def _slab_extra_rows(
     """
     if extras is None or not extras.any:
         return
-    address = cache.address  # type: ignore[attr-defined]
+    address = cache.address
     if extras.inuse:
         # `inuse` is the object stride including metadata; it differs
         # from `object_size` only when the cache carries a constructor,
@@ -423,7 +424,7 @@ def _slab_extra_rows(
         indent.print(
             indent.prefix("inuse") + ": "
             + (
-                str(cache.inuse)  # type: ignore[attr-defined]
+                str(cache.inuse)
                 if getattr(cache, "inuse", None)
                 else message.warn("?")
             )
@@ -921,10 +922,10 @@ def kernlens_kbpf(
         _kbpf_maps(bool(verbose), values)
 
 
-def _kbpf_break(prog: object) -> None:
+def _kbpf_break(prog: BpfProg) -> None:
     """Break at the nth JIT-compiled prog's ``bpf_func`` (pwndbg ``-b``)."""
-    target = prog.func  # type: ignore[attr-defined]
-    index = prog.index  # type: ignore[attr-defined]
+    target = prog.func
+    index = prog.index
     if not target:
         print(message.error(f"prog {index} has no compiled function"))
         return
@@ -991,22 +992,25 @@ def _kbpf_maps(verbose: bool, values: bool) -> None:
                 _kbpf_values(indent, bpf_map)
 
 
-def _kbpf_values(indent: IndentContextManager, bpf_map: object) -> None:
-    stride = ((bpf_map.value_size + 7) // 8) * 8  # type: ignore[attr-defined]
+def _kbpf_values(indent: IndentContextManager, bpf_map: BpfMap) -> None:
+    array_addr = bpf_map.array_addr
+    if array_addr is None:
+        return
+    stride = ((bpf_map.value_size + 7) // 8) * 8
     if stride <= 0:
         return
-    limit = min(bpf_map.max_entries, 0x10)  # type: ignore[attr-defined]
+    limit = min(bpf_map.max_entries, 0x10)
     for index in range(limit):
         raw = kdbg.bpf_map_value(
-            bpf_map.array_addr + index * stride,  # type: ignore[attr-defined]
-            bpf_map.value_size,  # type: ignore[attr-defined]
+            array_addr + index * stride,
+            bpf_map.value_size,
         )
         if raw is None:
             break
         shown = " ".join(f"{byte:02x}" for byte in raw)
         suffix = (
             " " + message.warn("...")
-            if len(raw) < bpf_map.value_size  # type: ignore[attr-defined]
+            if len(raw) < bpf_map.value_size
             else ""
         )
         indent.print(
