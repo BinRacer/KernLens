@@ -64,6 +64,9 @@ dev = [
 # in CI asks for this group explicitly, so a contributor who only runs the
 # test suite does not download a theme.
 docs = ["mkdocs-material>=9.5"]
+# `twine check` is the release job's last gate before an upload; it is
+# not needed to test or to build the site.
+release = ["twine>=6"]
 
 [tool.uv]
 package = true
