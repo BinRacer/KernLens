@@ -1,14 +1,19 @@
 # Contributing
 
 Development notes for KernLens.  If you only want to *use* it, the
-[README](README.md) has the three-step quickstart and the command
+[README](README.md) has the one-command install and the command
 table; nothing here is needed for that.
 
 ## Distribution
 
-KernLens is distributed as a source checkout, not as a package.  There is
+KernLens is distributed as a source checkout, not as a package. There is
 no PyPI release and there will not be one while the entry point is a file
 you source rather than a module you import.
+
+Users install with `install.sh`, which clones the checkout, writes one
+marked block into `~/.gdbinit`, and leaves a `kernlens` wrapper for
+`kernlens doctor`; the manual path is the two commands in the README.
+Both end at `source /path/to/gdbinit.py`, which is the constraint below.
 
 The reason is not laziness.  Every quickstart path ends at `source
 /path/to/gdbinit.py`, and `gdbinit.py` is not in the wheel: the wheel is
@@ -33,6 +38,8 @@ uv run pytest --cov=kernlens --cov-report=term-missing
 uv run ruff check .
 uv run pyright
 uv run mypy
+uv run python tools/gen_commands.py --check
+uv run python tools/gen_demo.py --check
 ```
 
 `pyright` and `mypy` are both gates: the package ships an empty

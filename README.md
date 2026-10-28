@@ -29,16 +29,28 @@ came from -- so a wrong result looks wrong instead of looking plausible.
 `core/` and `output/` are pure Python and run without GDB at all; only
 the `gdb/` package needs a debuggee.
 
+## See it run
+
+<p align="center">
+  <img src="docs/assets/demo.svg" alt="A replay of kl-walk decoding a 2 MiB page-table mapping and kl-slab details decoding a SLUB freelist pointer" width="100%">
+</p>
+
+A replay of two commands from the 6.1.134 capture, not a live recording:
+the text is verbatim from [`tools/tutorial_capture.json`](tools/tutorial_capture.json),
+and the same session is in [`docs/assets/demo.cast`](docs/assets/demo.cast)
+for `asciinema play`. Every number is re-derived from the kernel at run
+time rather than assumed.
+
 ## What it looks like
 
 A 2 MiB mapping, walked level by level. The walk stops where the hardware
 does:
 
 ```text
-VA: 0xffff8cb880400000
-Paging: 4-level  root=0x6ad2000
-pgd      : idx=0x119 entry=0x6ad28c8 value=0x4a01067 -> 0x4a01000
-pud      : idx=0xe2 entry=0x4a01710 value=0x4a02067 -> 0x4a02000
+VA: 0xffff975280400000
+Paging: 4-level  root=0x3010000
+pgd      : idx=0x12e entry=0x3010970 value=0x4a01067 -> 0x4a01000
+pud      : idx=0x14a entry=0x4a01a50 value=0x4a02067 -> 0x4a02000
 pmd      : idx=0x2 entry=0x4a02010 value=0x80000000004000e3 (huge leaf)
 Leaf: 2 MiB huge pa=0x400000 offset=0x0
 Flags: P RW A D PAT PS NX
@@ -49,14 +61,16 @@ where the next level is. The `PS` bit at `pmd` is why there is no `pte`
 row. Compare with the same address forced to 5-level paging:
 
 ```text
-pgd      : idx=0x1ff entry=0x6ad2ff8 value=0x3015067 -> 0x3015000
-p4d      : idx=0x119 entry=0x30158c8 value=0x0
+VA: 0xffff975280400000
+Paging: 5-level  root=0x3010000
+pgd      : idx=0x1ff entry=0x3010ff8 value=0x3015067 -> 0x3015000
+p4d      : idx=0x12e entry=0x3015970 value=0x0
 Note: p4d entry is not present
 ```
 
 The SLUB allocator, where `Size` and `Obj Size` differ when a cache rounds
 up for alignment or adds metadata -- the gap an amplification attack cares
-about:
+about (three rows of the 170-cache list):
 
 ```text
 Name                         # Objects  Size  Obj Size  order
@@ -66,23 +80,47 @@ MPTCPv6                      15         2112  2064      3
 ```
 
 And the freelist encoding, which is the part a use-after-free tracer has
-to get right. The stored word is not a pointer:
+to get right. The stored word is not a pointer; `freeptr` and the decoded
+`next` are printed together:
 
 ```text
-cpu 0 first object : 0xffff911c466b5000
-  slot address   : 0xffff911c466b5200   (object + offset 512)
-  stored word    : 0xfa9c7eb28ed8d5fb
-  decoded next   : 0xffff911c466b5800
-  the arithmetic : 0xffff911c466b5800 ^ 0x53184e8d4227204 ^ swab(0xffff911c466b5200) = 0xfa9c7eb28ed8d5fb
-  check          : 0xfa9c7eb28ed8d5fb
+Slab @ 0xffff975286c57840 page: 0xffffee5d001b15c0
+    cache: 0xffff975284e1bc00 dentry  page_bytes=64
+    freeptr: offset=96 random=0xae939aafdb096690
+    freelist: 0xffff975286c57c00
+    objects: 21  inuse=19  frozen=1
+    state: frozen
+    slab_size: 0x1000
+    next: 0x3110c87b0f5be96f decoded=0xffff975286c57000
 ```
 
-## Quickstart
+The arithmetic is `next = stored ^ random ^ swab(slot_address)`; `kl-slab
+details` shows the operands so you can recompute it. The remaining rows
+(`cpu`, `node`) are omitted here and present in the command's output.
+
+## Install
+
+From a shell, one command:
+
+```console
+curl -fsSL https://raw.githubusercontent.com/BinRacer/KernLens/main/install.sh | sh
+```
+
+It clones the checkout under `~/.local/share/kernlens`, adds one marked
+block to `~/.gdbinit`, and writes a `kernlens` wrapper to
+`~/.local/bin`. Running it again updates the checkout instead of adding a
+second block; `sh install.sh --uninstall` removes the block and the
+wrapper and leaves the checkout alone. Read [`install.sh`](install.sh)
+before piping it, as with any installer.
+
+If you would rather manage the checkout yourself:
 
 ```console
 git clone https://github.com/BinRacer/KernLens
 echo "source $(pwd)/KernLens/gdbinit.py" >> ~/.gdbinit
 ```
+
+Then:
 
 ```gdb
 (gdb) file vmlinux
@@ -96,103 +134,41 @@ at its link-time address, and nothing resolved before the slide is
 applied. Loading `gdbinit.py` never installs a breakpoint and is safe
 before `file vmlinux`.
 
-A checkout is the only installation. KernLens is not published to PyPI,
-and installing it from there would not get you a working copy: the
-startup file the quickstart sources is not part of the wheel. `gdbinit.py`
-puts its own `src/` on `sys.path`, so there is nothing to install and
-nothing to keep in sync; `git pull` is the upgrade path. Contributor
-setup is in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Check the load path before debugging a kernel:
+
+```console
+kernlens doctor
+```
+
+It reports the host Python, the Python GDB embeds, whether `~/.gdbinit`
+sources an existing startup file, whether GDB can actually import
+`kernlens`, and whether a target is attached. `kl-status --doctor` adds
+the in-session half. Paste the report into an issue.
+
+There is no PyPI release yet. A wheel would install into the host
+Python, while GDB runs its own interpreter and reads its own `sys.path`;
+until the startup file ships inside the package, a checkout is the
+supported install, and `git pull` (or re-running the installer) is the
+upgrade path. Contributor setup is in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## The 40 commands
 
-Grouped exactly as `kl-help` groups them. The `kl-` form is what you
-type at the prompt; the canonical `kernlens-` form is what scripts and
-the generated tutorial use. Both always work.
+Grouped as `kl-help` groups them. The `kl-` form is what you type at the
+prompt; the canonical `kernlens-` form is what scripts and the generated
+tutorial use. Both always work. Every command, every alias, and a
+one-line description is in [`docs/commands.md`](docs/commands.md).
 
-### kernel metadata (8)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-kchecksec` | `kl-kchecksec` | Hardening audit |
-| `kernlens-kcmdline` | `kl-kcmdline` | Boot command line |
-| `kernlens-kconfig` | `kl-kconfig` | Kernel configuration |
-| `kernlens-kdmesg` | `kl-kdmesg` | Kernel log |
-| `kernlens-klookup` | `kl-klookup` | Symbol search |
-| `kernlens-kmod` | `kl-kmod` | Loaded modules |
-| `kernlens-ksyscalls` | `kl-ksyscalls` | Syscall table |
-| `kernlens-kversion` | `kl-kversion` | Kernel version |
-
-### addresses & page tables (9)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-addr` | `kl-addr` | Address analysis |
-| `kernlens-p2v` | `kl-p2v` | Physical to virtual |
-| `kernlens-page` | `kl-page` | Page for an address |
-| `kernlens-pageinfo` | `kl-pageinfo` | Describe a struct page |
-| `kernlens-pagewalk` | `kl-pagewalk` | Pagewalk (pwndbg format) |
-| `kernlens-pt` | `kl-pt` | Page-table indices |
-| `kernlens-pte` | `kl-pte` | Decode a page-table entry |
-| `kernlens-v2p` | `kl-v2p` | Virtual to physical |
-| `kernlens-walk` | `kl-walk` | Walk the page tables |
-
-### memory & symbols (11)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-bt` | `kl-bt` | Backtrace |
-| `kernlens-buddy` | `kl-buddy` | Locate an address in the buddy allocator |
-| `kernlens-buddydump` | `kl-buddydump` | Buddy free-list dump |
-| `kernlens-chain` | `kl-chain` | Compact call chain |
-| `kernlens-kbpf` | `kl-kbpf` | BPF programs and maps |
-| `kernlens-kdmabuf` | `kl-kdmabuf` | dma-buf objects |
-| `kernlens-kvar` | `kl-kvar` | Read a kernel variable |
-| `kernlens-read` | `kl-read` | Dump memory |
-| `kernlens-read-field` | `kl-read-field` | Read a struct field |
-| `kernlens-slab` | `kl-slab` | SLUB cache inspection |
-| `kernlens-sym` | `kl-sym` | Address to symbol |
-
-### kernel base & KASLR (4)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-base` | `kl-base` | Active base and slide |
-| `kernlens-kaslr` | `kl-kaslr` | Slide from a runtime address |
-| `kernlens-kaslr-offset` | `kl-kaslr-offset` | Set the slide directly |
-| `kernlens-kbase` | `kl-kbase` | Find the kernel base |
-
-### CPU topology (3)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-cpu` | `kl-cpu` | CPU topology |
-| `kernlens-msr` | `kl-msr` | Model-specific registers |
-| `kernlens-percpu` | `kl-percpu` | Per-CPU symbol address |
-
-### bit & integer primitives (2)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-bits` | `kl-bits` | Bit-level view |
-| `kernlens-int` | `kl-int` | Integer view |
-
-### overview (1)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-status` | `kl-status` | Session status |
-
-### output (1)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-color` | `kl-color` | Colour control |
-
-### help (1)
-
-| Command | Alias | What it prints |
-| --- | --- | --- |
-| `kernlens-help` | `kl-help` | Command reference |
+| Category | Commands |
+| --- | --- |
+| overview (1) | `kl-status` |
+| kernel base & KASLR (4) | `kl-base`, `kl-kbase`, `kl-kaslr`, `kl-kaslr-offset` |
+| kernel metadata (8) | `kl-kchecksec`, `kl-kcmdline`, `kl-kconfig`, `kl-kdmesg`, `kl-klookup`, `kl-kmod`, `kl-ksyscalls`, `kl-kversion` |
+| addresses & page tables (9) | `kl-addr`, `kl-p2v`, `kl-page`, `kl-pageinfo`, `kl-pagewalk`, `kl-pt`, `kl-pte`, `kl-v2p`, `kl-walk` |
+| memory & symbols (11) | `kl-bt`, `kl-buddy`, `kl-buddydump`, `kl-chain`, `kl-kbpf`, `kl-kdmabuf`, `kl-kvar`, `kl-read`, `kl-read-field`, `kl-slab`, `kl-sym` |
+| CPU topology (3) | `kl-cpu`, `kl-msr`, `kl-percpu` |
+| bit & integer primitives (2) | `kl-bits`, `kl-int` |
+| output (1) | `kl-color` |
+| help (1) | `kl-help` |
 
 Every command has a page in [`docs/tutorial/`](docs/tutorial/) with real
 captured output, its options, and a note on how to read the result.
@@ -237,6 +213,10 @@ because the alternative is prose that is correct on the day it is written:
 - `docs/tutorial/` is **generated** from a capture taken on a running
   kernel; `gen_tutorial.py --check` fails when a page and the capture
   disagree.
+- The README demo and `docs/commands.md` are generated too:
+  `tools/gen_demo.py --check` compares the animation with the capture,
+  and `tools/gen_commands.py --check` compares the command table with the
+  registered metadata.
 - Example coverage is declared in `tools/example_manifest.py` and enforced
   by `tools/check_examples.py --check`: a claim without the code fails,
   and so does a command named in prose but never executed.
@@ -255,6 +235,7 @@ registry by the test suite, so it cannot quietly become false.
 | Document | What is in it |
 | --- | --- |
 | [`docs/tutorial/`](docs/tutorial/) | one page per command, real output |
+| [`docs/commands.md`](docs/commands.md) | every command and alias, generated |
 | [`docs/api.md`](docs/api.md) | the Python API reference |
 | [`docs/architecture.md`](docs/architecture.md) | package layout, API map, design notes |
 | [`examples/`](examples/README.md) | runnable scripts, grouped by intent |
@@ -265,14 +246,17 @@ registry by the test suite, so it cannot quietly become false.
 
 ## Requirements and license
 
-Python 3.10+ and a GDB built with Python 3.10+. x86_64 kernels only --
-the page-table and `struct page` decoding are written against that
-architecture. On Python below 3.12 the only runtime dependency is
-`typing-extensions`.
+Python 3.10+ and a GDB built with Python 3.10+. Those are two
+interpreters, not one: `kernlens doctor` prints both, because a GDB whose
+embedded Python cannot see the package is the most common first-run
+failure. x86_64 kernels only -- the page-table and `struct page` decoding
+are written against that architecture. On Python below 3.12 the only
+runtime dependency is `typing-extensions`.
 
-No package is published. Installation is a `git clone`; see
-[Quickstart](#quickstart). The `kernlens` name on PyPI is not this
-project.
+No package is published. Installation is the one-line installer or a
+`git clone`; see [Install](#install). A wheel cannot work until the
+startup file ships inside it, because GDB sources that file from its own
+interpreter.
 
 GPL-3.0-or-later. See [`LICENSE`](LICENSE); third-party attribution is in
 [`CREDITS.md`](CREDITS.md).

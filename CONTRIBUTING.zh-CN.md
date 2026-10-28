@@ -1,12 +1,17 @@
 # 参与开发
 
 KernLens 的开发说明。只想*使用*它的话，[README](README.zh-CN.md) 里有
-三步快速开始和命令表，这里的内容一条都用不上。
+一条命令的安装方式和命令表，这里的内容一条都用不上。
 
 ## 分发方式
 
 KernLens 以源码 checkout 的形式分发，不作为包发布。没有 PyPI 版本，
 只要入口还是一个需要 source 的文件而不是一个可以 import 的模块，就不会有。
+
+用户通过 `install.sh` 安装：它克隆 checkout，往 `~/.gdbinit` 写一个带
+标记的块，并留下一个运行 `kernlens doctor` 的包装脚本；手动路径就是
+README 里的两条命令。两者都终止于 `source /path/to/gdbinit.py`，也就是
+下面这个约束。
 
 原因不是省事。每个快速开始路径的终点都是 `source /path/to/gdbinit.py`，
 而 `gdbinit.py` 不在 wheel 里：wheel 由 `src/` 构建，启动文件与它平级。
@@ -27,6 +32,8 @@ uv run pytest --cov=kernlens --cov-report=term-missing
 uv run ruff check .
 uv run pyright
 uv run mypy
+uv run python tools/gen_commands.py --check
+uv run python tools/gen_demo.py --check
 ```
 
 `pyright` 与 `mypy` 都是闸门：包内是空的 `py.typed`，而两个检查器

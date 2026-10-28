@@ -2909,21 +2909,29 @@ class HelpDispatchTests(GdbinitTestBase):
 
 
 class DocumentationTests(unittest.TestCase):
-    """The command tables must match what the framework registers."""
+    """The command reference must match what the framework registers.
+
+    The 40-row table used to live in both READMEs.  It now lives in one
+    generated page, so this checks the page against the frozen contract
+    and checks that both front pages still point at it.
+    """
 
     def _documented(self, name: str) -> set[str]:
         text = (GDBINIT_PATH.parent / name).read_text(encoding="utf-8")
         return set(re.findall(r"\| `(kernlens-[a-z0-9-]+)", text))
 
-    def test_english_readme_lists_every_command(self) -> None:
+    def test_command_reference_lists_every_command(self) -> None:
         from contract_spec import CANONICAL_COMMANDS as FROZEN
 
-        self.assertEqual(self._documented("README.md"), set(FROZEN))
+        self.assertEqual(self._documented("docs/commands.md"), set(FROZEN))
 
-    def test_chinese_readme_lists_every_command(self) -> None:
-        from contract_spec import CANONICAL_COMMANDS as FROZEN
-
-        self.assertEqual(self._documented("README.zh-CN.md"), set(FROZEN))
+    def test_both_readmes_link_to_the_command_reference(self) -> None:
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                text = (GDBINIT_PATH.parent / name).read_text(
+                    encoding="utf-8",
+                )
+                self.assertIn("docs/commands.md", text)
 
 
 class TutorialTests(unittest.TestCase):
