@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Copyright (c) 2026 BinRacer <native.lab@outlook.com>
+#
+# This work is licensed under the terms of the GNU GPL, version 3 or later.
+#
+# See the LICENSE file in the top-level directory for details.
+#
+# Run KernLens' host-side tools from a checkout, without installing
+# anything.  The package lives under src/, so this is the only thing that
+# puts it on sys.path.
+#
+#     ./bin/kernlens doctor
+#
+# The installer writes an equivalent wrapper into ~/.local/bin.
+set -eu
+
+self=$(readlink -f -- "$0" 2>/dev/null || printf '%s' "$0")
+root=$(CDPATH='' cd -- "$(dirname -- "$self")/.." && pwd)
+
+# ``kernlens`` with no subcommand is ``kernlens doctor``; the subcommand
+# spelling exists so the wrapper and the console script agree.
+if [ "${1-}" = "doctor" ]; then
+    shift
+fi
+
+PYTHONPATH="$root/src${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH
+
+exec "${KERNLENS_PYTHON:-python3}" -m kernlens.doctor "$@"
