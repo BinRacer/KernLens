@@ -3,12 +3,15 @@ include README.md
 include README.zh-CN.md
 include CHANGELOG.md
 include gdbinit.py
+include install.sh
+include bin/kernlens
 include pyproject.toml
 include uv.lock
 include src/kernlens/py.typed
 
 recursive-include docs *.md
 recursive-include docs/tutorial *.md
+recursive-include docs/assets *.svg *.cast
 recursive-include examples *.py
 include examples/api/gdbinit.example
 recursive-include images *.svg
