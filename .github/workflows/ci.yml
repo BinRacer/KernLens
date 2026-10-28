@@ -198,20 +198,31 @@ jobs:
         run: |
           set -eu
           uv build
+          # The wheel must contain the startup file and the console
+          # script, not only the Python modules: GDB sources
+          # `kernlens/gdbinit.py` from site-packages, and `kernlens path`
+          # is how a user finds it.  The old source-only policy existed
+          # because that was impossible; this is the check that it stays
+          # possible.
+          uv run --frozen python tools/check_wheel.py dist/*.whl
           # The py.typed source file is only a claim about the checkout;
           # the marker has to be inside the artifacts for a pip user to
           # benefit.  Assert both, because package-data and MANIFEST.in
           # are separate switches and either can silently stop applying.
           uv run --frozen python - <<'PY'
-          import glob, tarfile, zipfile
-
-          wheel = glob.glob("dist/*.whl")[0]
-          with zipfile.ZipFile(wheel) as archive:
-              assert "kernlens/py.typed" in archive.namelist(), wheel
+          import glob, tarfile
 
           sdist = glob.glob("dist/*.tar.gz")[0]
           with tarfile.open(sdist) as archive:
               names = archive.getnames()
-          assert any(name.endswith("/src/kernlens/py.typed") for name in names), sdist
-          print("py.typed shipped in wheel and sdist")
+          for required in (
+              "src/kernlens/py.typed",
+              "src/kernlens/gdbinit.py",
+              "gdbinit.py",
+              "install.sh",
+          ):
+              assert any(
+                  name.endswith("/" + required) for name in names
+              ), (sdist, required)
+          print("sdist ships py.typed, the startup file and the installer")
           PY
