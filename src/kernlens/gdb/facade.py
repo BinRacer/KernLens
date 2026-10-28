@@ -8,15 +8,20 @@
 
 :class:`KernelDebugger` owns one instance of each adapter and republishes
 its methods under flat names (``kdbg.info``, ``kdbg.style``,
-``kdbg.print_slab``).  The republication is driven by the single
-:data:`_BINDINGS` table below, so the public surface is declared once and
-``api.py`` derives the exported free functions from it instead of keeping
-a second list in sync.
+``kdbg.print_slab``).  :data:`_BINDINGS` below is the source of truth for
+that surface: ``api.py`` derives the exported free functions from it, and
+``__init__`` binds every entry with an explicit
+``self.<name> = self.<component>.<member>`` assignment.  The assignments
+are spelled out rather than generated with ``setattr`` so a type checker
+can see each method's real signature -- with ``setattr`` the whole flat
+surface was invisible and every ``kdbg.<name>`` was an attribute error.
+``tests/unit/test_structure.py`` compares the two spellings so they cannot
+drift.
 """
 
 from __future__ import annotations
 
-from typing import final
+from typing import Final, final
 
 from ..output import Logger
 from ..output import message as message
@@ -257,8 +262,164 @@ class KernelDebugger:
         )
 
         # Republish every component method declared in ``_BINDINGS``.
-        for name, component, member, _free in _BINDINGS:
-            setattr(self, name, getattr(getattr(self, component), member))
+        #
+        # Plain assignments rather than a ``setattr`` loop: a type checker
+        # can follow ``self.info = self.logger.info`` and give ``kdbg.info``
+        # the component method's real signature, while ``setattr`` leaves
+        # the whole flat surface invisible and turns every ``kdbg.<name>``
+        # into an attribute error.  ``_BINDINGS`` above stays the source of
+        # truth for ``api.py``; ``test_facade_bindings`` compares this block
+        # against it so the two cannot drift.
+        #
+        # ``Final`` is what turns each of these into a *declared* type for
+        # ``pyright --verifytypes``: an unannotated ``self.x = ...`` is
+        # reported as "could be inferred differently by type checkers",
+        # which is 140 of the 173 symbols that kept the package's
+        # completeness score at 0.88.  It also keeps the inferred signature
+        # (parameter names and defaults included), so nothing is restated
+        # by hand and nothing can drift from the component; reassigning a
+        # bound name after construction becomes a type error, which is the
+        # intended contract.
+        self.debug: Final = self.logger.debug
+        self.info: Final = self.logger.info
+        self.success: Final = self.logger.success
+        self.warn: Final = self.logger.warn
+        self.error: Final = self.logger.error
+        self.once: Final = self.logger.once
+        self.throttle: Final = self.logger.throttle
+        self.counter: Final = self.logger.counter
+        self.summary: Final = self.logger.summary
+        self.check: Final = self.logger.check
+        self.assert_: Final = self.logger.assert_
+        self.banner: Final = self.logger.banner
+        self.rule: Final = self.logger.rule
+        self.fmt_line: Final = self.logger.fmt_line
+        self.style: Final = self.styler.style
+        self.addr: Final = self.styler.addr
+        self.hex: Final = self.styler.hex
+        self.hex8: Final = self.styler.hex8
+        self.hex16: Final = self.styler.hex16
+        self.hex32: Final = self.styler.hex32
+        self.hex64: Final = self.styler.hex64
+        self.dec: Final = self.styler.dec
+        self.size: Final = self.styler.size
+        self.pfn: Final = self.styler.pfn
+        self.percent: Final = self.styler.percent
+        self.bits: Final = self.styler.bits
+        self.ljust: Final = self.styler.ljust
+        self.rjust: Final = self.styler.rjust
+        self.center: Final = self.styler.center
+        self.pad: Final = self.styler.pad
+        self.truncate: Final = self.styler.truncate
+        self.kv: Final = self.styler.kv
+        self.kv_int: Final = self.styler.kv_int
+        self.kv_hex: Final = self.styler.kv_hex
+        self.kv_bool: Final = self.styler.kv_bool
+        self.seq: Final = self.styler.seq
+        self.list: Final = self.styler.list
+        self.tuple: Final = self.styler.tuple
+        self.set: Final = self.styler.set
+        self.dict: Final = self.styler.dict
+        self.pairs: Final = self.styler.pairs
+        self.range: Final = self.styler.range
+        self.named: Final = self.styler.named
+        self.kv_seq: Final = self.styler.kv_seq
+        self.table: Final = self.styler.table
+        self.box: Final = self.styler.box
+        self.fmt_chain: Final = self.styler.chain
+        self.cols: Final = self.styler.cols
+        self.block: Final = self.styler.block
+        self.highlight: Final = self.styler.highlight
+        self.indent: Final = self.styler.indent
+        self.fields: Final = self.styler.fields
+        self.kv_group: Final = self.styler.kv_group
+        self.tick: Final = self.styler.tick
+        self.cross: Final = self.styler.cross
+        self.bullet: Final = self.styler.bullet
+        self.arrow: Final = self.styler.arrow
+        self.bar: Final = self.styler.bar
+        self.fn: Final = self.styler.fn
+        self.loc: Final = self.styler.loc
+        self.depth_marker: Final = self.styler.depth_marker
+        self.branch: Final = self.styler.branch
+        self.fl_tag: Final = self.styler.fl_tag
+        self.kv_cpu: Final = self.styler.kv_cpu
+        self.kv_online: Final = self.styler.kv_online
+        self.kv_err: Final = self.styler.kv_err
+        self.kv_trans: Final = self.styler.kv_trans
+        self.u64: Final = self.reader.u64
+        self.read_kvar: Final = self.reader.read_kvar
+        self.kvar_addr: Final = self.reader.kvar_addr
+        self.arg: Final = self.reader.arg
+        self.read_field: Final = self.reader.read_field
+        self.sym: Final = self.symbols.sym
+        self.line: Final = self.symbols.line
+        self.backtrace: Final = self.symbols.backtrace
+        self.chain: Final = self.symbols.chain
+        self.color_chain: Final = self.symbols.color_chain
+        self.bp_spec: Final = self.kaslr.bp_spec
+        self.link_text: Final = self.kaslr.link_text
+        self.find_kbase: Final = self.kbase.find
+        self.nr_cpus: Final = self.cpu.nr_cpus
+        self.nr_nodes: Final = self.cpu.nr_nodes
+        self.cpu_online: Final = self.cpu.cpu_online
+        self.cur_cpu: Final = self.cpu.cur_cpu
+        self.percpu_off: Final = self.cpu.percpu_off
+        self.walk: Final = self.walker.walk
+        self.kversion: Final = self.kernel.version
+        self.krelease: Final = self.kernel.release
+        self.kcmdline: Final = self.kernel.cmdline
+        self.kconfig: Final = self.kernel.kconfig
+        self.kconfig_get: Final = self.kernel.config_get
+        self.kconfig_contains: Final = self.kernel.config_contains
+        self.kconfig_update: Final = self.kernel.config_update
+        self.config_key: Final = self.kernel.config_key
+        self.modules: Final = self.kernel.modules
+        self.syscalls: Final = self.kernel.syscalls
+        self.syscall_count: Final = self.kernel.syscall_count
+        self.page_type: Final = self.kernel.page_type
+        self.page_refcount: Final = self.kernel.page_refcount
+        self.buddy_order: Final = self.kernel.buddy_order
+        self.page_is_buddy: Final = self.kernel.page_is_buddy
+        self.page_is_slab: Final = self.kernel.page_is_slab
+        self.kallsyms: Final = self.kernel.kallsyms
+        self.lookup: Final = self.kernel.lookup
+        self.dmesg: Final = self.kernel.dmesg
+        self.tk_epoch: Final = self.kernel.tk_epoch
+        self.bpf_progs: Final = self.kernel.bpf_progs
+        self.bpf_maps: Final = self.kernel.bpf_maps
+        self.bpf_map_value: Final = self.kernel.bpf_map_value
+        self.buddy_zones: Final = self.kernel.buddy_zones
+        self.zone_spans: Final = self.kernel.zone_spans
+        self.zone_of_pfn: Final = self.kernel.zone_of_pfn
+        self.block_of_pfn: Final = self.kernel.block_of_pfn
+        self.block_range: Final = self.kernel.block_range
+        self.buddy_pfn: Final = self.kernel.buddy_pfn
+        self.free_area_counts: Final = self.kernel.free_area_counts
+        self.freelist_blocks: Final = self.kernel.freelist_blocks
+        self.freelist_count: Final = self.kernel.freelist_count
+        self.slab_caches: Final = self.kernel.slab_caches
+        self.slab_cache: Final = self.kernel.slab_cache
+        self.slab_object: Final = self.kernel.slab_object
+        self.dmabufs: Final = self.kernel.dmabufs
+        self.page_bytes: Final = self.slub.page_bytes
+        self.head_to_page: Final = self.slub.head_to_page
+        self.compound_head: Final = self.slub.compound_head
+        self.cache_name: Final = self.slub.cache_name
+        self.cpu_slab_ptr: Final = self.slub.cpu_slab_ptr
+        self.cpu_active_slab: Final = self.slub.cpu_active_slab
+        self.cpu_freelist: Final = self.slub.cpu_freelist
+        self.freeptr_offset: Final = self.slub.freeptr_offset
+        self.freeptr_random: Final = self.slub.freeptr_random
+        self.decode_freeptr: Final = self.slub.decode_freeptr
+        self.freelist_dist: Final = self.slub.freelist_dist
+        self.partial_info: Final = self.slub.partial_info
+        self.in_partial: Final = self.slub.in_partial
+        self.slab_counters: Final = self.slub.slab_counters
+        self.slab_state: Final = self.slub.slab_state
+        self.object_index: Final = self.slub.object_index
+        self.neighbour_objects: Final = self.slub.neighbour_objects
+        self.print_slab: Final = self.slub.print_slab
 
     # --- KASLR adaptation ------------------------------------------------
 
@@ -362,7 +523,7 @@ class KernelDebugger:
 # Module-level singleton shared with the tracer
 # =========================================================================
 
-kdbg = KernelDebugger()
+kdbg: KernelDebugger = KernelDebugger()
 
 
 __all__ = [
