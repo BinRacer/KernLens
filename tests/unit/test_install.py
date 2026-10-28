@@ -44,6 +44,10 @@ def _make_repo(root: Path) -> Path:
         "import sys\nprint('fake doctor', sys.argv[1:])\n",
         encoding="utf-8",
     )
+    (repo / "src" / "kernlens" / "cli.py").write_text(
+        "import sys\nprint('fake cli', sys.argv[1:])\n",
+        encoding="utf-8",
+    )
     _git(repo, "init", "-q", "-b", "main")
     _git(repo, "add", "-A")
     _git(
@@ -110,7 +114,7 @@ class InstallerTests(unittest.TestCase):
         text = self.rc.read_text(encoding="utf-8")
         self.assertEqual(text.count(MARKER_START), 1)
         self.assertEqual(text.count(MARKER_END), 1)
-        expected = 'source "' + str(self.data / "gdbinit.py") + '"'
+        expected = f"source {self.data / 'gdbinit.py'}"
         self.assertIn(expected, text)
         wrapper = self.prefix / "bin" / "kernlens"
         self.assertTrue(wrapper.is_file())
@@ -133,7 +137,7 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("source /tmp/other.py", text)
         self.assertEqual(text.count(MARKER_START), 1)
 
-    def test_wrapper_runs_doctor_from_the_checkout(self) -> None:
+    def test_wrapper_runs_the_cli_from_the_checkout(self) -> None:
         self.assertEqual(self.install().returncode, 0)
         wrapper = self.prefix / "bin" / "kernlens"
         result = subprocess.run(
@@ -144,8 +148,18 @@ class InstallerTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("fake doctor", result.stdout)
+        self.assertIn("fake cli", result.stdout)
         self.assertIn("--help", result.stdout)
+
+    def test_the_shell_and_python_installers_share_the_markers(self) -> None:
+        # ``install.sh`` cannot import the package, so the two installers
+        # spell the markers twice.  A drift would make ``kernlens doctor``
+        # miss a block the shell installer wrote.
+        from kernlens import install
+
+        text = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn(f"marker_start='{install.MARKER_START}'", text)
+        self.assertIn(f"marker_end='{install.MARKER_END}'", text)
 
     def test_dry_run_changes_nothing(self) -> None:
         result = self.install(dry_run=True)

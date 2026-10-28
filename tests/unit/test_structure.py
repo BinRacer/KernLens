@@ -210,10 +210,21 @@ class CommandBoundaryTests(unittest.TestCase):
         )
 
     def test_gdbinit_is_only_a_bootstrap(self) -> None:
-        text = (ROOT / "gdbinit.py").read_text(encoding="utf-8")
+        # The checkout shim is deliberately tiny: it locates ``src/`` and
+        # hands the real bootstrap the namespace it was sourced in.
+        shim = (ROOT / "gdbinit.py").read_text(encoding="utf-8")
+        self.assertLess(
+            len(shim.splitlines()), 40,
+            "gdbinit.py should stay a checkout shim",
+        )
+        self.assertIn("from kernlens.gdbinit import bootstrap", shim)
+
+        # The implementation moved into the package so the wheel can ship
+        # it; it is still a bootstrap, not a home for command logic.
+        text = (SRC / "gdbinit.py").read_text(encoding="utf-8")
         self.assertLess(
             len(text.splitlines()), 220,
-            "gdbinit.py should stay a thin bootstrap",
+            "the packaged gdbinit.py should stay a thin bootstrap",
         )
         self.assertNotIn("class KernLens", text)
         self.assertNotIn("_HELP: dict", text)
@@ -683,23 +694,23 @@ class ReadmeStructureTests(unittest.TestCase):
                 self.assertIn(f"({target})", self._readme("README.md"))
 
 
-class SourceOnlyDistributionTests(unittest.TestCase):
-    """The project is installed from a checkout, and says so.
+class PackagedDistributionTests(unittest.TestCase):
+    """The startup file ships in the package, and the docs say how.
 
-    There is no PyPI release, and the reason is concrete: every quickstart
-    path ends at ``source /path/to/gdbinit.py``, and that file is not in
-    the wheel.  The wheel is built from ``src/``; the startup file lives
-    beside it.  A published package would install cleanly and then be
-    impossible to use by following the documentation -- which teaches a
-    reader that the tool is broken, not that it is unpackaged.
+    The project used to be checkout-only, and a test here forbade install
+    commands because the wheel could not work: ``gdbinit.py`` lived beside
+    ``src/``, not inside it, so ``pip install`` produced a package that
+    installed cleanly and then could not be loaded.  The file is package
+    data now and a console script prints its path, so the tripwire is
+    inverted: the wheel must contain the startup file and the entry
+    point, and the prose must describe the install that exists.
 
-    That is a decision a future contributor could undo without noticing,
-    either by adding a badge that implies a package or by writing an
-    install command that cannot work.  These tests make both moves fail.
+    ``pip install kernlens`` stays forbidden until the first release is
+    actually on PyPI; adding the command before that would point readers
+    at a 404.  That is a release step, not a packaging step.
     """
 
-    #: Write-ups people reach for when a project has a release.  None of
-    #: them can work here, so none of them may appear as an instruction.
+    #: Write-ups that would 404 until the first PyPI release is published.
     FORBIDDEN = ("pip install kernlens", "uvx kernlens", "pipx install",
                  "uv tool install kernlens")
 
@@ -712,7 +723,44 @@ class SourceOnlyDistributionTests(unittest.TestCase):
             )
         }
 
-    def test_no_document_offers_an_install_command(self) -> None:
+    def test_the_startup_file_lives_in_the_package(self) -> None:
+        self.assertTrue((SRC / "gdbinit.py").is_file())
+        self.assertIn(
+            "def bootstrap", (SRC / "gdbinit.py").read_text(
+                encoding="utf-8",
+            ),
+        )
+
+    def test_pyproject_ships_the_startup_file_and_the_script(self) -> None:
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn(
+            'kernlens = ["py.typed", "gdbinit.py"]', pyproject,
+        )
+        self.assertIn("[project.scripts]", pyproject)
+        self.assertIn('kernlens = "kernlens.cli:main"', pyproject)
+
+    def test_the_console_script_prints_a_loadable_startup_file(self) -> None:
+        from kernlens import install
+
+        path = install.startup_path()
+        self.assertTrue(path.is_file())
+        self.assertEqual(path.name, "gdbinit.py")
+        self.assertIn("def bootstrap", path.read_text(encoding="utf-8"))
+
+    def test_the_console_script_module_is_importable(self) -> None:
+        from kernlens import cli
+
+        self.assertTrue(callable(cli.main))
+
+    def test_the_docs_describe_the_install_that_exists(self) -> None:
+        for name, text in self._docs().items():
+            with self.subTest(document=name):
+                self.assertIn("kernlens doctor", text)
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                self.assertIn("install.sh", self._docs()[name])
+
+    def test_no_document_offers_a_command_that_would_404(self) -> None:
         for name, text in self._docs().items():
             for phrase in self.FORBIDDEN:
                 with self.subTest(document=name, phrase=phrase):
@@ -727,24 +775,13 @@ class SourceOnlyDistributionTests(unittest.TestCase):
                 self.assertIn("git clone", text)
 
     def test_the_policy_is_stated_with_its_reason(self) -> None:
-        # The reason is the part that survives a rewrite.  "source only"
-        # reads like a temporary limitation; "the startup file is not in
-        # the wheel" is a fact a contributor can check and reason from.
+        # The reason is the part that survives a rewrite.  The startup
+        # file is in the wheel now, but it is still sourced, not imported,
+        # and that distinction is what the contributor notes must keep.
         for name in ("CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md"):
             with self.subTest(document=name):
                 text = self._docs()[name]
                 self.assertIn("gdbinit.py", text)
-
-    def test_the_wheel_still_lacks_the_entry_point(self) -> None:
-        """Pins the fact the documentation is built on.
-
-        If someone later ships ``gdbinit.py`` as package data, this test
-        fails on purpose: the prose and the packaging must change
-        together, and this is the tripwire that forces them to.
-        """
-        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertNotIn("[project.scripts]", pyproject)
-        self.assertNotIn("[project.entry-points", pyproject)
 
 
 class WriteAccessClaimTests(unittest.TestCase):
