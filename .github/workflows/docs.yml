@@ -1,0 +1,80 @@
+# Build the documentation site and deploy it to GitHub Pages.
+#
+# The site is the same Markdown a reader finds in the checkout, plus two
+# generated index pages (`tools/gen_docs_site.py`).  It exists for stable
+# URLs: every command already has a page, and this gives each one a
+# linkable address instead of a file path inside a repository.
+#
+# `--strict` is the check that matters.  It turns a broken internal link
+# or a page missing from the nav into a build failure, which is the only
+# thing that separates "the site builds" from "the Markdown parses".
+name: docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time, and never cancel one that is already
+# publishing: a half-uploaded site is worse than a stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync the docs group
+        # The theme is a separate dependency group: a contributor running
+        # the test suite should not download it.
+        run: uv sync --frozen --group docs
+
+      - name: Check the generated pages
+        run: uv run --frozen python tools/gen_docs_site.py --check
+
+      - name: Build the site
+        run: uv run --frozen --group docs mkdocs build --strict
+
+      - name: Upload the site
+        # Only a push to main is published; a pull request builds to prove
+        # the pages are valid and stops there.
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
