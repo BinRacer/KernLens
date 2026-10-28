@@ -5,22 +5,26 @@ KernLens 的开发说明。只想*使用*它的话，[README](README.zh-CN.md) �
 
 ## 分发方式
 
-KernLens 以源码 checkout 的形式分发，不作为包发布。没有 PyPI 版本，
-只要入口还是一个需要 source 的文件而不是一个可以 import 的模块，就不会有。
+KernLens 从同一棵树以两种方式分发。`install.sh` 克隆 checkout，往
+`~/.gdbinit` 写一个带标记的块，并留下 `kernlens` 包装脚本；
+`pip install .` 构建的 wheel 里带有同一个启动文件。目前还没有 PyPI
+发布，在发布存在之前，文档不得提供 PyPI 安装命令。
 
-用户通过 `install.sh` 安装：它克隆 checkout，往 `~/.gdbinit` 写一个带
-标记的块，并留下一个运行 `kernlens doctor` 的包装脚本；手动路径就是
-README 里的两条命令。两者都终止于 `source /path/to/gdbinit.py`，也就是
-下面这个约束。
+启动文件是约束设计的那一部分。GDB 是 **source** 它而不是 import 它，
+所以它必须在 GDB 的 `__main__` 命名空间里运行，并能让 `kernlens` 从
+自己的位置被 import：checkout 里是 `src/`，wheel 里是 `site-packages`。
+`src/kernlens/gdbinit.py` 同时处理两种情况；根目录的 `gdbinit.py` 是
+兼容旧 `~/.gdbinit` 行的 shim。
 
-原因不是省事。每个快速开始路径的终点都是 `source /path/to/gdbinit.py`，
-而 `gdbinit.py` 不在 wheel 里：wheel 由 `src/` 构建，启动文件与它平级。
-现在发布只会得到一个装得干干净净、然后照着文档怎么都跑不起来的包 ——
-那比不发布更糟。
+控制台脚本只运行在宿主侧。`kernlens path` 打印启动文件，
+`kernlens install` 编辑 `~/.gdbinit`，`kernlens doctor` 检查加载路径，
+`kernlens version` 打印版本。它们都不 import `kernlens.gdb`，因为宿主
+解释器里没有 `gdb` 模块。
 
-要发布，得先把启动文件变成 package data 并加一个打印其路径的入口点，
-那是一次带自己测试的真实改动，不是改个元数据。在那之前，升级路径是
-`git pull`，`uv sync` 只用于开发。
+发布是 release 步骤，不是代码步骤：先 TestPyPI，再通过 trusted
+publishing 发到 PyPI。`tools/check_wheel.py` 是"构建出的 wheel 真的含有
+启动文件和控制台脚本"的闸门；在 CI 用它检查真实构建之前，测试全绿并不能
+说明包是好的。
 
 ## 测试与开发
 

@@ -6,26 +6,29 @@ table; nothing here is needed for that.
 
 ## Distribution
 
-KernLens is distributed as a source checkout, not as a package. There is
-no PyPI release and there will not be one while the entry point is a file
-you source rather than a module you import.
+KernLens ships two ways from the same tree.  `install.sh` clones a
+checkout, writes one marked block into `~/.gdbinit`, and leaves a
+`kernlens` wrapper; `pip install .` builds a wheel that contains the same
+startup file.  There is no PyPI release yet, and the docs must not offer
+a PyPI install command until one exists.
 
-Users install with `install.sh`, which clones the checkout, writes one
-marked block into `~/.gdbinit`, and leaves a `kernlens` wrapper for
-`kernlens doctor`; the manual path is the two commands in the README.
-Both end at `source /path/to/gdbinit.py`, which is the constraint below.
+The startup file is the part that constrains the design.  GDB *sources*
+it rather than importing it, so it has to run in GDB's `__main__`
+namespace and make `kernlens` importable from its own location: `src/` in
+a checkout, `site-packages` in a wheel.  `src/kernlens/gdbinit.py` does
+both; the root `gdbinit.py` is a shim so existing `~/.gdbinit` lines keep
+working.
 
-The reason is not laziness.  Every quickstart path ends at `source
-/path/to/gdbinit.py`, and `gdbinit.py` is not in the wheel: the wheel is
-built from `src/`, and the startup file lives beside it.  Publishing
-today would produce a package that installs cleanly and then cannot be
-made to work by following the documentation, which is worse than
-publishing nothing.
+The console script is host-side only.  `kernlens path` prints the startup
+file, `kernlens install` edits `~/.gdbinit`, `kernlens doctor` checks the
+load path, and `kernlens version` prints the version.  None of them
+imports `kernlens.gdb`, because the host interpreter has no `gdb` module.
 
-Publishing would require making the startup file package data and adding
-an entry point that prints its path -- a real change with its own tests,
-not a metadata edit.  Until that happens, `git pull` is the upgrade path
-and `uv sync` is for development only.
+Publishing is a release step, not a code step: TestPyPI first, then PyPI
+through trusted publishing.  `tools/check_wheel.py` is the gate that the
+built wheel actually contains the startup file and the console script;
+until it runs in CI against a real build, a green test suite says nothing
+about the package.
 
 ## Testing and development
 

@@ -40,6 +40,10 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 .
 ├── src/kernlens/
 │   ├── __init__.py       # public re-exports and __version__
+│   ├── cli.py            # `kernlens` console script: path/install/doctor
+│   ├── doctor.py         # host-side load-path checks
+│   ├── gdbinit.py        # GDB startup file, shipped as package data
+│   ├── install.py        # startup path + ~/.gdbinit marked block
 │   ├── core/
 │   │   ├── constants.py  # layout constants
 │   │   ├── validation.py # boundary validators
@@ -103,9 +107,13 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── architecture.md   # layout, API map, and design notes
 │   ├── api.md            # Python API reference
 │   ├── api.zh-CN.md      # the same, in Chinese
+│   ├── commands.md       # generated command/alias table
+│   ├── assets/           # generated demo.svg + demo.cast
 │   ├── naming.md         # command, example and Python naming rules
 │   └── tutorial/         # one generated page per command (40)
-├── gdbinit.py            # thin bootstrap sourced by GDB
+├── bin/kernlens          # checkout launcher for the console script
+├── install.sh            # one-command checkout installer
+├── gdbinit.py            # checkout shim -> src/kernlens/gdbinit.py
 ├── examples/
 │   ├── api/                          # scripting the API
 │   │   ├── README.md                 # what each of these is for
@@ -143,6 +151,9 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── gen_examples_readme.py        # renders the README coverage block
 │   ├── gen_tutorial.py               # renders docs/tutorial/ from the capture
 │   ├── gen_tutorial_index.py         # renders docs/tutorial/README.md
+│   ├── gen_commands.py               # renders docs/commands.md
+│   ├── gen_demo.py                   # renders docs/assets/demo.*
+│   ├── check_wheel.py                # the wheel contains the startup file
 │   ├── gen_layouts.py                # verifies struct layouts against BTF
 │   └── abi_ranges.py                 # struct-drift survey across releases
 ├── uv.lock
@@ -479,9 +490,11 @@ Output uses the pwndbg `print` idiom with the shared
 `off`) and `output.tree.IndentContextManager` helpers.  `commands/help.py`
 renders the grouped `kl-help` overview from the categories and the
 per-command detail from the parser; it reads the registry through the
-framework, so it never imports the domain modules.  `gdbinit.py` is
-only a bootstrap: it imports the package, calls `register_all()`, and
-installs the public Python API.
+framework, so it never imports the domain modules.
+`src/kernlens/gdbinit.py` is only a bootstrap: its `bootstrap(namespace)`
+imports the package, calls `register_all()`, and installs the public
+Python API.  The root `gdbinit.py` is a shim that calls it with the
+namespace GDB sourced.
 
 ## Loading inside GDB
 
@@ -502,9 +515,17 @@ not.
 `gdbinit.py` is a thin bootstrap: it imports `kernlens.commands`, which
 registers the `kernlens-*` commands and their `kl-*` aliases, then calls
 `register_all()`.  The complete command table, aliases, and invocation
-examples live in the [project README](../README.md); `kl-help` lists
+examples live in the [project README](../README.md) and the generated
+[command reference](commands.md); `kl-help` lists
 them grouped by category and `kl-help kl-<command>` (or
 `kl-help kernlens-<command>`) shows one in detail.
+
+The startup file is package data, so `source $(kernlens path)` works from
+a wheel as well as from a checkout: it adds the parent of the `kernlens/`
+directory (`src/` or `site-packages`) to `sys.path` before importing,
+because GDB's embedded Python usually sees neither.  The root
+`gdbinit.py` is a checkout shim: it adds `src/` and calls the packaged
+`bootstrap()` with its own globals.
 
 It also calls `kernlens.gdb.api.install_public_api()` with its own
 globals.  GDB sources Python files into `__main__`, so a later
@@ -597,9 +618,11 @@ core.
   `SlubInspector`, `PageTableWalker`, and the facade without a live
   kernel, including complete 4-level and 5-level walks over synthetic
   tables.
-- `tests/integration/test_gdbinit.py` executes the real `gdbinit.py`
-  against a recording fake `gdb` and a stub facade, covering command
-  registration, aliases, argument validation, and output formatting.
+- `tests/integration/test_gdbinit.py` executes the real checkout shim
+  (`gdbinit.py`) against a recording fake `gdb` and a stub facade,
+  covering command registration, aliases, argument validation, and
+  output formatting.  `tests/unit/test_cli.py` covers the host-side
+  console script, and `tools/check_wheel.py` checks the built wheel.
 - `tests/contract_spec.py` freezes the observable external contract
   (the canonical command set, the facade's bound names, the installed
   free functions, and the component instances).  `tests/unit/test_contract.py`

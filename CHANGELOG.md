@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The startup file ships in the package, and `kernlens` is a console
+  script.**  `gdbinit.py` used to live beside `src/`, which is why the
+  wheel could not work and why a test forbade install commands.  The
+  bootstrap moved to `src/kernlens/gdbinit.py` as package data; it adds
+  the parent of its own package (`src/` in a checkout, `site-packages` in
+  a wheel) to `sys.path`, so GDB's embedded Python can import KernLens
+  even when it cannot see the interpreter that installed it.  The root
+  `gdbinit.py` is a shim that calls `bootstrap()` with the namespace GDB
+  sourced, so existing `~/.gdbinit` lines keep working.  `[project.scripts]`
+  adds `kernlens path`, `install`, `doctor`, and `version`;
+  `tools/check_wheel.py` fails when a built wheel omits the startup file
+  or the entry point, and CI builds the wheel to run it.  Verified by
+  installing the wheel into a clean venv and sourcing it in a GDB that
+  could not import that venv: `KernLens 0.3.0 loaded`.
+- **`kernlens install` writes the same marked block as `install.sh`.**
+  The block and the startup path live in `src/kernlens/install.py`, so
+  the shell installer and the console script cannot disagree about the
+  markers, and `tests/unit/test_install.py` compares the two spellings.
+  `kernlens install --uninstall` removes only the block and leaves the
+  rest of `~/.gdbinit` byte-for-byte intact.
+
 - **One command installs a checkout, and one command checks it.**
   `install.sh` clones to `${XDG_DATA_HOME:-~/.local/share}/kernlens`,
   writes a single marked block into `~/.gdbinit`, and leaves a
@@ -937,6 +958,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`kernlens doctor` could report a successful load when the startup
+  file had failed.**  The probe ran `source "..."`, but GDB's `source`
+  does not strip quotes: it looked for a file whose name began with a
+  quote, printed a warning, and continued to the next `-ex`.  The import
+  then succeeded only because the checkout launcher exports
+  `PYTHONPATH`, which the probe inherited.  The source line is now
+  unquoted (GDB takes the rest of the line as the path, so spaces work),
+  and `run_command` drops `PYTHONPATH`/`PYTHONHOME` so the check stands
+  on the startup file alone.  The shell installer had the same quoting
+  bug and is fixed with it.
 - **`typing.get_type_hints(Styler)` raised `TypeError`.**  The class
   exposes formatting methods called `tuple`, `dict`, `list`, `set` and
   `range`, and nine annotations in the class body used those bare names.
