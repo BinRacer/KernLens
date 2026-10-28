@@ -43,6 +43,9 @@ dependencies = [
   "typing-extensions>=4.6; python_version < '3.12'",
 ]
 
+[project.scripts]
+kernlens = "kernlens.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/BinRacer/KernLens"
 Repository = "https://github.com/BinRacer/KernLens"
@@ -70,7 +73,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-kernlens = ["py.typed"]
+kernlens = ["py.typed", "gdbinit.py"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
