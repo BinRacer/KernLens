@@ -1219,6 +1219,21 @@ class StatusTests(GdbinitTestBase):
         self.assertIn(f"KASLR slide: +{KASLR_SLIDE:#x}", out)
         self.assertIn(f"runtime={RUNTIME_TEXT:#x}", out)
 
+    def test_status_doctor_names_every_load_path_fact(self) -> None:
+        # ``--doctor`` is the in-session counterpart of the host-side
+        # ``kernlens doctor``: it has to say which image GDB loaded,
+        # whether debug info is reachable, and whether a target exists.
+        out = self.invoke("kl-status", "--doctor")
+        for label in ("gdb", "python", "objfile", "dwarf", "btf", "target"):
+            with self.subTest(label=label):
+                self.assertIn(f"{label}", out.lower())
+        self.assertIn("target:", out)
+
+    def test_status_doctor_is_a_flag_not_a_new_command(self) -> None:
+        # The command surface is frozen at 40 names; diagnostics belong
+        # on an existing command as an option, not as a 41st command.
+        self.assertIn("--doctor", self.invoke("kl-status", "--help"))
+
 
 class PagingTests(GdbinitTestBase):
     def test_pte_decode_and_all_leaf_views(self) -> None:
