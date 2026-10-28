@@ -61,46 +61,49 @@ class DmesgInspector(InspectorBase):
         prb = self._reader.kvar_addr("printk_rb_static")
         if not prb:
             return ()
-        count_bits = (self._read_u64(
-            prb + self._layout_offset(
-                "struct printk_ringbuffer", "desc_ring.count_bits"
-            )
-        ) or 0)
+        count_bits_off = self._layout_offset(
+            "struct printk_ringbuffer", "desc_ring.count_bits"
+        )
+        head_off = self._layout_offset(
+            "struct printk_ringbuffer", "desc_ring.head_id"
+        )
+        tail_off = self._layout_offset(
+            "struct printk_ringbuffer", "desc_ring.tail_id"
+        )
+        descs_off = self._layout_offset(
+            "struct printk_ringbuffer", "desc_ring.descs"
+        )
+        infos_off = self._layout_offset(
+            "struct printk_ringbuffer", "desc_ring.infos"
+        )
+        # ``text_data_ring.size_bits`` is already absolute from the start
+        # of ``printk_ringbuffer``, so it is used directly (no base add).
+        size_bits_off = self._layout_offset(
+            "struct printk_ringbuffer", "text_data_ring.size_bits"
+        )
+        text_data_off = self._layout_offset(
+            "struct printk_ringbuffer", "text_data_ring.data"
+        )
+        if (
+            count_bits_off is None
+            or head_off is None
+            or tail_off is None
+            or descs_off is None
+            or infos_off is None
+            or size_bits_off is None
+            or text_data_off is None
+        ):
+            return ()
+        count_bits = self._read_u64(prb + count_bits_off) or 0
         if not 0 < count_bits < 32:
             return ()
         count = 1 << count_bits
-        head = (self._read_u64(
-            prb + self._layout_offset(
-                "struct printk_ringbuffer", "desc_ring.head_id"
-            )
-        ) or 0) & DESC_ID_MASK
-        tail = (self._read_u64(
-            prb + self._layout_offset(
-                "struct printk_ringbuffer", "desc_ring.tail_id"
-            )
-        ) or 0) & DESC_ID_MASK
-        descs = self._read_u64(
-            prb + self._layout_offset(
-                "struct printk_ringbuffer", "desc_ring.descs"
-            )
-        ) or 0
-        infos = self._read_u64(
-            prb + self._layout_offset(
-                "struct printk_ringbuffer", "desc_ring.infos"
-            )
-        ) or 0
-        # ``text_data_ring.size_bits`` is already absolute from the start
-        # of ``printk_ringbuffer``, so it is used directly (no base add).
-        size_bits = self._read_u64(
-            prb + self._layout_offset(
-                "struct printk_ringbuffer", "text_data_ring.size_bits"
-            )
-        ) or 0
-        text_data = self._read_u64(
-            prb + self._layout_offset(
-                "struct printk_ringbuffer", "text_data_ring.data"
-            )
-        ) or 0
+        head = (self._read_u64(prb + head_off) or 0) & DESC_ID_MASK
+        tail = (self._read_u64(prb + tail_off) or 0) & DESC_ID_MASK
+        descs = self._read_u64(prb + descs_off) or 0
+        infos = self._read_u64(prb + infos_off) or 0
+        size_bits = self._read_u64(prb + size_bits_off) or 0
+        text_data = self._read_u64(prb + text_data_off) or 0
         if not descs or not infos or not 0 < size_bits < 40 or not text_data:
             return ()
         text_size = 1 << size_bits
@@ -118,8 +121,14 @@ class DmesgInspector(InspectorBase):
         info_len = self._layout_offset("struct printk_info", "text_len")
         if not desc_size or not info_size:
             return ()
-        if None in (desc_state, desc_begin, desc_next, info_ts, info_seq,
-                     info_len):
+        if (
+            desc_state is None
+            or desc_begin is None
+            or desc_next is None
+            or info_ts is None
+            or info_seq is None
+            or info_len is None
+        ):
             return ()
 
         records: list[DmesgRecord] = []

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import cast, final
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ._types import _IntConvertible
 from .reader import MemoryReader

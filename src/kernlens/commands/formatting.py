@@ -24,7 +24,7 @@ The helpers fall into three groups:
 
 from __future__ import annotations
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from .. import KERNEL_BASE, PAGE_OFFSET_BASE, VMEMAP_BASE
 from ..gdb.facade import kdbg

@@ -116,10 +116,10 @@ def _resolve_one(spec: str) -> BlockLocation | None:
             return None
         phys = value - page_offset
         return kdbg.block_of_pfn(phys >> 12, phys, spans=spans)
-    for kind, value in _address_forms(value):
-        if value is None:
+    for form_kind, form_value in _address_forms(value):
+        if form_value is None:
             continue
-        location = _resolve_one(f"{kind}:{value:#x}")
+        location = _resolve_one(f"{form_kind}:{form_value:#x}")
         if location is not None and _looks_like_memory(location):
             return location
     return None

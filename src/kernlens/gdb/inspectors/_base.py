@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import cast, final
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from .._types import _IntConvertible, _StrLike
 from .. import btf, layouts
@@ -543,8 +543,8 @@ class InspectorBase:
         except (gdb.error, TypeError, ValueError):
             return None
         text = cast(_StrLike, raw)
-        if '"' in text:  # pyright: ignore[reportOperatorIssue]
-            return text.split('"')[1]  # pyright: ignore[reportOperatorIssue]
+        if '"' in text:
+            return text.split('"')[1]
         return None
 
     def _read_bytes(self, addr: int, size: int) -> bytes | None:

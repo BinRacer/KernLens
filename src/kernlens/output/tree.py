@@ -24,6 +24,7 @@ disabled every helper returns the plain text.
 from __future__ import annotations
 
 from types import TracebackType
+from typing import Any
 
 from . import message
 
@@ -76,7 +77,7 @@ class IndentContextManager:
         if self._depth < 0:  # pragma: no cover - defensive
             self._depth = 0
 
-    def print(self, *args: object, **kwargs: object) -> None:
+    def print(self, *args: object, **kwargs: Any) -> None:
         """Print one line, prefixed by the current indent.
 
         The indent is glued to the first argument (no ``sep`` space), so

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import cast, final
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..core import KAddr
 from ..output import Logger, Palette
@@ -101,8 +101,8 @@ class SlubInspector:
         except gdb.error:
             return "?"
         text = cast(_StrLike, raw)
-        if '"' in text:  # pyright: ignore[reportOperatorIssue]
-            return text.split('"')[1]  # pyright: ignore[reportOperatorIssue]
+        if '"' in text:
+            return text.split('"')[1]
         return "?"
 
     def cpu_slab_ptr(self, cache: int) -> int | None:
@@ -247,7 +247,7 @@ class SlubInspector:
         count = 0
         first_slab_page: int | None = None
         first_freelist: int | None = None
-        cur = next_ptr
+        cur: int | None = next_ptr
         seen: set[int] = set()
         while cur and cur != head_list and count < 10000:
             if cur in seen:

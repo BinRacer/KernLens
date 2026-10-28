@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import argparse
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..gdb.facade import kdbg
 from ..output import message

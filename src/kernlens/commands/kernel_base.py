@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 import argparse
+from typing import cast
 
-import gdb  # type: ignore[import-not-found]
+import gdb
 
 from ..gdb.facade import kdbg
+from ..gdb.kbase import IdtInfo
 from ..output import message
 from ..output.tree import IndentContextManager
 from .formatting import default_base, kernel_running
@@ -237,7 +239,8 @@ def kernlens_kbase(
 def _rebase(base: int) -> None:
     """Reload the loaded symbol file at *base* (``--rebase``)."""
     try:
-        objfile = gdb.current_progspace().filename
+        progspace = gdb.current_progspace()
+        objfile = progspace.filename if progspace is not None else None
     except (gdb.error, AttributeError):
         objfile = None
     if not objfile:
@@ -253,8 +256,8 @@ def _rebase(base: int) -> None:
 
 def _dump_idt(count: int) -> None:
     """Dump up to *count* decoded IDT gate descriptors (``--idt``)."""
-    info = getattr(kdbg.kbase, "idt", None)
-    info = info() if callable(info) else None
+    idt = getattr(kdbg.kbase, "idt", None)
+    info = cast("IdtInfo | None", idt() if callable(idt) else None)
     if info is None:
         print(
             message.error(
