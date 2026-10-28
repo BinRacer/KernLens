@@ -38,6 +38,7 @@ uv run pyright
 uv run mypy
 uv run python tools/gen_commands.py --check
 uv run python tools/gen_demo.py --check
+uv run python tools/gen_docs_site.py --check
 ```
 
 `pyright` 与 `mypy` 都是闸门：包内是空的 `py.typed`，而两个检查器
@@ -63,6 +64,23 @@ uv run python -m unittest discover -s tests/integration
 规范见 [`docs/naming.md`](docs/naming.md)。想按命令逐个上手、并看到
 真实内核的输出，从 [`docs/tutorial/`](docs/tutorial/README.md) 开始
 ——每个命令一页。版本历史见 [`CHANGELOG.md`](CHANGELOG.md)。
+
+### 文档站
+
+文档站就是 checkout 里的同一批 Markdown，由 mkdocs 构建并部署到
+GitHub Pages。主题单独放在一个依赖组里，`uv sync` 不会下载它：
+
+```console
+uv sync --group docs
+uv run --group docs mkdocs serve      # http://127.0.0.1:8000/KernLens/
+uv run --group docs mkdocs build --strict
+```
+
+`--strict` 就是 CI 用的闸门：内部链接坏掉、或有页面没进 nav，构建直接
+失败。`docs/index.md` 与 `docs/zh-CN.md` 由两份 README 生成，
+`docs/llms.txt` 由 `mkdocs.yml` 的 nav 生成——改源文件，然后运行
+`uv run python tools/gen_docs_site.py`。新增页面必须同时有 nav 条目和
+`PAGE_NOTES` 里的一行说明，否则 `--check` 会失败。
 
 ### 结构体布局：DWARF → BTF → 验证过的兜底表
 

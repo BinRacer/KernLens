@@ -43,6 +43,7 @@ uv run pyright
 uv run mypy
 uv run python tools/gen_commands.py --check
 uv run python tools/gen_demo.py --check
+uv run python tools/gen_docs_site.py --check
 ```
 
 `pyright` and `mypy` are both gates: the package ships an empty
@@ -73,6 +74,25 @@ command and Python naming rules.  For a guided tour with real output
 from a live kernel, start at [`docs/tutorial/`](docs/tutorial/README.md) --
 one page per command.  Release history lives in
 [`CHANGELOG.md`](CHANGELOG.md).
+
+### Documentation site
+
+The site is the same Markdown as the checkout, built by mkdocs and
+deployed to GitHub Pages.  The theme is its own dependency group, so
+`uv sync` does not download it:
+
+```console
+uv sync --group docs
+uv run --group docs mkdocs serve      # http://127.0.0.1:8000/KernLens/
+uv run --group docs mkdocs build --strict
+```
+
+`--strict` is the gate CI uses: a broken internal link or a page missing
+from the nav fails the build.  `docs/index.md` and `docs/zh-CN.md` are
+generated from the two READMEs, and `docs/llms.txt` from the nav in
+`mkdocs.yml` -- edit those sources, then run
+`uv run python tools/gen_docs_site.py`.  A new page needs a nav entry and
+a one-line description in `PAGE_NOTES`, or `--check` fails.
 
 ### Struct layouts: DWARF, then BTF, then a verified fallback
 
