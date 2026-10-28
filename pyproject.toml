@@ -60,6 +60,10 @@ dev = [
   "ruff>=0.6",
   "types-gdb>=16.3.0.20260712",
 ]
+# Building the documentation site is not part of `uv sync`; the docs job
+# in CI asks for this group explicitly, so a contributor who only runs the
+# test suite does not download a theme.
+docs = ["mkdocs-material>=9.5"]
 
 [tool.uv]
 package = true

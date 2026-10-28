@@ -1,0 +1,82 @@
+# Documentation site configuration.
+#
+# Built by `.github/workflows/docs.yml` on every push to main and deployed
+# to GitHub Pages.  The nav is the page list: `tools/gen_docs_site.py`
+# reads it to build `docs/llms.txt`, and `tests/unit/test_docs_site.py`
+# fails when a page exists but is not reachable from here (or from the
+# generated tutorial index).
+#
+# `docs/index.md` and `docs/index.zh-CN.md` are generated from the two
+# READMEs; do not edit them.
+
+site_name: KernLens
+site_description: Linux kernel debugging from Python and GDB
+site_url: https://binracer.github.io/KernLens/
+repo_url: https://github.com/BinRacer/KernLens
+repo_name: BinRacer/KernLens
+edit_uri: edit/main/docs/
+copyright: GPL-3.0-or-later
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+      # The default slugify strips non-ASCII, so the Chinese headings got
+      # empty anchors and every ``#安装`` link dangled.  pymdownx keeps
+      # the characters, which is what GitHub does too.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+
+validation:
+  # Absolute links go to GitHub, the issue tracker, and the PyPI project
+  # page; they are not claims about files in this site.
+  links:
+    absolute_links: ignore
+    unrecognized_links: warn
+  anchors: warn
+
+nav:
+  - Overview: index.md
+  - 首页 (中文): zh-CN.md
+  - Commands: commands.md
+  - Tutorial: tutorial/README.md
+  - Python API: api.md
+  - Python API (中文): api.zh-CN.md
+  - Architecture: architecture.md
+  - Compatibility: compatibility.md
+  - Naming: naming.md
+  # Outside the site directory, so these stay on GitHub rather than
+  # becoming a second copy that drifts.
+  - Contributing: https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md
+  - Security: https://github.com/BinRacer/KernLens/blob/main/SECURITY.md
+  - Changelog: https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md
