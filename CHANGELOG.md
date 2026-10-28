@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The `py.typed` marker is now backed by a checker, not just an empty
+  file.**  The marker promised that a type checker could read this
+  package, but nothing ran one, and `KernelDebugger` republished its whole
+  flat surface with `setattr` -- so every `kdbg.info` / `kdbg.print_slab`
+  was an attribute error.  That one pattern accounted for 138 of the 202
+  errors pyright reported against `src/kernlens`.  The bindings are now
+  explicit `self.<name> = self.<component>.<member>` assignments, which
+  give each name the component method's real signature and are compared
+  against `_BINDINGS` by `test_facade_has_the_single_binding_table`.  CI
+  runs `uv run pyright` (standard mode, Python 3.10, reading the `gdb`
+  stub from the `types-gdb` dev dependency), and `test_every_function_is_annotated`
+  asserts that every function -- including `*args`/`**kwargs` -- still has
+  a return and parameter annotation.  The packaging test now also pins
+  the `pyproject.toml` and `MANIFEST.in` entries, and the build job
+  checks that `py.typed` is really inside both the wheel and the sdist;
+  the old test read the marker from `src/` and could not notice a dropped
+  `package-data` entry.  The audit also found two defects: `_mapped_root`
+  was defined twice in `PageTableWalker` (the first copy was dead), and
+  `_StrLike` did not declare `split` although three call sites used it.
 - **`kl-bits` and `kl-int` have examples, so the coverage ratchet moves
   from 35/40 to 37/40.**  Both were listed in `UNCOVERED_COMMANDS` with
   the reason "covered as Python API by bitops_tour.py / intcodec_tour.py,
@@ -461,6 +480,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture documentation, a pure-Python snapshot example, a GDB
   tracer example, and CI configuration.
 - `CHANGELOG.md`, `.gitignore`, and project metadata.
+- **`py.typed` now measures 1.0 instead of 0.8764.**  The marker has been
+  there for a release, but "the checker runs" and "the checker can see
+  every exported name" are different claims.  `pyright --verifytypes
+  kernlens` counted 173 of 1399 exported symbols as *ambiguous*: 140
+  facade bindings whose types were inferred rather than declared, the
+  three `Only*` guards, the `kdbg` singleton, and the module-level
+  re-exports that carried them.  Each is now a declared type (see
+  Changed), and the report is 1399 known / 0 ambiguous / 0 unknown.  That
+  number is the promise `py.typed` actually makes: a user's checker sees
+  the same thing the package's own checker does.
+- **`mypy` is a second gate, with the same `gdb` types as pyright.**  It
+  was a blind spot before: without a stub for `gdb` it either skipped the
+  package or demanded `type: ignore` comments that the runtime import
+  does not need.  `types-gdb` is now a dev dependency, so both checkers
+  read one stub, and `uv run mypy` (strict, `files = ["src/kernlens"]`,
+  in CI next to pyright) checks the same 57 modules.  It found 74 errors
+  on its first run.  Every one was real and fixed rather than silenced:
+  nine cache attributes assigned in mixins but declared by no `__slots__`,
+  a `**dict` that hid a `BlockLocation` constructor, `int | None` values
+  reused as `int`, three redundant casts, and ten `# type: ignore`
+  comments in the memory commands that papered over `object`-typed
+  parameters -- those are now `SlabCache` / `BpfProg` / `BpfMap`, which
+  removed the ignores and made the `array_addr is not None` invariant
+  explicit at the function boundary.
+- **`tests/unit/test_typing.py` guards the annotations themselves.**  Two
+  checks, because static checkers accept annotations that cannot be
+  evaluated at runtime: no annotation in any class body may name a member
+  of that class (`__slots__: tuple[str, ...]` next to a method called
+  `tuple` resolves to the method, not the builtin), and
+  `typing.get_type_hints` must succeed for every public class and
+  function in the modules that import without GDB.  The static half reads
+  the GDB-only modules too, which is where the original break lived.
 
 ### Changed
 
@@ -812,6 +863,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Styler.box` gained a `joints` keyword; `Styler.block` gained a
   `vertical` keyword.
 - `Styler.pad` now rejects unknown alignment tokens.
+- **The facade's 140 bindings are declared `Final`, not restated.**  A
+  plain `self.info = self.logger.info` is invisible to
+  `--verifytypes` as a declaration, so the flat surface counted as
+  ambiguous even though pyright could read the signature.  `Final`
+  marks it as declared *and* keeps the inferred signature -- parameter
+  names and defaults included -- so nothing is copied by hand and nothing
+  can drift from the component.  A `Callable[[str], None]` annotation was
+  measured and rejected for that reason: it loses keyword names, so
+  `kdbg.info(message="...")` stops type-checking.
+- **`Command` and the three guards preserve the decorated signature.**
+  `Command.__call__` was `Callable[..., Any]` on both sides, so every
+  command body was untyped the moment it was decorated.  It is now
+  generic over `ParamSpec`/`TypeVar`.  The guards were plain closures
+  with inferred types; they are now a `_Guard` `Protocol` with a generic
+  `__call__`, which is the only spelling that both declares a type for
+  `--verifytypes` and keeps `def kmod(module_name: str | None = None)` a
+  real signature.
+- **`BlockLocation` is constructed with explicit keywords.**  The buddy
+  walk built a `base_fields` dict and splatted it into three
+  `BlockLocation(**base_fields, ...)` calls; mypy cannot check a
+  constructor through `**dict`, so a missing or misspelled field was
+  invisible to both checkers.  The five shared fields are written out at
+  each call site.
+- **All cache slots live in `InspectorBase.__slots__`.**  Each mixin used
+  to be free to add its own, but two sibling bases with non-empty
+  `__slots__` make the concrete class uninstantiable ("multiple bases
+  have instance lay-out conflict").  The block is now in the one base all
+  mixins share, which also lets each mixin be checked alone.  The
+  `_page_is_enum` cache had no slot at all; see Fixed.
 
 ### Removed
 
@@ -825,6 +905,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`typing.get_type_hints(Styler)` raised `TypeError`.**  The class
+  exposes formatting methods called `tuple`, `dict`, `list`, `set` and
+  `range`, and nine annotations in the class body used those bare names.
+  Annotations are evaluated in the class namespace, so
+  `__slots__: tuple[str, ...]` resolved to the *method* and the
+  subscript failed -- while pyright and mypy both accepted it, because
+  they resolve the builtin.  The annotations now say
+  `builtins.tuple[...]`, so the class works for `dataclasses`,
+  `typing.get_type_hints`, and documentation tools that evaluate them.
+- **The per-session page-encoding probe was never cached.**  `_page_is_enum`
+  was assigned inside `try/except AttributeError`, but no class declared
+  the name in `__slots__`, so the assignment always failed and the cache
+  never took effect -- every call re-walked DWARF and BTF.  The slot now
+  exists on `InspectorBase`, the assignment is unconditional, and
+  `KernelInspector.__init__` / `reset` put it in the "not probed" state.
 - **The two guards over `docs/architecture.md` were blind in three
   separate ways, and each one was found only by deleting a file.**
   `test_every_name_in_the_tree_exists` checks that every filename the

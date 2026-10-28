@@ -31,7 +31,14 @@ All development commands go through uv:
 uv sync
 uv run pytest --cov=kernlens --cov-report=term-missing
 uv run ruff check .
+uv run pyright
+uv run mypy
 ```
+
+`pyright` and `mypy` are both gates: the package ships an empty
+`py.typed`, and the two checkers disagree often enough that each one
+finds annotations the other accepts.  Both read the `gdb` stub from the
+`types-gdb` dev dependency, so no debugger is needed to run them.
 
 The stdlib runner remains available inside the uv environment:
 
