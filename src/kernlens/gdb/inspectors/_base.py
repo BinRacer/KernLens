@@ -105,12 +105,20 @@ class InspectorBase:
     """Reader reference plus the shared read primitives.
 
     The concrete :class:`~kernlens.gdb.kernel.KernelInspector` supplies
-    ``_reader`` and declares the cache slots; each subsystem mixin only
-    adds its own methods.
+    ``_reader``; every cache slot lives in *this* block rather than in the
+    mixin that fills it.  That is a Python constraint, not a style choice:
+    two sibling bases with non-empty ``__slots__`` make the concrete class
+    uninstantiable ("multiple bases have instance lay-out conflict"), so
+    the nine mixins cannot each add their own slot.  Keeping the block
+    here also lets each mixin be checked on its own -- assigning
+    ``self._kallsyms`` in :class:`KallsymsInspector` is legal only if the
+    slot is inherited.
     """
 
     __slots__: tuple[str, ...] = (
         "_reader", "_offsets", "_fallbacks", "_btf",
+        "_config", "_module_name", "_mem_layout", "_syscall_count",
+        "_kallsyms", "_bpf_array_off", "_page_is_enum",
     )
 
     _reader: MemoryReader
@@ -123,6 +131,22 @@ class InspectorBase:
 
     #: Lazily loaded BTF database; ``False`` means "not looked up yet".
     _btf: "btf.BTF | None | bool"
+
+    # --- cross-mixin contract -------------------------------------------
+    #
+    # The concrete KernelInspector composes these mixins, and some of them
+    # call a sibling's method on ``self`` (the buddy walk asks the metadata
+    # mixin ``config_contains`` and the struct-page mixin ``buddy_order``).
+    # Declaring the contract here keeps each mixin checkable on its own;
+    # the implementing mixin overrides the declaration in the real class.
+
+    def config_contains(self, name: str) -> bool:
+        """Whether the running kernel's ``CONFIG_<name>`` is set."""
+        raise NotImplementedError
+
+    def buddy_order(self, page: int) -> int | None:
+        """Return the buddy order of *page*, or ``None`` when not free."""
+        raise NotImplementedError
 
     # --- enum / constant probes -----------------------------------------
 

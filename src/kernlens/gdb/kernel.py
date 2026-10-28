@@ -20,6 +20,8 @@ See :mod:`kernlens.gdb.inspectors` for the per-domain readers.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from .inspectors import (
     BpfInspector,
     BpfMap,
@@ -66,23 +68,22 @@ class KernelInspector(
     or a different kernel is loaded.
     """
 
-    __slots__: tuple[str, ...] = (
-        "_bpf_array_off", "_btf", "_config", "_fallbacks", "_kallsyms",
-        "_mem_layout", "_module_name", "_offsets", "_syscall_count",
-    )
+    #: All cache slots live on :class:`InspectorBase` -- see the comment
+    #: there for why a mixin cannot own its own ``__slots__``.
+    __slots__: tuple[str, ...] = ()
 
     #: Cached parsed ``CONFIG_*`` image (``None`` until first read).
     _config: "dict[str, str] | None"
     #: Cached ``offsetof(struct module, name)``; ``False`` means not probed.
-    _module_name: "int | None | bool"
+    _module_name: "int | None | Literal[False]"
     #: Cached ``(mem_off, mem_size, size_off)``; ``False`` means not probed.
-    _mem_layout: "tuple[int, int, int] | None | bool"
+    _mem_layout: "tuple[int, int, int] | None | Literal[False]"
     #: Cached ``sys_call_table`` length; ``False`` means not probed.
-    _syscall_count: "int | None | bool"
+    _syscall_count: "int | None | Literal[False]"
     #: Cached decoded kallsyms table (``None`` until first read).
     _kallsyms: "tuple[Kallsym, ...] | None"
     #: Cached BPF array-data offset; ``False`` means not probed.
-    _bpf_array_off: "int | None | bool"
+    _bpf_array_off: "int | None | Literal[False]"
 
     def __init__(self, reader: MemoryReader) -> None:
         self._reader: MemoryReader = reader
@@ -95,6 +96,7 @@ class KernelInspector(
         self._syscall_count = False
         self._kallsyms = None
         self._bpf_array_off = False
+        self._page_is_enum = False
 
     def reset(self) -> None:
         """Drop cached derived state (call after an objfile reload)."""
@@ -106,6 +108,7 @@ class KernelInspector(
         self._syscall_count = False
         self._kallsyms = None
         self._bpf_array_off = False
+        self._page_is_enum = False
 
 
 __all__ = [
