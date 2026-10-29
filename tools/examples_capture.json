@@ -1,5 +1,5 @@
 {
- "shape": "4fe25a6fa6d9619a",
+ "shape": "489b076dfc96215f",
  "examples": [
   {
    "source": "source examples/api/installed_api_tour.py",
@@ -27,11 +27,11 @@
    "invocation": "atour",
    "headings": [
     "N. classify (kl-addr)",
-    "N. classify + translate (kl-page)",
+    "N. classify, brief form (kl-addr --brief)",
     "N. indices, no memory read (kl-pt)",
     "N. walk the live tables (kl-walk)",
-    "N. the same walk, pwndbg format (kl-pagewalk)",
-    "N. decode one entry (kl-pte)",
+    "N. the same walk, pwndbg format (kl-walk --style pwndbg)",
+    "N. decode one entry (kl-pt --entry)",
     "N. virtual to physical (kl-v2p)",
     "N. physical to virtual (kl-p2v)",
     "N. the struct page (kl-pageinfo)",
@@ -77,12 +77,12 @@
    "source": "source examples/api/symbols_tour.py",
    "invocation": "ytour",
    "headings": [
-    "N. substring search (kl-klookup init_task)",
+    "N. substring search (kl-sym --find init_task)",
     "N. exact resolution (kl-sym H)",
     "N. raw words (kl-read)",
     "N. as a global value (kl-kvar)",
     "N. a typed field (kl-read-field)",
-    "N. the current stack (kl-bt, kl-chain)",
+    "N. the current stack (kl-bt, kl-bt --chain)",
     "reading the result"
    ],
    "ok": true
@@ -111,7 +111,7 @@
    "headings": [
     "retarget: make runtime addresses resolvable",
     "N. current state (kl-status)",
-    "N. discover the slide from the target (kl-kbase -v)",
+    "N. discover the slide from the target (kl-base --verbose)",
     "N. is it applied?",
     "N. apply it (kl-base)",
     "N. verify: the same symbol, after",

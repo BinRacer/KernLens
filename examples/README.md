@@ -66,7 +66,7 @@ written.
 | `kbase` | 0 | 1 |
 | `kernel` | 4 | 36 |
 | `logger` | 2 | 14 |
-| `reader` | **5** | 5 |
+| `reader` | 5 | 6 |
 | `slub` | **18** | 18 |
 | `styler` | 10 | 53 |
 | `symbols` | 4 | 5 |

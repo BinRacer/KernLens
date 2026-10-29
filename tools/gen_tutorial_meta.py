@@ -32,11 +32,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 
 #: The dump lives beside this script.
-_TOOLS = pathlib.Path(__file__).resolve().parent
+#:
+#: ``__file__`` is absent when GDB loads this through
+#: ``exec(open(...).read())``, which is the documented way to run it --
+#: the sibling ``tutorial_capture.py`` solved the same problem the same
+#: way, and this file did not, so the command in the docstring raised
+#: ``NameError`` at import time.  The override lets a caller point it at
+#: a checkout that is not the working directory.
+_TOOLS = pathlib.Path(
+    os.environ.get("KERNLENS_TOOLS")
+    or (pathlib.Path(__file__).resolve().parent if "__file__" in globals()
+        else "tools")
+).resolve()
 TARGET = _TOOLS / "tutorial_meta.json"
 
 

@@ -55,7 +55,7 @@ with captured output and a note on how to read it.
 | `kl-bt` | `kernlens-bt` | Prints a formatted kernel backtrace. |
 | `kl-read` | `kernlens-read` | Dumps kernel memory as 64-bit words with symbol annotations. |
 | `kl-kvar` | `kernlens-kvar` | Reads a KASLR-aware kernel global variable. |
-| `kl-read-field` | `kernlens-read-field` | Reads a struct field (including nested paths) as an integer. |
+| `kl-read-field` | `kernlens-read-field` | Reads a struct field (including nested paths), whatever its type. |
 | `kl-kbpf` | `kernlens-kbpf` | Prints information about the linux kernel bpf progs and maps. |
 | `kl-kdmabuf` | `kernlens-kdmabuf` | Prints DMA buf info. |
 

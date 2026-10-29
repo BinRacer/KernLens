@@ -75,7 +75,7 @@ FACADE_BOUND_NAMES: tuple[str, ...] = (
     "pad", "page_bytes",
     "page_is_buddy", "page_is_slab", "page_refcount", "page_type", "pairs",
     "partial_info", "percent", "percpu_off", "pfn",
-    "print_slab", "range", "read_field", "read_kvar", "rjust", "rule",
+    "print_slab", "range", "read_field", "field_value", "read_kvar", "rjust", "rule",
     "seq", "set", "size", "slab_cache", "slab_caches", "slab_counters",
     "slab_object", "slab_state", "style", "success", "summary", "sym",
     "syscall_count", "syscalls",

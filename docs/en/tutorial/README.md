@@ -117,7 +117,7 @@ Reading the kernel's own memory: symbols, the stack, SLUB, the buddy allocator, 
 | [`kl-kdmabuf`](kl-kdmabuf.md) | Prints DMA buf info. |
 | [`kl-kvar`](kl-kvar.md) | Reads a KASLR-aware kernel global variable. |
 | [`kl-read`](kl-read.md) | Dumps kernel memory as 64-bit words with symbol annotations. |
-| [`kl-read-field`](kl-read-field.md) | Reads a struct field (including nested paths) as an integer. |
+| [`kl-read-field`](kl-read-field.md) | Reads a struct field (including nested paths), whatever its type. |
 | [`kl-slab`](kl-slab.md) | Prints information about the linux kernel's slab allocator SLUB. |
 | [`kl-sym`](kl-sym.md) | Resolves an address to a symbol, or finds symbols by name. |
 

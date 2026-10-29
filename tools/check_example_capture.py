@@ -73,6 +73,53 @@ _PLACEHOLDER = re.compile(r"\b[HN]\b")
 #: inside ``kl-slab info {name} -v`` only exists at run time.
 _ASIDE = re.compile(r"\([^)]*\)")
 
+#: A ``kl-*``/``kernlens-*`` spelling inside an aside.  The rest of the
+#: aside is runtime text, but a command name is not: it has to be a name
+#: the registry actually publishes, or the record is describing a command
+#: that no longer exists.
+_COMMAND = re.compile(r"\b(?:kl|kernlens)-[a-z0-9][a-z0-9-]*")
+
+#: Names the record is allowed to use, read from the metadata snapshot
+#: rather than from the live registry (which needs ``gdb``).
+_META = _TOOLS / "tutorial_meta.json"
+
+
+def _known_commands() -> set[str]:
+    """Every canonical name and alias the registry publishes.
+
+    ``tutorial_meta.json`` is generated from that registry, so it is a
+    faithful stand-in for CI, which has no debugger.
+    """
+    names: set[str] = set()
+    if not _META.is_file():  # pragma: no cover - the file is committed
+        return names
+    for entry in json.loads(_META.read_text(encoding="utf-8")):
+        names.add(entry["name"])
+        names.update(entry.get("aliases") or ())
+    return names
+
+
+def _bad_commands(heading: str, known: set[str]) -> list[str]:
+    """Command spellings in *heading* that the registry does not publish.
+
+    This is the half the prose check cannot see.  ``_template`` strips
+    the asides on purpose -- their contents are mostly runtime text --
+    but the command name inside one is exactly what goes stale: the
+    record named ``kl-klookup``, ``kl-pagewalk``, ``kl-pte`` and
+    ``kl-kbase`` for a whole release after those spellings were merged,
+    and every heading still passed because the words around them were
+    unchanged.  Measured: with the stale record, the prose half reported
+    43 headings fine.
+    """
+    if not known:
+        return []
+    found: list[str] = []
+    for aside in _ASIDE.findall(heading):
+        for name in _COMMAND.findall(aside):
+            if name not in known:
+                found.append(name)
+    return found
+
 
 def _template(heading: str) -> str:
     """The longest fragment of a runtime heading that came from the source.
@@ -108,6 +155,7 @@ def check() -> int:
     problems: list[str] = []
     checked = 0
     skipped = 0
+    known = _known_commands()
     for source, rows in sorted(_load().items()):
         path = _source_of(source)
         if path is None:
@@ -116,6 +164,13 @@ def check() -> int:
         text = path.read_text(encoding="utf-8")
         for row in rows:
             for heading in row["headings"]:
+                stale = _bad_commands(heading, known)
+                if stale:
+                    problems.append(
+                        f"{source}: the record lists {heading!r}, which "
+                        f"invokes {', '.join(sorted(set(stale)))} -- not a "
+                        "command or alias the registry publishes"
+                    )
                 template = _template(heading)
                 if not template:
                     skipped += 1

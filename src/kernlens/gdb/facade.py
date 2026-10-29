@@ -140,6 +140,7 @@ _BINDINGS: tuple[tuple[str, str, str, bool], ...] = (
     ("kvar_addr", "reader", "kvar_addr", True),
     ("arg", "reader", "arg", True),
     ("read_field", "reader", "read_field", True),
+    ("field_value", "reader", "field_value", True),
     # --- symbols --------------------------------------------------------
     ("sym", "symbols", "sym", True),
     ("line", "symbols", "line", True),
@@ -353,6 +354,7 @@ class KernelDebugger:
         self.kvar_addr: Final = self.reader.kvar_addr
         self.arg: Final = self.reader.arg
         self.read_field: Final = self.reader.read_field
+        self.field_value: Final = self.reader.field_value
         self.sym: Final = self.symbols.sym
         self.line: Final = self.symbols.line
         self.backtrace: Final = self.symbols.backtrace

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import cast, final
 
 import gdb
@@ -28,6 +29,34 @@ _MASK64 = 0xFFFFFFFFFFFFFFFF
 #: one attempt is still worth it because the first commands of a session
 #: can run while the inferior is still settling.
 _ALIGN_ATTEMPTS = 3
+
+
+@dataclass(frozen=True, slots=True)
+class FieldValue:
+    """One struct field, rendered without assuming it is an integer.
+
+    ``read_field`` returns ``int | None``, which conflates "this field is
+    not a scalar" with "this address is unreadable".  A live 6.1.134
+    kernel showed the cost: ``task_struct::comm`` -- a ``char[16]``, and
+    the field a reader most often wants -- came back as ``<unreadable>``
+    while GDB printed ``"swapper/0"`` from the same address.
+
+    Exactly one of :attr:`integer`, :attr:`string` and :attr:`text`
+    carries the value; ``text`` is always the display form.
+    """
+
+    #: The display form.  ``None`` when the value could not be read.
+    text: str | None
+    #: The C type GDB reported, for context such as ``char [16]``.
+    type_name: str
+    #: The value when the field is a scalar or an address.
+    integer: int | None = None
+    #: The decoded text when the field is a NUL-terminated ``char[]``.
+    string: str | None = None
+    #: Pointer fields keep their numeric form rather than dereferencing.
+    is_pointer: bool = False
+    #: Element count for an array, ``None`` for anything else.
+    length: int | None = None
 
 
 @final
@@ -245,10 +274,122 @@ class MemoryReader:
     def read_field(
         self, obj: int, type_name: str, path: str,
     ) -> int | None:
-        """Read ``((type *)obj)->path`` as an int."""
+        """Read ``((type *)obj)->path`` as an int.
+
+        Only meaningful for a field whose value *is* an integer.  A
+        ``char[]``, a struct and a float all fail here and come back as
+        ``None``, which is indistinguishable from an unreadable address;
+        :meth:`field_value` is the general form and is what the command
+        uses.
+        """
         if not obj:
             return None
         return self.u64(f"(({type_name} *){obj})->{path}")
+
+    def field_value(
+        self, obj: int, type_name: str, path: str,
+    ) -> "FieldValue | None":
+        """Read ``((type *)obj)->path`` whatever its type is.
+
+        The integer form above silently returned ``None`` for anything
+        that is not a scalar, so the most useful field in the kernel --
+        ``task_struct::comm``, a ``char[16]`` -- was reported as
+        ``<unreadable>`` on a live 6.1.134 kernel while GDB itself read
+        ``"swapper/0"`` from the same address.  The caller had no way to
+        tell "no such field" from "wrong kind of value".
+
+        Returns ``None`` only when the expression cannot be evaluated at
+        all.  Arrays are rendered as text (a ``char[]`` that is NUL
+        terminated) or as a byte count, and pointers, structs and floats
+        keep their rendered form, so a caller can always show something
+        truthful.
+        """
+        if not obj:
+            return None
+        try:
+            value = gdb.parse_and_eval(f"(({type_name} *){obj})->{path}")
+        except (gdb.error, TypeError, ValueError):
+            return None
+        return self._describe(value)
+
+    def _describe(self, value: "gdb.Value") -> "FieldValue":
+        """Render one GDB value without ever raising."""
+        type_name = str(value.type)
+        code = getattr(value.type, "code", None)
+        # A pointer is an address, not the thing it points at: keeping it
+        # numeric is what makes `->mm` readable as 0x0 instead of a
+        # struct dump of whatever happens to live at address zero.
+        if code == gdb.TYPE_CODE_PTR:
+            address = self._as_int(value)
+            return FieldValue(
+                text=None if address is None else f"{address:#x}",
+                integer=address,
+                type_name=type_name,
+                is_pointer=True,
+            )
+        if code in (gdb.TYPE_CODE_INT, gdb.TYPE_CODE_ENUM, gdb.TYPE_CODE_BOOL):
+            integer = self._as_int(value)
+            return FieldValue(
+                text=None if integer is None else f"{integer:#x}",
+                integer=integer,
+                type_name=type_name,
+            )
+        if code == gdb.TYPE_CODE_ARRAY:
+            return self._describe_array(value, type_name)
+        # Structs, unions, floats, functions: keep GDB's own rendering.
+        try:
+            text = str(value)
+        except (gdb.error, ValueError):
+            text = "<unreadable>"
+        return FieldValue(text=text, type_name=type_name)
+
+    @staticmethod
+    def _as_int(value: "gdb.Value") -> int | None:
+        try:
+            return int(cast(_IntConvertible, value)) & _MASK64
+        except (gdb.error, TypeError, ValueError):
+            return None
+
+    def _describe_array(self, value: "gdb.Value", type_name: str) -> "FieldValue":
+        """A ``char[]`` becomes its string; any other array, its length.
+
+        Only a one-byte element type can be a string, and only when the
+        element is an integer -- a ``struct list_head[4]`` is not text.
+        """
+        try:
+            length = int(value.type.sizeof) // max(
+                int(value.type.target().sizeof), 1,
+            )
+        except (gdb.error, TypeError, ValueError, AttributeError):
+            length = 0
+        element = value.type.target()
+        address = value.address
+        if (
+            getattr(element, "code", None) == gdb.TYPE_CODE_INT
+            and int(element.sizeof) == 1
+            and address is not None
+        ):
+            try:
+                raw = bytes(gdb.selected_inferior().read_memory(
+                    int(address), int(value.type.sizeof),
+                ))
+            except (gdb.error, AttributeError, MemoryError, TypeError, ValueError):
+                raw = None
+            if raw is not None:
+                # Drop the padding after the terminator: a `char[16]`
+                # holding "swapper/0" is 16 bytes of mostly NULs.
+                text = raw.split(b"\x00", 1)[0].decode("utf-8", "replace")
+                return FieldValue(
+                    text=text,
+                    type_name=type_name,
+                    string=text,
+                    length=length,
+                )
+        return FieldValue(
+            text=f"{type_name} ({length} element(s))",
+            type_name=type_name,
+            length=length,
+        )
 
     def read_bytes(self, addr: int, size: int) -> bytes | None:
         """Read *size* raw bytes at *addr*; ``None`` on any failure.
@@ -265,4 +406,4 @@ class MemoryReader:
             return None
 
 
-__all__ = ["MemoryReader"]
+__all__ = ["FieldValue", "MemoryReader"]

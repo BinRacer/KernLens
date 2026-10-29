@@ -32,7 +32,7 @@
 - [kl-bt](https://binracer.github.io/KernLens/tutorial/kl-bt/): Prints a formatted kernel backtrace.
 - [kl-read](https://binracer.github.io/KernLens/tutorial/kl-read/): Dumps kernel memory as 64-bit words with symbol annotations.
 - [kl-kvar](https://binracer.github.io/KernLens/tutorial/kl-kvar/): Reads a KASLR-aware kernel global variable.
-- [kl-read-field](https://binracer.github.io/KernLens/tutorial/kl-read-field/): Reads a struct field (including nested paths) as an integer.
+- [kl-read-field](https://binracer.github.io/KernLens/tutorial/kl-read-field/): Reads a struct field (including nested paths), whatever its type.
 - [kl-kbpf](https://binracer.github.io/KernLens/tutorial/kl-kbpf/): Prints information about the linux kernel bpf progs and maps.
 - [kl-kdmabuf](https://binracer.github.io/KernLens/tutorial/kl-kdmabuf/): Prints DMA buf info.
 - [kl-cpu](https://binracer.github.io/KernLens/tutorial/kl-cpu/): Displays CPU topology, the online mask, and per-CPU offsets.

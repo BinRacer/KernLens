@@ -67,6 +67,58 @@ class BadIntValue:
         raise FakeGdbError("Cannot convert value to long.")
 
 
+class FakeType:
+    """The slice of ``gdb.Type`` that ``MemoryReader.field_value`` reads.
+
+    Only ``code``, ``name``, ``sizeof`` and ``target()`` are used, and
+    ``sizeof`` on an array is the WHOLE array -- GDB reports the total,
+    not the element size, which is why ``_describe_array`` divides by the
+    target's size instead of trusting this number twice.
+    """
+
+    def __init__(
+        self,
+        code: int,
+        name: str = "",
+        sizeof: int = 8,
+        target: "FakeType | None" = None,
+    ) -> None:
+        self.code = code
+        self.name = name
+        self.sizeof = sizeof
+        self._target = target
+
+    def target(self) -> "FakeType":
+        if self._target is None:
+            raise FakeGdbError("not an array or pointer type")
+        return self._target
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class FakeValue:
+    """A ``gdb.Value`` that knows its type and its address."""
+
+    def __init__(
+        self,
+        type_: FakeType,
+        value: object,
+        address: int | None = None,
+    ) -> None:
+        self.type = type_
+        self._value = value
+        self.address = address
+
+    def __int__(self) -> int:
+        if not isinstance(self._value, int):
+            raise FakeGdbError("Cannot convert value to long.")
+        return self._value
+
+    def __str__(self) -> str:
+        return str(self._value)
+
+
 class FakeGdb(types.ModuleType):
     """Minimal GDB Python API used by the adapter."""
 
@@ -75,6 +127,15 @@ class FakeGdb(types.ModuleType):
     #: The one type-code constant the adapters compare against
     #: (``gdb.TYPE_CODE_ENUM``).
     TYPE_CODE_ENUM = 3
+    #: The rest of ``gdb.TYPE_CODE_*`` that ``field_value`` dispatches on.
+    #: Values match GDB's own enum so a real GDB and this fake agree.
+    TYPE_CODE_PTR = 1
+    TYPE_CODE_ARRAY = 2
+    TYPE_CODE_STRUCT = 4
+    TYPE_CODE_UNION = 5
+    TYPE_CODE_INT = 8
+    TYPE_CODE_BOOL = 11
+    TYPE_CODE_FLOAT = 7
 
     def __init__(self) -> None:
         super().__init__("gdb")
@@ -832,6 +893,104 @@ class MemoryReaderTests(FacadeTestBase):
         self.assertIsNone(
             self.reader.read_field(0, "struct task_struct", "pid"),
         )
+
+
+class FieldValueTests(FacadeTestBase):
+    """``field_value`` must not assume the field is an integer.
+
+    ``read_field`` coerces with ``int()``, so on a live 6.1.134 kernel
+    ``task_struct::comm`` -- a ``char[16]`` holding ``"swapper/0"`` --
+    printed ``<unreadable>`` while GDB itself read the string fine.  The
+    integer path could not distinguish "not a scalar" from "unmapped",
+    and the command showed both as the same error.  These pin the four
+    kinds separately, because a single "it works now" test would have
+    passed for the integer case that already worked.
+    """
+
+    BASE = 0x2000
+    TYPE = "struct task_struct"
+
+    def _value(self, path: str, value: object) -> None:
+        key = f"(({self.TYPE} *){self.BASE})->{path}"
+        fake_gdb.values[key] = value
+
+    def test_a_scalar_keeps_its_integer(self) -> None:
+        self._value("pid", FakeValue(
+            FakeType(fake_gdb.TYPE_CODE_INT, "pid_t", 4), 0,
+        ))
+        found = self.reader.field_value(self.BASE, self.TYPE, "pid")
+        assert found is not None
+        self.assertEqual(found.integer, 0)
+        self.assertEqual(found.text, "0x0")
+        self.assertEqual(found.type_name, "pid_t")
+        self.assertIsNone(found.string)
+
+    def test_a_null_pointer_is_an_address_not_a_failure(self) -> None:
+        # `->mm` is 0 on the idle task.  Reporting <unreadable> for a
+        # perfectly readable NULL is the kind of wrong answer that makes
+        # a reader distrust every other value on the line.
+        self._value("mm", FakeValue(
+            FakeType(fake_gdb.TYPE_CODE_PTR, "struct mm_struct *", 8),
+            None,
+            address=0,
+        ))
+        found = self.reader.field_value(self.BASE, self.TYPE, "mm")
+        assert found is not None
+        self.assertTrue(found.is_pointer)
+        self.assertEqual(found.type_name, "struct mm_struct *")
+
+    def test_a_char_array_becomes_its_string(self) -> None:
+        address = 0x8000
+        for offset, byte in enumerate(b"swapper/0\x00\x00\x00\x00\x00\x00\x00"):
+            fake_gdb.memory_bytes[address + offset] = byte
+        self._value("comm", FakeValue(
+            FakeType(
+                fake_gdb.TYPE_CODE_ARRAY, "char [16]", 16,
+                target=FakeType(fake_gdb.TYPE_CODE_INT, "char", 1),
+            ),
+            "swapper/0",
+            address=address,
+        ))
+        found = self.reader.field_value(self.BASE, self.TYPE, "comm")
+        assert found is not None
+        self.assertEqual(found.string, "swapper/0")
+        self.assertEqual(found.text, "swapper/0")
+        self.assertEqual(found.length, 16)
+        self.assertEqual(found.type_name, "char [16]")
+
+    def test_a_non_char_array_is_not_text(self) -> None:
+        # A `struct list_head[4]` has a STRUCT element, so decoding it as
+        # a string would invent text out of pointers.  Only a one-byte
+        # integer element can be text.
+        self._value("children", FakeValue(
+            FakeType(
+                fake_gdb.TYPE_CODE_ARRAY, "struct list_head [4]", 64,
+                target=FakeType(fake_gdb.TYPE_CODE_STRUCT, "struct list_head", 16),
+            ),
+            "[4]",
+        ))
+        found = self.reader.field_value(self.BASE, self.TYPE, "children")
+        assert found is not None
+        self.assertIsNone(found.string)
+        self.assertEqual(found.length, 4)
+        self.assertIn("4 element", found.text or "")
+
+    def test_a_struct_field_keeps_gdbs_rendering(self) -> None:
+        # `kuid_t` is `struct {uid_t val;}` -- GDB renders it, and the
+        # command shows that text rather than pretending it is an int.
+        self._value("cred.uid", FakeValue(
+            FakeType(fake_gdb.TYPE_CODE_STRUCT, "kuid_t", 4), "{val = 0}",
+        ))
+        found = self.reader.field_value(self.BASE, self.TYPE, "cred.uid")
+        assert found is not None
+        self.assertEqual(found.type_name, "kuid_t")
+        self.assertEqual(found.text, "{val = 0}")
+        self.assertIsNone(found.integer)
+        self.assertIsNone(found.string)
+
+    def test_a_missing_field_is_the_only_none(self) -> None:
+        self.assertIsNone(self.reader.field_value(self.BASE, self.TYPE, "nope"))
+        self.assertIsNone(self.reader.field_value(0, self.TYPE, "pid"))
 
 
 class SymbolResolverTests(FacadeTestBase):

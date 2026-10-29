@@ -872,7 +872,7 @@ def kernlens_kvar(symbol: str) -> None:
 
 
 _read_field_parser = argparse.ArgumentParser(
-    description="Reads a struct field (including nested paths) as an integer."
+    description="Reads a struct field (including nested paths), whatever its type."
 )
 _read_field_parser.add_argument("address", type=parse_int_arg, help="struct instance")
 _read_field_parser.add_argument("type", help="C type name (e.g. 'struct slab')")
@@ -886,20 +886,41 @@ _read_field_parser.add_argument("path", help="field path (e.g. freelist or node[
     examples="kl-read-field 0xffffea0000a1c000 'struct slab' slab_cache",
 )
 def kernlens_read_field(address: int, type: str, path: str) -> None:
-    value = kdbg.read_field(address, type, path)
+    """Show one struct field, whatever its C type is.
+
+    This used to go through ``kdbg.read_field``, which coerces to an
+    integer.  That reports ``<unreadable>`` for every field that is not a
+    scalar -- including ``task_struct::comm``, a ``char[16]`` holding the
+    process name and the single most useful field in the structure.  GDB
+    reads it fine; the coercion was the loss.  ``field_value`` keeps the
+    type and renders it.
+    """
+    value = kdbg.field_value(address, type, path)
     indent = IndentContextManager()
     indent.print(
         indent.prefix("field") + ": "
         + message.hint(f"(({type} *){address:#x})->{path}")
     )
+    if value is None:
+        indent.print(indent.prefix("value") + ": " + message.error("<unreadable>"))
+        return
+    if value.string is not None:
+        # Quoted, because leading/trailing spaces are part of the value.
+        shown = f'"{value.string}"'
+    elif value.text is not None:
+        shown = value.text
+    else:
+        shown = "<unreadable>"
     indent.print(
         indent.prefix("value") + ": "
         + (
-            indent.aux_hex(value)
-            if value is not None
-            else message.error("<unreadable>")
+            message.error(shown)
+            if value.text is None
+            else message.highlight(shown)
         )
     )
+    if value.type_name:
+        indent.print(indent.prefix("type") + ": " + message.info(value.type_name))
 
 
 # =========================================================================

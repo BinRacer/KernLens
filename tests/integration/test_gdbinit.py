@@ -649,6 +649,30 @@ class FakeKdbg:
     def read_field(self, obj: int, type_name: str, path: str) -> int | None:
         return self.fields.get((obj, type_name, path))
 
+    def field_value(
+        self, obj: int, type_name: str, path: str,
+    ) -> object | None:
+        """Mirror the reader's contract: ``None`` means unresolvable.
+
+        The real method returns a ``FieldValue`` carrying the type and
+        the rendered text; returning the canned integer directly would
+        hide the difference between "the field is an int" and "the
+        command never looked at the type", which is the defect this pair
+        exists to catch.  ``SimpleNamespace`` is enough because the
+        command only reads attributes.
+        """
+        found = self.fields.get((obj, type_name, path))
+        if found is None:
+            return None
+        return SimpleNamespace(
+            text=f"{found:#x}",
+            type_name="unsigned long",
+            integer=found,
+            string=None,
+            is_pointer=False,
+            length=None,
+        )
+
     # --- kernel metadata ------------------------------------------------
 
     def kversion(self) -> str | None:
@@ -1501,7 +1525,6 @@ class MemoryTests(GdbinitTestBase):
         fake_kdbg.fields[(0x1000, "struct slab", "slab_cache")] = 0x2000
         out = self.invoke("kl-read-field", "0x1000 'struct slab' slab_cache")
         self.assertIn("slab_cache", out)
-
     def test_slab_basic(self) -> None:
         self.assertIn("slab: head=0x1000", self.invoke("kl-slab", "0x1000"))
 

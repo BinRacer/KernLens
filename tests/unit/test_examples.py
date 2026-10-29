@@ -55,9 +55,13 @@ class SurfaceDerivationTests(unittest.TestCase):
     """The surface must come from the code, not from a hand-written list."""
 
     def test_facade_bindings_match_the_literal(self) -> None:
+        # Pinned on purpose: the examples' coverage claim is a fraction
+        # of this surface, so a binding added without an example would
+        # quietly lower the denominator.  `field_value` was added when
+        # `kl-read-field` stopped assuming every field is an integer.
         bound, free = check_examples.facade_bindings()
-        self.assertEqual(len(bound), 140)
-        self.assertEqual(len(free), 68)
+        self.assertEqual(len(bound), 141)
+        self.assertEqual(len(free), 69)
         self.assertTrue(free <= bound)
 
     def test_commands_match_the_frozen_contract(self) -> None:
@@ -815,6 +819,81 @@ class ExampleCaptureShapeTests(unittest.TestCase):
             run_examples_gdb._headings("=== chain depth and the partial list ===\n"),
             run_examples_gdb._headings("=== depth notes ===\n"),
         )
+
+
+class RecordedCommandNameTests(unittest.TestCase):
+    """The record may only name commands the registry still publishes.
+
+    ``tools/check_example_capture.py`` compares the recorded headings
+    against the example sources, and to do that honestly it throws away
+    the parenthesised asides -- they hold addresses and cache names that
+    only exist at run time.  The side effect was that it threw away the
+    command name too, which is the part that goes stale: the record named
+    ``kl-klookup``, ``kl-pagewalk``, ``kl-pte``, ``kl-chain`` and
+    ``kl-kbase -v`` for a whole release after those spellings were
+    merged, and every heading passed because the prose around them was
+    unchanged.
+
+    Measured with the stale record and the old checker: 43 headings
+    "fine", exit 0.  The names are checked against
+    ``tools/tutorial_meta.json``, which is the registry snapshot, because
+    CI has no ``gdb`` to import the registry itself.
+    """
+
+    def setUp(self) -> None:
+        import check_example_capture
+
+        self.tool = check_example_capture
+        self.known = check_example_capture._known_commands()
+
+    def test_the_snapshot_yields_the_whole_registry(self) -> None:
+        # Both spellings of every command, so neither form is reported.
+        self.assertEqual(len(self.known), 2 * len(CANONICAL_COMMANDS) + 1)
+        self.assertIn("kl-help", self.known)
+        self.assertIn("kernlens-help", self.known)
+
+    def test_a_published_name_passes(self) -> None:
+        for heading in (
+            "N. classify (kl-addr)",
+            "N. decode one entry (kl-pt --entry)",
+            "N. the same walk, pwndbg format (kl-walk --style pwndbg)",
+            "N. discover the slide from the target (kl-base --verbose)",
+        ):
+            with self.subTest(heading=heading):
+                self.assertEqual(self.tool._bad_commands(heading, self.known), [])
+
+    def test_a_spelling_that_was_merged_away_fails(self) -> None:
+        # Each of these is in the record that shipped, and each one is
+        # only visible once the asides are no longer discarded.
+        for heading, stale in (
+            ("N. substring search (kl-klookup init_task)", "kl-klookup"),
+            ("N. the same walk, pwndbg format (kl-pagewalk)", "kl-pagewalk"),
+            ("N. decode one entry (kl-pte)", "kl-pte"),
+            ("N. the current stack (kl-bt, kl-chain)", "kl-chain"),
+            ("N. discover the slide (kl-kbase -v)", "kl-kbase"),
+            ("N. classify + translate (kl-page)", "kl-page"),
+        ):
+            with self.subTest(heading=heading):
+                self.assertEqual(
+                    self.tool._bad_commands(heading, self.known), [stale],
+                )
+
+    def test_a_name_outside_the_aside_is_left_to_the_prose_check(self) -> None:
+        # ``_template`` keeps text outside the parentheses, so a command
+        # named there is already compared against the source; checking it
+        # twice would report one problem under two descriptions.
+        self.assertEqual(
+            self.tool._bad_commands("N. kl-klookup is gone", self.known), [],
+        )
+
+    def test_the_committed_record_passes(self) -> None:
+        import contextlib
+        import io
+
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            status = self.tool.check()
+        self.assertEqual(status, 0, buffer.getvalue())
 
 
 class FreelistWalkRegressions(unittest.TestCase):

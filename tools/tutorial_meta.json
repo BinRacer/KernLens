@@ -580,7 +580,7 @@
    "kl-read-field"
   ],
   "category": "memory & symbols",
-  "summary": "Reads a struct field (including nested paths) as an integer.",
+  "summary": "Reads a struct field (including nested paths), whatever its type.",
   "usage": "kl-read-field [-h] address type path",
   "options": [
    {
