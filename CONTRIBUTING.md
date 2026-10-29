@@ -68,6 +68,52 @@ commands import the installed distribution rather than relying on
 `PYTHONPATH`; `pyproject.toml` also sets `pythonpath = ["src"]` so a
 bare `pytest` run works from a checkout.
 
+### History: linear for the maintainer, forgiving for everyone else
+
+The maintainer commits to `main` directly, so `main` is linear by
+construction.  That is a statement about one person's habit, not a rule
+imposed on contributors.
+
+An outside contribution may land by **squash**, **rebase**, or **merge**.
+All three produce the same files when there is no conflict, and all three
+are tested the same way: `pull_request` runs against
+`refs/pull/<n>/merge`, the result of combining the branch with `main`, and
+`push: main` runs again against whatever commit actually lands.  So a merge
+commit is not an untested commit, and the choice is about the shape of the
+log, not about safety.
+
+**Merge is explicitly allowed**, because the alternatives tax the
+contributor rather than the maintainer.  A rebase makes a contributor
+resolve conflicts they did not create and force-push a branch they may have
+opened from a fork they cannot rewrite; in that situation the merge cost
+falls on the maintainer and the rebase cost falls on a stranger.  Landing a
+merge commit is the cheaper of the two, and the log is the right place to
+spend that.
+
+```console
+# contributor
+git pull --rebase origin main       # optional, keeps the PR on top of main
+git push --force-with-lease         # only if you rebased
+
+# maintainer, on a contribution
+gh pr merge <n> --merge --delete-branch
+```
+
+Squash is still the default when a branch carries fixup commits that add
+nothing to the story -- it is the one option that asks the contributor for
+nothing at all.  Rebase keeps each commit when they each stand on their own
+and the branch is already current.
+
+The only cost of a merge commit is that `git bisect` can land on a node
+with two parents, where the build may be broken for a reason that belongs
+to neither side.  If that ever happens, `git bisect --first-parent` skips
+merge commits and bisects the history the way it was reviewed.
+
+The one thing that is not negotiable is the *shape of each commit*, not the
+shape of the graph: one concern per commit, a message that says why, and no
+merge commit that also carries unreviewed content.  Everything in this
+section about landing method is a preference; that is the requirement.
+
 See [`docs/en/architecture.md`](docs/en/architecture.md) for the public API
 map, module responsibilities, the SLUB inspection model, and GDB
 loading details.  [`docs/en/naming.md`](docs/en/naming.md) defines the

@@ -82,6 +82,44 @@ uv run --group docs mkdocs build --strict
 `uv run python tools/gen_docs_site.py`。新增页面必须同时有 nav 条目和
 `PAGE_NOTES` 里的一行说明，否则 `--check` 会失败。
 
+### 历史：笔者保持线性，对他人从宽
+
+笔者直接向 `main` 提交，所以 `main` 天然是一条线。这是对一个人习惯的
+描述，不是压在贡献者身上的规则。
+
+外部贡献可以用 **squash**、**rebase** 或 **merge** 落地。没有冲突时，
+三者产生的文件完全相同，测试覆盖也完全相同：`pull_request` 针对
+`refs/pull/<n>/merge` 运行，也就是分支与 `main` 合并后的结果；随后
+`push: main` 会针对真正落地的那个提交再跑一次。所以 merge 提交并不是
+一个没被测过的提交，这只是日志形状的选择，与安全无关。
+
+**Merge 是明确允许的**，因为另外两种方式把成本转嫁给了贡献者而不是
+维护者。rebase 会让贡献者去解决并非由他造成的冲突，并对一个他可能无法
+改写的 fork 分支强推；这种情况下，merge 的成本落在维护者身上，rebase
+的成本落在一个陌生人身上。接受一个 merge 提交是两者中更便宜的那个，
+而日志正是适合付出这点代价的地方。
+
+```console
+# 贡献者
+git pull --rebase origin main       # 可选，让 PR 跟住 main
+git push --force-with-lease         # 仅在你 rebase 过之后
+
+# 维护者，处理一个贡献
+gh pr merge <n> --merge --delete-branch
+```
+
+分支里有一串对叙事没有贡献的 fixup 提交时，squash 仍是默认——它是唯一
+对贡献者零要求、也完全不会失败的选项。每个提交都能独立成立、且分支
+已经跟上 `main` 时，用 rebase 保留它们。
+
+merge 提交唯一的代价是：`git bisect` 可能落到一个有两个父提交的节点上，
+而那里构建失败的原因可能两边都不归。真遇到时，`git bisect
+--first-parent` 会跳过 merge 提交，按当初评审的那条线去做二分。
+
+不可让步的不是图的形状，而是**每个提交的形状**：一个提交只做一件事、
+提交信息说清为什么、不要在一个 merge 提交里夹带未经评审的内容。本小节
+关于落地方式的全部内容都是偏好；这一条才是要求。
+
 ### 结构体布局：DWARF → BTF → 验证过的兜底表
 
 所有结构体字段偏移都在首次使用时按三级链解析，因此检查器始终跟随
