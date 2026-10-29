@@ -70,6 +70,27 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.superfences
 
+# The language switcher, in the theme's own slot for it.
+#
+# `extra.alternate` renders `partials/alternate.html`: a translate icon in
+# the header, on the same row as the palette toggle and the search box.
+# That is the pattern a reader already knows, and it costs no custom
+# markup.  A button in the content area -- what this site had first --
+# reads as part of the page rather than as a site-wide control.
+#
+# The links are absolute because the switcher appears on pages at
+# different depths, and they point at the other language's front page
+# rather than a translation of the current one: only the front page and
+# the API reference exist in Chinese, so any other target would be a 404.
+extra:
+  alternate:
+    - name: English
+      link: https://binracer.github.io/KernLens/
+      lang: en
+    - name: 简体中文
+      link: https://binracer.github.io/KernLens/zh-CN/
+      lang: zh-CN
+
 validation:
   # Absolute links go to GitHub, the issue tracker, and the PyPI project
   # page; they are not claims about files in this site.

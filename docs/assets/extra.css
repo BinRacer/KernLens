@@ -1,50 +1,29 @@
 /* KernLens site styles, layered on top of mkdocs-material.
  *
- * Two things are here: the language switcher, which the theme has no slot
- * for, and a tightening of the typography.  Everything is expressed in
- * the theme's own custom properties (`--md-primary-fg-color` and friends)
- * so the light and dark schemes both keep working -- a hard-coded colour
- * that looks right in one is wrong in the other.
+ * Two things are here: a hint of the language switcher the theme renders
+ * from `extra.alternate`, and a tightening of the typography.  Everything
+ * is expressed in the theme's own custom properties
+ * (`--md-primary-fg-color` and friends) so the light and dark schemes
+ * both keep working -- a hard-coded colour that looks right in one is
+ * wrong in the other.
  */
 
 /* --- language switcher ------------------------------------------------ */
 
-.kl-lang-bar {
-  margin: 0 0 1.6rem;
-}
-
-.kl-lang {
-  display: inline-flex;
-  padding: 0.15rem;
-  gap: 0.15rem;
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 0.5rem;
-  background: var(--md-default-fg-color--lightest);
-}
-
-.kl-lang__item {
-  padding: 0.3rem 0.85rem;
-  border-radius: 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--md-default-fg-color--light);
-  text-decoration: none;
-  transition: background-color 125ms, color 125ms;
-}
-
-.kl-lang__item:hover {
-  color: var(--md-default-fg-color);
-  background: var(--md-default-bg-color);
-}
-
-/* The current language is a filled pill, not just a lighter grey: a
- * difference in weight alone is the kind of state a reader misses. */
-.kl-lang__item--on,
-.kl-lang__item--on:hover {
+/* The switcher is the theme's `partials/alternate.html`, in the header on
+ * the same row as the palette toggle and the search box.  It is a
+ * dropdown, so almost nothing needs styling.
+ *
+ * One thing does: the menu cannot mark the language you are currently
+ * reading.  mkdocs renders `extra.alternate` as a plain list, so both
+ * entries look identical and the one that leads nowhere new is presented
+ * as if it did.  There is no per-page signal to compare against -- the
+ * page context is not available where the header renders -- so the
+ * entries carry `hreflang` and the hover state is styled to make the
+ * target explicit instead of implying a selection. */
+.md-header .md-select__link:hover {
+  background-color: var(--md-primary-fg-color);
   color: var(--md-primary-bg-color);
-  background: var(--md-primary-fg-color);
-  cursor: default;
 }
 
 /* --- typography ------------------------------------------------------- */
@@ -92,15 +71,7 @@
 }
 
 /* The banner is an image at the top of the front page; do not let the
- * default heading margin push it away from the language bar. */
+ * default content margin push it down from the header. */
 .md-typeset > div[align="center"]:first-of-type {
   margin-top: 0;
-}
-
-/* On a narrow screen the language bar sits under the hamburger; keep it
- * out of the way of the sticky header. */
-@media screen and (max-width: 76.1875em) {
-  .kl-lang-bar {
-    margin-top: 0.4rem;
-  }
 }

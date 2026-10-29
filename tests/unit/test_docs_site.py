@@ -326,56 +326,103 @@ class LanguageLayoutTests(unittest.TestCase):
 
 
 class LanguageSwitcherTests(unittest.TestCase):
-    """The switcher has to be reachable, honest, and current.
+    """The switcher has to be in the header, reachable, and honest.
 
-    It is a theme override because mkdocs-material has no slot for a
-    control that is not search, palette, or repository.  An override is
-    invisible to every other test here, so it gets its own.
+    It is the theme's own `partials/alternate.html`, rendered from
+    `extra.alternate`, so it sits on the same row as the palette toggle
+    and the search box.  An earlier version put a button of its own in the
+    content area: it worked, but it read as part of the page rather than
+    as a site-wide control, and it pushed the front page down a row.
+
+    mkdocs.yml is therefore the source of truth, and `overrides/main.html`
+    must not carry the switcher a second time.
     """
 
     OVERRIDE = ROOT / "overrides" / "main.html"
 
-    def test_the_override_is_wired_into_the_theme(self) -> None:
-        text = _mkdocs()
-        self.assertIn("custom_dir: overrides", text)
-        self.assertTrue(self.OVERRIDE.is_file())
+    #: The `extra.alternate` entries, as `(name, link, lang)`.
+    #:
+    #: Parsed with a regex rather than a YAML loader: the config contains
+    #: `!!python/object/apply:pymdownx.slugs.slugify`, which `safe_load`
+    #: refuses and `unsafe_load` would execute.  The block is three keys
+    #: on three lines, so a small reader is the honest option.
+    _ALT_ENTRY = re.compile(
+        r"^\s+-\s+name:\s*(?P<name>.+?)\s*$\n"
+        r"^\s+link:\s*(?P<link>\S+)\s*$\n"
+        r"^\s+lang:\s*(?P<lang>\S+)\s*$",
+        re.MULTILINE,
+    )
 
-    def test_the_override_extends_the_theme(self) -> None:
-        # ``{% extends %}`` has to be the first tag, or Jinja ignores the
-        # blocks that follow and the page renders without a shell.
+    @classmethod
+    def _alternate(cls) -> list[tuple[str, str, str]]:
+        text = _mkdocs()
+        start = text.index("alternate:")
+        # The block ends at the next top-level key.
+        rest = text[start:].splitlines()[1:]
+        block = []
+        for line in rest:
+            if line and not line[0].isspace():
+                break
+            block.append(line)
+        return [
+            (m.group("name"), m.group("link"), m.group("lang"))
+            for m in cls._ALT_ENTRY.finditer("\n".join(block))
+        ]
+
+    def test_the_switcher_is_the_themes_own(self) -> None:
+        """It is configured, not hand-written.
+
+        A custom control has to re-implement the header slot, the icon,
+        and the dropdown, and then it drifts from the theme.  The four
+        keys are read straight from the config, so a rename here fails
+        rather than silently rendering nothing.
+        """
+        entries = self._alternate()
+        self.assertEqual([entry[2] for entry in entries], ["en", "zh-CN"])
+
+    def test_the_override_does_not_carry_a_second_switcher(self) -> None:
         text = self.OVERRIDE.read_text(encoding="utf-8")
-        self.assertTrue(text.lstrip().startswith("{% extends"))
+        self.assertNotIn("md-select", text)
+        self.assertNotIn("kl-lang-bar", text)
+
+    def test_the_stylesheet_has_no_orphan_switcher_rules(self) -> None:
+        # `extra.css` used to style `.kl-lang`; the class is gone, and a
+        # rule for markup that does not exist is worse than no rule --
+        # it reads like the control is still there.
+        css = (DOCS / "assets" / "extra.css").read_text(encoding="utf-8")
+        self.assertNotIn(".kl-lang", css)
 
     def test_both_languages_are_offered(self) -> None:
-        text = self.OVERRIDE.read_text(encoding="utf-8")
-        for label in ("English", "简体中文"):
-            with self.subTest(label=label):
-                self.assertIn(label, text)
-        self.assertIn(f'href="{gen_docs_site.SITE}/"', text)
-        self.assertIn(f'href="{gen_docs_site.SITE}/zh-CN/"', text)
-
-    def test_the_current_language_is_marked_for_assistive_tech(self) -> None:
-        # A colour difference alone is not a state a screen reader can
-        # report, so the current page also carries aria-current.
-        text = self.OVERRIDE.read_text(encoding="utf-8")
-        self.assertIn('aria-current="true"', text)
+        entries = self._alternate()
+        names = [name for name, _, _ in entries]
+        self.assertIn("English", names)
+        self.assertIn("简体中文", names)
 
     def test_the_switcher_targets_a_page_that_exists(self) -> None:
-        """Whatever the buttons point at has to be a published page.
+        """Whatever the entries point at has to be a published page.
 
         Only two pages exist in Chinese, so the switcher lands on the
         Chinese front page rather than a translation of the current one.
         If that page were ever renamed, this is the test that notices.
         """
-        text = self.OVERRIDE.read_text(encoding="utf-8")
-        for _, url in gen_docs_site.LANGUAGE_SWITCH:
+        for _, url, _ in self._alternate():
             with self.subTest(url=url):
-                self.assertIn(url, text)
+                self.assertTrue(
+                    url.startswith(gen_docs_site.SITE), url,
+                )
                 relative = url[len(gen_docs_site.SITE):].strip("/")
-                page = DOCS / relative / "index.md" if relative else (
-                    DOCS / "index.md"
+                page = (
+                    DOCS / relative / "index.md" if relative
+                    else DOCS / "index.md"
                 )
                 self.assertTrue(page.is_file(), page)
+
+    def test_the_links_are_absolute(self) -> None:
+        # The switcher appears on pages at different depths, and raw
+        # config links are emitted as given.
+        for _, url, _ in self._alternate():
+            with self.subTest(url=url):
+                self.assertTrue(url.startswith("https://"), url)
 
 
 class ConfigurationTests(unittest.TestCase):
