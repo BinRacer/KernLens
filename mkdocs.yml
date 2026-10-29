@@ -33,6 +33,12 @@ theme:
   custom_dir: overrides
   language: en
   features:
+    # Tabs put the top level of the nav in the header and leave the
+    # sidebar to the section you have chosen.  Without them the sidebar
+    # has to carry both, and with 30 command pages under Tutorial the
+    # other sections end up below a wall of command names.
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.top
     - navigation.tracking
@@ -147,7 +153,49 @@ plugins:
             # says so in its own heading.
             - 首页: index.md
             - 命令参考: commands.md
-            - 教程: tutorial/README.md
+            - 教程:
+              - 索引: tutorial/README.md
+              # BEGIN GENERATED TUTORIAL NAV -- tools/gen_docs_site.py
+              - overview:
+                - kl-status: en/tutorial/kl-status.md
+              - kernel base & KASLR:
+                - kl-base: en/tutorial/kl-base.md
+              - kernel metadata:
+                - kl-kcmdline: en/tutorial/kl-kcmdline.md
+                - kl-kversion: en/tutorial/kl-kversion.md
+                - kl-kconfig: en/tutorial/kl-kconfig.md
+                - kl-kmod: en/tutorial/kl-kmod.md
+                - kl-ksyscalls: en/tutorial/kl-ksyscalls.md
+                - kl-kdmesg: en/tutorial/kl-kdmesg.md
+              - addresses & page tables:
+                - kl-addr: en/tutorial/kl-addr.md
+                - kl-pt: en/tutorial/kl-pt.md
+                - kl-walk: en/tutorial/kl-walk.md
+                - kl-p2v: en/tutorial/kl-p2v.md
+                - kl-v2p: en/tutorial/kl-v2p.md
+                - kl-pageinfo: en/tutorial/kl-pageinfo.md
+              - memory & symbols:
+                - kl-buddy: en/tutorial/kl-buddy.md
+                - kl-slab: en/tutorial/kl-slab.md
+                - kl-sym: en/tutorial/kl-sym.md
+                - kl-bt: en/tutorial/kl-bt.md
+                - kl-read: en/tutorial/kl-read.md
+                - kl-kvar: en/tutorial/kl-kvar.md
+                - kl-read-field: en/tutorial/kl-read-field.md
+                - kl-kbpf: en/tutorial/kl-kbpf.md
+                - kl-kdmabuf: en/tutorial/kl-kdmabuf.md
+              - CPU topology:
+                - kl-cpu: en/tutorial/kl-cpu.md
+                - kl-percpu: en/tutorial/kl-percpu.md
+                - kl-msr: en/tutorial/kl-msr.md
+              - bit & integer primitives:
+                - kl-bits: en/tutorial/kl-bits.md
+                - kl-int: en/tutorial/kl-int.md
+              - output:
+                - kl-color: en/tutorial/kl-color.md
+              - help:
+                - kl-help: en/tutorial/kl-help.md
+              # END GENERATED TUTORIAL NAV
             - 演示容器: demo-container.md
             - Python API: api.md
             - 架构: architecture.md
@@ -166,7 +214,49 @@ plugins:
 nav:
   - Overview: en/index.md
   - Commands: en/commands.md
-  - Tutorial: en/tutorial/README.md
+  - Tutorial:
+    - Index: en/tutorial/README.md
+    # BEGIN GENERATED TUTORIAL NAV -- tools/gen_docs_site.py
+    - overview:
+      - kl-status: en/tutorial/kl-status.md
+    - kernel base & KASLR:
+      - kl-base: en/tutorial/kl-base.md
+    - kernel metadata:
+      - kl-kcmdline: en/tutorial/kl-kcmdline.md
+      - kl-kversion: en/tutorial/kl-kversion.md
+      - kl-kconfig: en/tutorial/kl-kconfig.md
+      - kl-kmod: en/tutorial/kl-kmod.md
+      - kl-ksyscalls: en/tutorial/kl-ksyscalls.md
+      - kl-kdmesg: en/tutorial/kl-kdmesg.md
+    - addresses & page tables:
+      - kl-addr: en/tutorial/kl-addr.md
+      - kl-pt: en/tutorial/kl-pt.md
+      - kl-walk: en/tutorial/kl-walk.md
+      - kl-p2v: en/tutorial/kl-p2v.md
+      - kl-v2p: en/tutorial/kl-v2p.md
+      - kl-pageinfo: en/tutorial/kl-pageinfo.md
+    - memory & symbols:
+      - kl-buddy: en/tutorial/kl-buddy.md
+      - kl-slab: en/tutorial/kl-slab.md
+      - kl-sym: en/tutorial/kl-sym.md
+      - kl-bt: en/tutorial/kl-bt.md
+      - kl-read: en/tutorial/kl-read.md
+      - kl-kvar: en/tutorial/kl-kvar.md
+      - kl-read-field: en/tutorial/kl-read-field.md
+      - kl-kbpf: en/tutorial/kl-kbpf.md
+      - kl-kdmabuf: en/tutorial/kl-kdmabuf.md
+    - CPU topology:
+      - kl-cpu: en/tutorial/kl-cpu.md
+      - kl-percpu: en/tutorial/kl-percpu.md
+      - kl-msr: en/tutorial/kl-msr.md
+    - bit & integer primitives:
+      - kl-bits: en/tutorial/kl-bits.md
+      - kl-int: en/tutorial/kl-int.md
+    - output:
+      - kl-color: en/tutorial/kl-color.md
+    - help:
+      - kl-help: en/tutorial/kl-help.md
+    # END GENERATED TUTORIAL NAV
   - Demo container: en/demo-container.md
   - Python API: en/api.md
   - Architecture: en/architecture.md

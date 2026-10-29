@@ -115,6 +115,32 @@ PAGE_NOTES: dict[str, str] = {
     "en/naming.md": "command, example, and filename conventions",
 }
 
+#: The tutorial's own page, used as the group index of ``tutorial/``.
+TUTORIAL_INDEX = "en/tutorial/README.md"
+
+#: `tools/tutorial_meta.json`, the registry dump the tutorial pages are
+#: generated from.  The sidebar lists one entry per command, grouped by
+#: the category `kl-help` prints, so a reader navigates the same taxonomy
+#: in the terminal and on the site.  Generating it from the dump is what
+#: keeps the two from drifting: a command added to the registry appears in
+#: the sidebar, and one removed disappears, without anybody editing YAML.
+TUTORIAL_META = ROOT / "tools" / "tutorial_meta.json"
+
+#: Marks the block of ``nav:`` this module owns.  `mkdocs.yml` carries it
+#: as a comment pair; everything between them is regenerated, everything
+#: outside is hand-written.  The Chinese nav lists the same commands, at
+#: the same URLs, because the command pages are not translated -- they are
+#: served from the English tree under the Chinese prefix, which is what
+#: makes a Chinese reader able to reach them at all.
+#:
+#: The block's indentation is taken from the marker line rather than
+#: hard-coded: the English nav sits at two spaces and the Chinese one is
+#: nested inside ``plugins.i18n.languages`` at twelve.  A fixed indent puts
+#: the commands at the wrong depth in one of them, where mkdocs reads them
+#: as siblings of the entry that was supposed to contain them.
+NAV_MARKER = "# BEGIN GENERATED TUTORIAL NAV -- tools/gen_docs_site.py"
+NAV_END_MARKER = "# END GENERATED TUTORIAL NAV"
+
 _MARKDOWN_LINK = re.compile(r"\]\(([^)\s]+)\)")
 _HTML_LINK = re.compile(r'(?P<name>href|src)="(?P<target>[^"]+)"')
 _NAV = re.compile(r"^\s*-\s+(?P<title>[^:]+):\s+(?P<target>\S+)\s*$")
@@ -356,6 +382,127 @@ def _translated(target: str) -> str | None:
     return None
 
 
+def category_order() -> tuple[str, ...]:
+    """The category sequence `kl-help` prints, as one authoritative list.
+
+    Re-exported rather than duplicated: `gen_commands.py` already owns the
+    order, and the sidebar has to match it or the reader meets two
+    taxonomies for one command set.
+    """
+    from gen_commands import CATEGORY_ORDER
+
+    return CATEGORY_ORDER
+
+
+def command_pages() -> list[tuple[str, str, str]]:
+    """``(category, command, page)`` for every tutorial page, grouped.
+
+    Ordered the way `kl-help` prints the categories, so the sidebar and
+    the command line present the same list in the same order.  The page
+    path is the English one even for the Chinese build: the command pages
+    are not translated, and ``mkdocs-static-i18n`` serves the English
+    source under ``/zh-CN/`` rather than 404.
+    """
+    import json
+
+    from gen_commands import CATEGORY_ORDER
+
+    entries = json.loads(TUTORIAL_META.read_text(encoding="utf-8"))
+    by_category: dict[str, list[tuple[str, str]]] = {}
+    for entry in entries:
+        short = entry["name"].replace("kernlens-", "")
+        full = entry["name"]
+        page = f"en/tutorial/{short if short.startswith('kl-') else 'kl-' + short}.md"
+        if not (DOCS / page).is_file():
+            raise SystemExit(f"{page} does not exist but the registry has it")
+        by_category.setdefault(entry["category"], []).append((full, page))
+    unknown = sorted(set(by_category) - set(CATEGORY_ORDER))
+    if unknown:
+        raise SystemExit(
+            "unexpected tutorial categories: " + ", ".join(unknown)
+        )
+    return [
+        (category, command, page)
+        for category in CATEGORY_ORDER
+        for command, page in by_category.get(category, [])
+    ]
+
+
+def note_for(target: str) -> str | None:
+    """The one-line description of a nav target, if it has one.
+
+    Hand-written pages carry theirs in :data:`PAGE_NOTES`.  The tutorial's
+    command pages do not: there are one per command, and their summary is
+    already in ``tools/tutorial_meta.json`` because the command reference
+    and ``kl-help`` read it from there.  Copying 30 sentences into this
+    module would make a third place to keep true, so the registry is the
+    source.
+    """
+    if target in PAGE_NOTES:
+        return PAGE_NOTES[target]
+    for _category, name, page in command_pages():
+        if page == target:
+            for entry in _tutorial_entries():
+                if entry["name"] == name:
+                    return entry["summary"]
+    return None
+
+
+def _tutorial_entries() -> list[dict[str, str]]:
+    """The registry dump, read once per call site."""
+    import json
+
+    return json.loads(TUTORIAL_META.read_text(encoding="utf-8"))
+
+
+def render_tutorial_nav(indent: str) -> list[str]:
+    """The generated ``nav:`` block, one group per `kl-help` category.
+
+    *indent* is the indentation of the marker line, which has to be the
+    indentation of the *children* of the tutorial entry -- the same column
+    as the index page entry beside it.  YAML wants sibling list items at
+    one column, so a marker one level shallower would put the groups at
+    the wrong depth and the file would not parse at all.
+    """
+    entry = indent + "  "
+    lines = [f"{indent}{NAV_MARKER}"]
+    current = None
+    for category, name, page in command_pages():
+        if category != current:
+            current = category
+            lines.append(f"{indent}- {category}:")
+        lines.append(
+            f"{entry}- {name.replace('kernlens-', 'kl-')}: {page}"
+        )
+    lines.append(f"{indent}{NAV_END_MARKER}")
+    return lines
+
+
+def apply_tutorial_nav(mkdocs: str) -> str:
+    """Rewrite every marked block in *mkdocs* and leave the rest alone.
+
+    Both locales carry one, so the sidebar lists the same 30 commands
+    while the surrounding entries stay translated.  A file with no marker
+    is returned unchanged, which keeps this module usable against an
+    older ``mkdocs.yml`` instead of failing on structure it did not
+    expect.
+    """
+    output: list[str] = []
+    indent: str | None = None
+    for line in mkdocs.splitlines():
+        stripped = line.strip()
+        if stripped == NAV_MARKER:
+            indent = line[: len(line) - len(line.lstrip())]
+            output.extend(render_tutorial_nav(indent))
+            continue
+        if stripped == NAV_END_MARKER:
+            indent = None
+            continue
+        if indent is None:
+            output.append(line)
+    return "\n".join(output) + "\n"
+
+
 def render_llms(nav: Sequence[tuple[str, str]]) -> str:
     """Render ``llms.txt`` from the default-language nav and the files.
 
@@ -367,7 +514,7 @@ def render_llms(nav: Sequence[tuple[str, str]]) -> str:
     lines = [
         "# KernLens",
         "",
-        "> Linux kernel debugging from Python and GDB: 40 commands, a",
+        "> Linux kernel debugging from Python and GDB: 30 commands, a",
         "> pure-Python core, and a startup file sourced inside GDB.",
         "",
         f"- Site: {SITE}/",
@@ -382,14 +529,13 @@ def render_llms(nav: Sequence[tuple[str, str]]) -> str:
         if _is_external(target):
             lines.append(f"- [{title}]({target})")
             continue
-        if target not in PAGE_NOTES:
+        note = note_for(target)
+        if note is None:
             raise SystemExit(
                 f"nav entry {target!r} has no description; add one to "
                 "PAGE_NOTES in tools/gen_docs_site.py"
             )
-        lines.append(
-            f"- [{title}]({page_url(target)}): {PAGE_NOTES[target]}"
-        )
+        lines.append(f"- [{title}]({page_url(target)}): {note}")
         other = _translated(target)
         if other is not None:
             translated.append((title, other))
@@ -407,7 +553,7 @@ def render_llms(nav: Sequence[tuple[str, str]]) -> str:
         for title, target in translated:
             lines.append(
                 f"- [{title}]({page_url(target)}): "
-                f"{PAGE_NOTES.get(target, '(translation)')}"
+                f"{note_for(target) or '(translation)'}"
             )
     lines.append("")
     return "\n".join(lines)
@@ -415,7 +561,8 @@ def render_llms(nav: Sequence[tuple[str, str]]) -> str:
 
 def generate() -> dict[Path, str]:
     """Every generated file, mapped to its content."""
-    mkdocs = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    mkdocs_path = ROOT / "mkdocs.yml"
+    mkdocs = mkdocs_path.read_text(encoding="utf-8")
     nav = nav_entries(mkdocs)
     if not nav:
         raise SystemExit("mkdocs.yml has no nav entries")
@@ -426,6 +573,11 @@ def generate() -> dict[Path, str]:
         for source, dest in OUTPUT.items()
     }
     pages[ROOT / "docs" / "llms.txt"] = render_llms(nav)
+    # The sidebar is generated too, so `mkdocs.yml` is one of the files this
+    # module owns.  A command added to the registry and not to the nav is a
+    # page nobody can reach from the sidebar, and `--check` is where that
+    # shows up rather than in a reader's complaint.
+    pages[mkdocs_path] = apply_tutorial_nav(mkdocs)
     return pages
 
 

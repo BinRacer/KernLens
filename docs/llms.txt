@@ -1,6 +1,6 @@
 # KernLens
 
-> Linux kernel debugging from Python and GDB: 40 commands, a
+> Linux kernel debugging from Python and GDB: 30 commands, a
 > pure-Python core, and a startup file sourced inside GDB.
 
 - Site: https://binracer.github.io/KernLens/
@@ -11,7 +11,37 @@
 
 - [Overview](https://binracer.github.io/KernLens/): what KernLens is, the demo, the install, and the command summary
 - [Commands](https://binracer.github.io/KernLens/commands/): every command and alias, generated from the registry
-- [Tutorial](https://binracer.github.io/KernLens/tutorial/): one page per command, with output captured from a real kernel
+- [Index](https://binracer.github.io/KernLens/tutorial/): one page per command, with output captured from a real kernel
+- [kl-status](https://binracer.github.io/KernLens/tutorial/kl-status/): Shows the KernLens version, color mode, KASLR slide, and layout.
+- [kl-base](https://binracer.github.io/KernLens/tutorial/kl-base/): Reports the runtime kernel text base and KASLR slide.
+- [kl-kcmdline](https://binracer.github.io/KernLens/tutorial/kl-kcmdline/): Return the kernel command line (/proc/cmdline).
+- [kl-kversion](https://binracer.github.io/KernLens/tutorial/kl-kversion/): Outputs the kernel version (/proc/version).
+- [kl-kconfig](https://binracer.github.io/KernLens/tutorial/kl-kconfig/): Outputs the kernel config (/proc/config.gz).
+- [kl-kmod](https://binracer.github.io/KernLens/tutorial/kl-kmod/): Displays the loaded Linux kernel modules.
+- [kl-ksyscalls](https://binracer.github.io/KernLens/tutorial/kl-ksyscalls/): Displays the Linux syscall table, including names and addresses of syscalls.
+- [kl-kdmesg](https://binracer.github.io/KernLens/tutorial/kl-kdmesg/): Displays the kernel ring buffer (dmesg) contents.
+- [kl-addr](https://binracer.github.io/KernLens/tutorial/kl-addr/): Classifies an address and reports where it maps.
+- [kl-pt](https://binracer.github.io/KernLens/tutorial/kl-pt/): Splits a virtual address into page-table indices, or decodes a page-table entry.
+- [kl-walk](https://binracer.github.io/KernLens/tutorial/kl-walk/): Walks the live page tables and decodes every level.
+- [kl-p2v](https://binracer.github.io/KernLens/tutorial/kl-p2v/): Translates a physical address to virtual + struct page.
+- [kl-v2p](https://binracer.github.io/KernLens/tutorial/kl-v2p/): Translates a virtual address (live page tables) to physical.
+- [kl-pageinfo](https://binracer.github.io/KernLens/tutorial/kl-pageinfo/): Translates a struct page to virtual and physical addresses.
+- [kl-buddy](https://binracer.github.io/KernLens/tutorial/kl-buddy/): Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.
+- [kl-slab](https://binracer.github.io/KernLens/tutorial/kl-slab/): Prints information about the linux kernel's slab allocator SLUB.
+- [kl-sym](https://binracer.github.io/KernLens/tutorial/kl-sym/): Resolves an address to a symbol, or finds symbols by name.
+- [kl-bt](https://binracer.github.io/KernLens/tutorial/kl-bt/): Prints a formatted kernel backtrace.
+- [kl-read](https://binracer.github.io/KernLens/tutorial/kl-read/): Dumps kernel memory as 64-bit words with symbol annotations.
+- [kl-kvar](https://binracer.github.io/KernLens/tutorial/kl-kvar/): Reads a KASLR-aware kernel global variable.
+- [kl-read-field](https://binracer.github.io/KernLens/tutorial/kl-read-field/): Reads a struct field (including nested paths) as an integer.
+- [kl-kbpf](https://binracer.github.io/KernLens/tutorial/kl-kbpf/): Prints information about the linux kernel bpf progs and maps.
+- [kl-kdmabuf](https://binracer.github.io/KernLens/tutorial/kl-kdmabuf/): Prints DMA buf info.
+- [kl-cpu](https://binracer.github.io/KernLens/tutorial/kl-cpu/): Displays CPU topology, the online mask, and per-CPU offsets.
+- [kl-percpu](https://binracer.github.io/KernLens/tutorial/kl-percpu/): Resolves a per-CPU symbol to its runtime address for a CPU.
+- [kl-msr](https://binracer.github.io/KernLens/tutorial/kl-msr/): Reads or writes x86_64 model-specific registers (via GDB).
+- [kl-bits](https://binracer.github.io/KernLens/tutorial/kl-bits/): Inspects a 64-bit value; optionally test/set/clear a bit.
+- [kl-int](https://binracer.github.io/KernLens/tutorial/kl-int/): Shows signed/unsigned and LE/BE integer views.
+- [kl-color](https://binracer.github.io/KernLens/tutorial/kl-color/): Enable, disable, or toggle ANSI color output.
+- [kl-help](https://binracer.github.io/KernLens/tutorial/kl-help/): Lists every KernLens command, or explains one in detail.
 - [Demo container](https://binracer.github.io/KernLens/demo-container/): a kernel built from source, booted under QEMU, and attached in GDB
 - [Python API](https://binracer.github.io/KernLens/api/): the Python API: classes, facade functions, and examples
 - [Architecture](https://binracer.github.io/KernLens/architecture/): package layout, the loading path, and why the boundaries are there
@@ -31,7 +61,7 @@ on is never a surprise.
 
 - [Overview](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
 - [Commands](https://binracer.github.io/KernLens/zh-CN/commands/): (translation)
-- [Tutorial](https://binracer.github.io/KernLens/zh-CN/tutorial/): (translation)
+- [Index](https://binracer.github.io/KernLens/zh-CN/tutorial/): (translation)
 - [Demo container](https://binracer.github.io/KernLens/zh-CN/demo-container/): (translation)
 - [Python API](https://binracer.github.io/KernLens/zh-CN/api/): the same API reference in Chinese
 - [Architecture](https://binracer.github.io/KernLens/zh-CN/architecture/): (translation)

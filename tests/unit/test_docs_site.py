@@ -318,6 +318,41 @@ class RenderedOutputTests(unittest.TestCase):
 
 
 class NavigationTests(unittest.TestCase):
+    def test_the_sidebar_lists_every_registry_command(self) -> None:
+        """The sidebar is generated from the registry, not written by hand.
+
+        A command page that exists but is missing from the sidebar is the
+        failure this catches: the page builds, the URL works, and nobody
+        finds it.  It is a real risk because the list is 30 entries long
+        and the nav is 200 lines of YAML.
+        """
+        listed = {target for _, target in _nav()}
+        expected = {page for _category, _name, page in
+                    gen_docs_site.command_pages()}
+        self.assertEqual(expected - listed, set())
+        self.assertEqual(len(expected), 30)
+
+    def test_every_command_page_is_grouped_by_its_kl_help_category(
+        self,
+    ) -> None:
+        """The sidebar's groups are `kl-help`'s groups, in its order.
+
+        A reader who learned the taxonomy from `kl-help` should meet the
+        same eight headings on the site.  Sorting them differently, or
+        inventing a group, would make the two disagree for no gain.
+        """
+        categories = [
+            category for category, _name, _page
+            in gen_docs_site.command_pages()
+        ]
+        seen: list[str] = []
+        for category in categories:
+            if not seen or seen[-1] != category:
+                seen.append(category)
+        self.assertEqual(
+            seen, [c for c in gen_docs_site.category_order() if c in seen],
+        )
+
     def test_every_nav_target_exists(self) -> None:
         for title, target in _nav():
             if gen_docs_site._is_external(target):
@@ -390,11 +425,23 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(configured, {"en", "zh-CN"})
 
     def test_every_nav_page_has_an_llms_note(self) -> None:
+        """Every sidebar entry has a one-line reason to open it.
+
+        Hand-written pages carry theirs in ``PAGE_NOTES``; the tutorial's
+        command pages get theirs from ``tools/tutorial_meta.json``, which
+        is where the command reference already reads them.  Asking
+        ``note_for`` rather than the dict is what lets the second kind
+        exist at all -- a dict lookup would demand 30 hand-copied
+        sentences that the registry already has.
+        """
         for title, target in _nav():
-            if gen_docs_site._is_external(target):
+            if _is_url(target):
                 continue
             with self.subTest(page=title):
-                self.assertIn(target, gen_docs_site.PAGE_NOTES)
+                self.assertIsNotNone(
+                    gen_docs_site.note_for(target),
+                    f"no description for {target}",
+                )
 
     def test_llms_lists_every_nav_page(self) -> None:
         text = (DOCS / "llms.txt").read_text(encoding="utf-8")
@@ -468,12 +515,17 @@ class LanguageLayoutTests(unittest.TestCase):
         # The Chinese nav does not carry the prefix: its targets are
         # resolved inside the locale's own copy of the docs tree, which
         # is how the plugin pairs the two directories.  A prefixed target
-        # here would send the sidebar to the English pages.
+        # here would send the sidebar to the English pages.  The tutorial
+        # command pages are the exception -- they are not translated, so
+        # the entry names the English file and the plugin republishes it
+        # at ``/zh-CN/tutorial/``.
         chinese = [target for _, target in _locale_nav(text, "zh-CN")]
         self.assertTrue(chinese, "zh-CN has no nav of its own")
         self.assertTrue(
             all(
-                not target.startswith(("en/", "zh-CN/")) or _is_url(target)
+                not target.startswith(("en/", "zh-CN/"))
+                or _is_url(target)
+                or target.startswith(("en/tutorial/", "zh-CN/tutorial/"))
                 for target in chinese
             ),
             chinese,
@@ -488,17 +540,34 @@ class LanguageLayoutTests(unittest.TestCase):
         always offer every page the English one does.  Forgetting to add
         the entry is silent otherwise: the page is built and reachable by
         URL, just not from the sidebar.
+
+        The tutorial command pages are the one set that keep the ``en/``
+        prefix in the Chinese nav.  They are generated from the registry
+        and not translated, so pointing the Chinese sidebar at
+        ``zh-CN/tutorial/kl-x.md`` would name a file that does not exist;
+        the plugin serves the English source under ``/zh-CN/`` and that
+        fallback is what the entry has to match.
         """
         text = _mkdocs()
         english = {
-            target[len("en/"):] for _, target in _nav() if not _is_url(target)
+            self._without_prefix(target)
+            for _, target in _nav()
+            if not _is_url(target)
         }
         chinese = {
-            target
+            self._without_prefix(target)
             for _, target in _locale_nav(text, "zh-CN")
             if not _is_url(target)
         }
         self.assertEqual(english, chinese)
+
+    @staticmethod
+    def _without_prefix(target: str) -> str:
+        """The page path with its language directory removed."""
+        for prefix in ("en/", "zh-CN/"):
+            if target.startswith(prefix):
+                return target[len(prefix):]
+        return target
 
     def test_the_chinese_pages_declare_themselves_chinese(self) -> None:
         """``<html lang>`` is per page, and the theme has one value.
