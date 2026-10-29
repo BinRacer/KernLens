@@ -276,6 +276,54 @@ class PathRewriteTests(unittest.TestCase):
             "../en/tutorial/kl-help.md",
         )
 
+    def test_an_asset_outside_docs_is_copied_not_linked(self) -> None:
+        """The site must not fetch its only image from GitHub.
+
+        ``images/banner.svg`` sits beside ``src/``, so mkdocs does not
+        publish it, and the front page linked
+        ``raw.githubusercontent.com/.../main/images/banner.svg`` instead.
+        That has three consequences a reader would not guess: the site
+        depends on a third party for an image, the banner shown is
+        whatever is on ``main`` rather than the commit being built, and a
+        fork's site displays the upstream banner.
+
+        The asset is copied into ``docs/assets/`` now and referenced
+        relatively, so the same two pages work at either depth.
+        """
+        self.assertIn("images/banner.svg", gen_docs_site.COPIED_ASSETS)
+        self.assertEqual(
+            gen_docs_site.rewrite_attribute("src", "images/banner.svg", "en/index.md"),
+            "assets/banner.svg",
+        )
+        self.assertEqual(
+            gen_docs_site.rewrite_attribute(
+                "src", "images/banner.svg", "zh-CN/index.md",
+            ),
+            "../assets/banner.svg",
+        )
+
+    def test_the_copied_assets_are_committed_and_match(self) -> None:
+        """A copy that is not regenerated is a banner that stops updating.
+
+        This is the failure the user reported: the SVG was edited and the
+        docs site kept showing the old one.  The banner is generated now,
+        so ``gen_docs_site.py --check`` compares it like any other
+        generated page -- and this asserts the comparison actually covers
+        it, rather than trusting that it does.
+        """
+        generated = gen_docs_site.generate()
+        for asset in gen_docs_site.COPIED_ASSETS:
+            copy = DOCS / "assets" / Path(asset).name
+            with self.subTest(asset=asset):
+                self.assertIn(copy, generated)
+                self.assertTrue(copy.is_file(), f"{copy} is missing")
+                self.assertEqual(
+                    copy.read_text(encoding="utf-8"),
+                    (ROOT / asset).read_text(encoding="utf-8"),
+                    f"{copy.relative_to(ROOT)} is stale; "
+                    "run tools/gen_docs_site.py",
+                )
+
 
 class RenderedOutputTests(unittest.TestCase):
     """Published output blocks must be readable text, not ANSI escapes.

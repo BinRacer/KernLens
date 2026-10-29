@@ -7,7 +7,7 @@ hide:
 
 <div align="center">
   <a href="https://github.com/BinRacer/KernLens">
-    <img src="https://raw.githubusercontent.com/BinRacer/KernLens/main/images/banner.svg" alt="KernLens" style="width:100%; max-width:100%; margin-top:0; margin-bottom:-0.5rem">
+    <img src="assets/banner.svg" alt="KernLens" style="width:100%; max-width:100%; margin-top:0; margin-bottom:-0.5rem">
   </a>
 
   

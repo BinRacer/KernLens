@@ -124,7 +124,8 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   │   └── tutorial/     # index translated; the pages are not
 │   ├── assets/           # generated demo.svg + demo.cast, extra.css,
 │   │                     #   plus the hand-written social-card.svg and
-│   │                     #   its rendered social-card.png
+│   │                     #   its rendered social-card.png, plus a copy
+│   │                     #   of images/banner.svg (see below)
 │   └── llms.txt          # generated plain-text index of the site
 ├── overrides/            # mkdocs theme overrides: the language switcher
 ├── hooks/
@@ -194,6 +195,14 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── CREDITS.md            # third-party attribution
 └── CHANGELOG.md
 ```
+
+`docs/assets/banner.svg` is a copy of `images/banner.svg`, which sits
+beside `src/` and is therefore outside `docs_dir`.  The front page used
+to link it from `raw.githubusercontent.com`; the copy is made by
+`tools/gen_docs_site.py` instead, so the site is self-contained, shows
+the banner at the commit being built, and a fork shows its own.  Editing
+the source and not regenerating leaves the site on the old words, which
+`--check` catches.
 
 `docs/assets/social-card.svg` is the only asset here that is **hand-written
 rather than generated**, because it is prose in a different medium: the

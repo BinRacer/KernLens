@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 168" preserveAspectRatio="xMidYMid meet" width="100%" role="img" aria-labelledby="banner-title banner-desc">
+    <title id="banner-title">KernLens</title>
+    <desc id="banner-desc">KernLens — GDB commands for reading a live Linux kernel: page tables, SLUB caches and freelists, struct page, symbols, KASLR</desc>
+    <defs>
+        <!--
+          One gradient, and both ends have to read on #ffffff and on
+          #0d1117, because a single-file banner cannot swap colours per
+          theme.  The old blue-to-purple ended at #7209b7, which is
+          2.20:1 on the dark background: the "Lens" half of the wordmark
+          was nearly invisible there.  These two are 5.37 and 3.53, so
+          the worst case on either theme is 3.53; enough for 58px text,
+          which WCAG counts as large (AA large is 3.0).
+        -->
+        <linearGradient id="wordmark" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4361ee"/>
+            <stop offset="100%" stop-color="#5b5bd6"/>
+        </linearGradient>
+        <style>
+            text {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                    Helvetica, Arial, sans-serif;
+                text-anchor: middle;
+            }
+            .wordmark {
+                font-size: 58px;
+                font-weight: 800;
+                letter-spacing: -1px;
+                fill: url(#wordmark);
+            }
+            /*
+              Sizes are chosen against a contrast ceiling rather than by
+              eye.  One fill on two backgrounds tops out at 4.35:1 --
+              computed by sweeping every grey -- so 4.5:1 (AA for small
+              text) is unreachable here.  WCAG counts bold text at 18.66px
+              and regular text at 24px as "large", where AA needs only
+              3.0, so the two small lines are set to pass that:
+
+                tagline 24px bold  #6b7280   4.83 light / 3.91 dark
+                surface 19px bold  #8b5cf6   4.23 light / 4.47 dark
+
+              19px clears the bold threshold with room for font
+              differences between viewers.  Do not shrink either line
+              without re-measuring: at 14px the surface line needed 4.5
+              and had 4.23 on white.
+              (No angle brackets in these comments: this is XML text, and
+              a raw one would be parsed as the start of a tag.)
+            */
+            .tagline {
+                font-size: 24px;
+                font-weight: 700;
+                fill: #6b7280;
+            }
+            /* The command set is the whole point of the project, so it
+               comes first.  Names come from the canonical description in
+               pyproject.toml: "SLUB freelists" is the structure the code
+               decodes and "struct page" is a whole subsystem of the tool,
+               and the banner used to name neither.  Monospace because the
+               commands are typed. */
+            .surface {
+                font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+                    Consolas, monospace;
+                font-size: 19px;
+                font-weight: 600;
+                fill: #8b5cf6;
+            }
+        </style>
+    </defs>
+
+    <text class="wordmark" x="50%" y="58">KernLens</text>
+    <text class="tagline" x="50%" y="106">GDB commands for a live Linux kernel</text>
+    <text class="surface" x="50%" y="140">page tables · SLUB freelists · struct page · symbols · KASLR</text>
+</svg>

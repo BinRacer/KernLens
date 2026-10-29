@@ -115,7 +115,9 @@ Python API 用一套可读、中等长度的风格 —— `snake_case` 函数、
 │   │   ├── index.md      # 由 README.zh-CN.md 生成
 │   │   ├── api.md        # 同一份 API 参考的中文版
 │   │   └── tutorial/     # 索引已翻译；页面本身没有
-│   ├── assets/           # 生成的 demo.svg + demo.cast，以及 extra.css
+│   ├── assets/           # 生成的 demo.svg + demo.cast、extra.css，加上
+│   │                     #   手写的 social-card.svg 及其渲染的 PNG，
+│   │                     #   以及 images/banner.svg 的副本（见下）
 │   └── llms.txt          # 生成的站点纯文本索引
 ├── overrides/            # mkdocs 主题覆盖：语言切换器
 ├── hooks/

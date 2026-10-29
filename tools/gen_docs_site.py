@@ -85,6 +85,16 @@ SITE_LINKS = {
     "README.zh-CN.md": SITE + "/zh-CN/",
 }
 
+#: Files that live outside ``docs/`` and are copied into ``docs/assets/``
+#: so mkdocs publishes them with everything else.  Paths are relative to
+#: the repository root, as written in the READMEs.
+#:
+#: These used to be linked from ``raw.githubusercontent.com``.  That works
+#: from a browser but makes the site depend on a third party for its only
+#: image, pins it to whatever is on ``main`` rather than to the commit
+#: being built, and leaves a fork's site showing the upstream banner.
+COPIED_ASSETS = ("images/banner.svg",)
+
 #: One line per published page, keyed by the nav target.  A nav entry
 #: without a note fails the generator: ``llms.txt`` is a list of pages
 #: with a reason to open them, not a list of filenames.
@@ -281,9 +291,13 @@ def rewrite_attribute(name: str, target: str, dest: str = "en/index.md") -> str:
         return SITE_LINKS[path]
     if path.startswith("docs/"):
         return _climb(dest) + path[len("docs/"):]
-    # ``images/banner.svg`` is beside ``src/``, not inside ``docs/``, so
-    # the site cannot serve it.  Raw is the one GitHub URL that an ``img``
-    # can load (``blob`` returns an HTML page).
+    # ``images/banner.svg`` lives beside ``src/``, not inside ``docs/``,
+    # so mkdocs does not publish it.  It is copied into ``docs/assets/``
+    # instead of being linked from raw.githubusercontent: the site is
+    # self-contained then, it shows the banner as committed rather than
+    # as pushed to main, and a fork's build shows the fork's banner.
+    if path in COPIED_ASSETS:
+        return _climb(dest) + "assets/" + PurePosixPath(path).name
     base = RAW if name == "src" else f"{REPO}/blob/main"
     return f"{base}/{path}"
 
@@ -573,6 +587,13 @@ def generate() -> dict[Path, str]:
         for source, dest in OUTPUT.items()
     }
     pages[ROOT / "docs" / "llms.txt"] = render_llms(nav)
+    # Assets that live outside `docs/` are copied in rather than linked
+    # from raw.githubusercontent, so the site is self-contained and shows
+    # the banner at the commit being built.
+    for asset in COPIED_ASSETS:
+        pages[ROOT / "docs" / "assets" / PurePosixPath(asset).name] = (
+            ROOT / asset
+        ).read_text(encoding="utf-8")
     # The sidebar is generated too, so `mkdocs.yml` is one of the files this
     # module owns.  A command added to the registry and not to the nav is a
     # page nobody can reach from the sidebar, and `--check` is where that
