@@ -152,6 +152,28 @@ gdb -q -ex "source $(kernlens path)"
 升级就是 `git pull`（或重跑安装脚本）。开发环境搭建见
 [`CONTRIBUTING.zh-CN.md`](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.zh-CN.md)。
 
+## 用容器试一遍
+
+演示镜像会从源码编译一个精简的 6.1 内核，在 QEMU 里启动它，再让 GDB
+带着 KernLens 连上去。不需要自备调试目标、内核源码树，也不需要
+`/dev/kvm`：
+
+```console
+docker build -f demo/Dockerfile -t kernlens-demo .
+docker run --rm -it kernlens-demo
+```
+
+默认会依次运行 `kl-status`、`kl-kbase`、`kl-kconfig`、`kl-slab info`、
+`kl-sym` 和 `kl-pagewalk`。传入一个命令则只运行那一条：
+
+```console
+docker run --rm -it kernlens-demo kl-slab info dentry
+```
+
+内核在镜像里从源码编译，并去掉了 DWARF，所以这次会话同时也是对 BTF
+路径的检验。镜像里有什么、为什么选择编译而不是下载，见
+[`docs/demo-container.md`](demo-container.md)。
+
 ## 40 个命令
 
 分组与 `kl-help` 完全一致。`kl-` 形式是你在提示符下敲的；规范的
@@ -231,6 +253,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 | 文档 | 内容 |
 | --- | --- |
 | [`docs/tutorial/`](tutorial/README.md) | 每个命令一页，真实输出 |
+| [`docs/demo-container.md`](demo-container.md) | QEMU 里的内核，从源码构建、开箱可连 |
 | [`docs/commands.md`](commands.md) | 每个命令与别名，生成式 |
 | [`docs/api.zh-CN.md`](api.zh-CN.md) | Python API 参考 |
 | [`docs/architecture.md`](architecture.md) | 包结构、API 映射、设计说明 |

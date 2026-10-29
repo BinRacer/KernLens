@@ -162,6 +162,30 @@ first release is published, the installer above is the shorter path, and
 `git pull` (or re-running it) is the upgrade. Contributor setup is in
 [`CONTRIBUTING.md`](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md).
 
+## Try it in a container
+
+The demo image compiles a small 6.1 kernel, boots it under QEMU, and
+attaches GDB with KernLens sourced. No debug target, no kernel source
+tree, and no `/dev/kvm` are needed:
+
+```console
+docker build -f demo/Dockerfile -t kernlens-demo .
+docker run --rm -it kernlens-demo
+```
+
+The tour runs `kl-status`, `kl-kbase`, `kl-kconfig`, `kl-slab info`,
+`kl-sym`, and `kl-pagewalk`. Pass a command instead of the tour to run
+just that one:
+
+```console
+docker run --rm -it kernlens-demo kl-slab info dentry
+```
+
+The kernel is built from source in the image and stripped of DWARF, so
+the session is also a test of the BTF path. What is inside, and why it is
+built rather than downloaded, is in
+[`docs/demo-container.md`](demo-container.md).
+
 ## The 40 commands
 
 Grouped as `kl-help` groups them. The `kl-` form is what you type at the
@@ -250,6 +274,7 @@ registry by the test suite, so it cannot quietly become false.
 | Document | What is in it |
 | --- | --- |
 | [`docs/tutorial/`](tutorial/README.md) | one page per command, real output |
+| [`docs/demo-container.md`](demo-container.md) | a kernel under QEMU, built from source and ready to attach |
 | [`docs/commands.md`](commands.md) | every command and alias, generated |
 | [`docs/api.md`](api.md) | the Python API reference |
 | [`docs/architecture.md`](architecture.md) | package layout, API map, design notes |

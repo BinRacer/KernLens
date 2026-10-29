@@ -13,6 +13,7 @@
 - [首页 (中文)](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
 - [Commands](https://binracer.github.io/KernLens/commands/): every command and alias, generated from the registry
 - [Tutorial](https://binracer.github.io/KernLens/tutorial/): one page per command, with output captured from a real kernel
+- [Demo container](https://binracer.github.io/KernLens/demo-container/): a kernel built from source, booted under QEMU, and attached in GDB
 - [Python API](https://binracer.github.io/KernLens/api/): the Python API: classes, facade functions, and examples
 - [Python API (中文)](https://binracer.github.io/KernLens/api.zh-CN/): the same API reference in Chinese
 - [Architecture](https://binracer.github.io/KernLens/architecture/): package layout, the loading path, and why the boundaries are there

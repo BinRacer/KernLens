@@ -41,6 +41,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── .github/workflows/
 │   ├── ci.yml            # tests, typing, generators, wheel check
 │   ├── docs.yml          # builds the site strictly, deploys to Pages
+│   ├── demo-image.yml    # tag -> kernel image -> GitHub Container Registry
 │   └── release.yml       # tag -> PyPI -> GitHub Release
 ├── src/kernlens/
 │   ├── __init__.py       # public re-exports and __version__
@@ -120,6 +121,15 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── assets/           # generated demo.svg + demo.cast
 │   ├── naming.md         # command, example and Python naming rules
 │   └── tutorial/         # one generated page per command (40)
+├── demo/
+│   ├── Dockerfile        # builds the kernel, then the runtime image
+│   ├── entrypoint.sh     # boot QEMU, wait for userspace, attach GDB
+│   ├── demo.gdb          # load the image, connect, source gdbinit.py
+│   ├── demo-commands.gdb # the address-free tour
+│   ├── kernel/
+│   │   ├── config.fragment  # options the commands read, on defconfig
+│   │   └── init.c           # the whole userspace: mounts and boot marker
+│   └── README.md         # how to build and run it
 ├── bin/kernlens          # checkout launcher for the console script
 ├── install.sh            # one-command checkout installer
 ├── gdbinit.py            # checkout shim -> src/kernlens/gdbinit.py
@@ -152,6 +162,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │       └── per_cpu_bp.py             # `_bp`      `pbreak`
 ├── images/banner.svg
 ├── mkdocs.yml            # documentation site, built and deployed by CI
+├── .dockerignore         # the demo image's build context
 ├── CITATION.cff          # how to cite the project; version and date
 ├── pyproject.toml
 ├── tools/                            # generators and the example contract

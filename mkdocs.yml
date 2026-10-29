@@ -70,6 +70,7 @@ nav:
   - 首页 (中文): zh-CN.md
   - Commands: commands.md
   - Tutorial: tutorial/README.md
+  - Demo container: demo-container.md
   - Python API: api.md
   - Python API (中文): api.zh-CN.md
   - Architecture: architecture.md
