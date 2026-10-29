@@ -27,8 +27,8 @@ kl-percpu current_task
 
 ```text
 Symbol: current_task (cpu 0)
-Address: 0xffff9762c7a1fb80
-percpu_off: 0xffff9762c7a00000
+Address: 0xffff90c347a1fb80
+percpu_off: 0xffff90c347a00000
 ```
 
 ### Reading it
@@ -47,8 +47,8 @@ kl-percpu current_task 1
 
 ```text
 Symbol: current_task (cpu 1)
-Address: 0xffff9762c7a9fb80
-percpu_off: 0xffff9762c7a80000
+Address: 0xffff90c347a9fb80
+percpu_off: 0xffff90c347a80000
 ```
 
 ### Reading it

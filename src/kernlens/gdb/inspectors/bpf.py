@@ -196,14 +196,19 @@ class BpfInspector(InspectorBase):
     def _bpf_head_offset(self, idr: int) -> int | None:
         """Locate ``struct xarray.xa_head`` inside a ``struct idr``.
 
-        For an empty idr the head slot is zero, so this scans the first
-        pointer-width words for one that holds a kernel ``xa_node``.
+        ``struct idr`` is ``{ struct xarray idr_rt; unsigned int idr_base;
+        unsigned int idr_next; }``, so the head lives inside ``idr_rt``.
+        This used to scan the idr's first words for a pointer into the
+        kernel address range and call the first hit the head.  On a kernel
+        whose ``prog_idr`` is empty -- ``xa_head`` is NULL -- the next
+        global's contents are what the scan finds, and any self-referential
+        list head among them makes the xarray walk recurse until Python
+        raises: ``kl-kbpf`` reported "maximum recursion depth exceeded"
+        instead of "bpf progs: 0".  The offset is now resolved, and a build
+        too old to have ``struct idr`` at all returns ``None`` rather than
+        a guess.
         """
-        for index in range(8):
-            value = self._read_u64(idr + index * PTRSIZE)
-            if value and self._is_kernel(value & ~3):
-                return index * PTRSIZE
-        return None
+        return self._layout_offset("struct idr", "idr_rt.xa_head")
 
     def _xarray_slots(self, head: int) -> list[int]:
         """Collect every value slot reachable from an XArray head."""

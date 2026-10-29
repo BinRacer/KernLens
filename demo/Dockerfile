@@ -21,6 +21,11 @@ ARG KERNEL_VERSION=6.1.134
 ARG KERNEL_URL=https://cdn.kernel.org/pub/linux/kernel/v6.x
 
 ENV DEBIAN_FRONTEND=noninteractive
+# `python3` is not for anything this repository runs: the kernel's
+# `tools/bpf/resolve_btfids` generates `libbpf/bpf_helper_defs.h` with it,
+# and the base image does not carry it.  Without it the build dies at
+# `GEN .../bpf_helper_defs.h` with `/usr/bin/env: 'python3': No such file
+# or directory`, which is what the first tagged run of the image hit.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bc \
@@ -34,6 +39,7 @@ RUN apt-get update \
         gzip \
         libelf-dev \
         libssl-dev \
+        python3 \
         xz-utils \
     && rm -rf /var/lib/apt/lists/*
 

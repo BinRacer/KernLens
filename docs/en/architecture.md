@@ -41,7 +41,6 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── .github/workflows/
 │   ├── ci.yml            # tests, typing, generators, wheel check
 │   ├── docs.yml          # builds the site strictly, deploys to Pages
-│   ├── demo-image.yml    # tag -> kernel image -> GitHub Container Registry
 │   └── release.yml       # tag -> PyPI -> GitHub Release
 ├── src/kernlens/
 │   ├── __init__.py       # public re-exports and __version__

@@ -126,7 +126,9 @@ message rather than a wrong answer.
   devices report what they find, which is nothing.
 - **TCG is slower than KVM.**  The tour is small; walking every cache in
   a large kernel under TCG is not instant.
-- **No published image yet.**  On a version tag the `demo image`
-  workflow builds and publishes the same image to the GitHub Container
-  Registry.  Until the first release, build it locally with the command
-  at the top of this page.
+- **The image is built locally, not published.**  Compiling a kernel is
+  minutes of work, and a registry tag would pin this project to
+  maintaining rebuilds for an artifact that is one command away.  The
+  `demo/Dockerfile` in the checkout is the deliverable: build it with the
+  command at the top of this page.  No workflow builds or publishes an
+  image.

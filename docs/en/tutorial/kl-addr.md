@@ -21,19 +21,19 @@ Every question KernLens can answer about a bare address: canonicality, the regio
 ### Invocation
 
 ```gdb
-kl-addr 0xffff9762c0400000
+kl-addr 0xffff90c340400000
 ```
 
 ### Output
 
 ```text
-Address: 0xffff9762c0400000
+Address: 0xffff90c340400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff9762c0400000 up=0xffff9762c0400000
+Alignment: down=0xffff90c340400000 up=0xffff90c340400000
 Physical: 0x400000  pfn=1024
-page: 0xffffd4fe00010000
+page: 0xffffcd3b80010000
 ```
 
 ### Reading it
@@ -45,20 +45,20 @@ page: 0xffffd4fe00010000
 ### Invocation
 
 ```gdb
-kl-addr 0xffff9762c0400000 0xfff
+kl-addr 0xffff90c340400000 0xfff
 ```
 
 ### Output
 
 ```text
-Address: 0xffff9762c0400000
+Address: 0xffff90c340400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff9762c0400000 up=0xffff9762c0400000
-Tags: mask=0xfff tag=0x0 stripped=0xffff9762c0400000
+Alignment: down=0xffff90c340400000 up=0xffff90c340400000
+Tags: mask=0xfff tag=0x0 stripped=0xffff90c340400000
 Physical: 0x400000  pfn=1024
-page: 0xffffd4fe00010000
+page: 0xffffcd3b80010000
 ```
 
 ### Reading it
@@ -70,17 +70,17 @@ The optional mask separates a tagged pointer from the address inside it -- the l
 ### Invocation
 
 ```gdb
-kl-addr 0xffff9762c0400000 --brief
+kl-addr 0xffff90c340400000 --brief
 ```
 
 ### Output
 
 ```text
-Address: 0xffff9762c0400000
+Address: 0xffff90c340400000
 Class: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 Physical: 0x400000  pfn=1024
-page: 0xffffd4fe00010000
-bases: page_offset=0xffff9762c0000000 vmemmap=0xffffd4fe00000000
+page: 0xffffcd3b80010000
+bases: page_offset=0xffff90c340000000 vmemmap=0xffffcd3b80000000
 ```
 
 ### Reading it

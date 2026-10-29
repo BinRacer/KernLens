@@ -21,13 +21,13 @@ Answers "which symbol is this?" from both tables a session has: an address resol
 ### Invocation
 
 ```gdb
-kl-sym 0xffffffff9a200100
+kl-sym 0xffffffffae800100
 ```
 
 ### Output
 
 ```text
-0xffffffff9a200100  secondary_startup_64 at arch/x86/kernel/head_64.S:282
+0xffffffffae800100  secondary_startup_64 at arch/x86/kernel/head_64.S:282
 ```
 
 ### Reading it
@@ -39,13 +39,13 @@ The symbol, its section, and `file:line` -- the line comes from DWARF, so it is 
 ### Invocation
 
 ```gdb
-kl-sym 0xffff9762c0400000
+kl-sym 0xffff90c340400000
 ```
 
 ### Output
 
 ```text
-0xffff9762c0400000  ?? at ??
+0xffff90c340400000  ?? at ??
 ```
 
 ### Reading it
@@ -63,8 +63,8 @@ kl-sym --find commit_creds
 ### Output
 
 ```text
-0xffffffff9a3dd800 T commit_creds
-0xffffffff9bfe942c r __ksymtab_commit_creds
+0xffffffffae9dd800 T commit_creds
+0xffffffffb05e942c r __ksymtab_commit_creds
 2 symbol(s) found
 ```
 
@@ -83,8 +83,8 @@ kl-sym --find page_offset_base
 ### Output
 
 ```text
-0xffffffff9bf893a8 D page_offset_base
-0xffffffff9bff0620 r __ksymtab_page_offset_base
+0xffffffffb05893a8 D page_offset_base
+0xffffffffb05f0620 r __ksymtab_page_offset_base
 2 symbol(s) found
 ```
 

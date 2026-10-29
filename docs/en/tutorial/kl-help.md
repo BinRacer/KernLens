@@ -25,7 +25,7 @@ kl-help
 ### Output
 
 ```text
-KernLens 0.3.0 — command reference
+KernLens 0.3.0rc2 — command reference
   type kl-help kl-<command> for usage, options, and examples
 
 overview
@@ -62,7 +62,7 @@ memory & symbols
   kl-bt [-h] [--chain] [depth]        Prints a formatted kernel backtrace.
   kl-read [-h] [-m {ascii}] address [count]  Dumps kernel memory as 64-bit words with symbol annotations.
   kl-kvar [-h] symbol                 Reads a KASLR-aware kernel global variable.
-  kl-read-field [-h] address type path  Reads a struct field (including nested paths) as an integer.
+  kl-read-field [-h] address type path  Reads a struct field (including nested paths), whatever its type.
   kl-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]  Prints information about the linux kernel bpf progs and maps.
   kl-kdmabuf [-h]                     Prints DMA buf info.
 

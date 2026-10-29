@@ -25,7 +25,7 @@ kl-color
 ### Output
 
 ```text
-KernLens color: off
+KernLens color: on
 ```
 
 ### Reading it
@@ -43,7 +43,7 @@ kl-color toggle
 ### Output
 
 ```text
-KernLens color: on
+KernLens color: off
 ```
 
 ### Reading it

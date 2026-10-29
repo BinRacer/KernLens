@@ -29,7 +29,7 @@ Topology: nr_cpus=4 nr_nodes=1 current=0
 Online: 0-3 (4/4)
     cpu 0
     online: True
-    percpu_off: 0xffff9762c7a00000
+    percpu_off: 0xffff90c347a00000
 ```
 
 ### Reading it
@@ -51,7 +51,7 @@ Topology: nr_cpus=4 nr_nodes=1 current=0
 Online: 0-3 (4/4)
     cpu 0
     online: True
-    percpu_off: 0xffff9762c7a00000
+    percpu_off: 0xffff90c347a00000
 ```
 
 ### Reading it

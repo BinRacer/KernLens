@@ -26,8 +26,8 @@ kl-kvar page_offset_base
 
 ```text
 symbol: page_offset_base
-address: 0xffffffff9bf893a8
-value: 0xffff9762c0000000
+address: 0xffffffffb05893a8
+value: 0xffff90c340000000
 ```
 
 ### Reading it
@@ -46,7 +46,7 @@ kl-kvar nr_online_nodes
 
 ```text
 symbol: nr_online_nodes
-address: 0xffffffff9c668384
+address: 0xffffffffb0c68384
 value: 0x100000001
 ```
 

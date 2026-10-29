@@ -13,14 +13,14 @@ All output in this tutorial was captured from one boot of the project's test VM:
 | Kernel | `6.1.134` (x86_64, DWARF debug info) |
 | CPUs | 4 |
 | SLUB caches | 170 |
-| KASLR slide | `0x19200000` |
+| KASLR slide | `0x2d800000` |
 | `_text` (link) | `0xffffffff81000000` |
-| `_text` (runtime) | `0xffffffff9a200000` |
-| `page_offset_base` | `0xffff9762c0000000` |
-| `vmemmap_base` | `0xffffd4fe00000000` |
+| `_text` (runtime) | `0xffffffffae800000` |
+| `page_offset_base` | `0xffff90c340000000` |
+| `vmemmap_base` | `0xffffcd3b80000000` |
 | A free page (phys) | `0x400000` |
-| Its direct-map alias | `0xffff9762c0400000` |
-| Its `struct page` | `0xffffd4fe00010000` |
+| Its direct-map alias | `0xffff90c340400000` |
+| Its `struct page` | `0xffffcd3b80010000` |
 
 `page_offset_base` and `vmemmap_base` are kernel **variables** the boot code fills in, so they change on every boot, and the slide changes with them.  Everything else here (struct offsets, the zone list, cache names, symbol names) is stable for this build.  Anything boot-specific is re-derived by KernLens at run time rather than assumed, which is why the commands show these numbers instead of a constant.
 

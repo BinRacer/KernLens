@@ -1175,5 +1175,92 @@ class StdlibRunnerTests(unittest.TestCase):
                 self.assertTrue(path.is_dir(), f"{path} is not a directory")
 
 
+class CiSkipListTests(unittest.TestCase):
+    """``paths-ignore`` may only name files no test opens.
+
+    The list exists to avoid a four-version matrix for a licence typo, and
+    it went wrong in the obvious way: it held ``docs/**``, ``images/**``,
+    ``examples/api/gdbinit.example`` and ``CHANGELOG.md``, and every one of
+    those is read by the suite.  A docs-only push was therefore green
+    *without* running the test that would have caught it, and the stale
+    file it produced was found by a different workflow one run later -- by
+    which time the failure pointed at a commit that was fine.
+
+    The justification is a map, not a static analysis.  Deciding "does a
+    test read this?" from text alone cannot work: ``release.check()``
+    reads ``CHANGELOG.md`` through the module's own ``ROOT``, so no test
+    file mentions the filename, and a search would call it unasserted.
+    What a map can do is force the judgement to be written down, so that
+    adding an entry without thinking about the suite is a failing test.
+    """
+
+    WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+
+    #: Every file CI is allowed to skip, and why that is safe.  A new
+    #: entry has to be justified here, which is the point.
+    JUSTIFIED = {
+        "CREDITS.md": (
+            "attribution prose; no test and no tool opens it"
+        ),
+        "LICENSE": (
+            "the licence text; `pyproject.toml` names it as a licence "
+            "file, so a build notices a missing one, and nothing reads "
+            "its contents"
+        ),
+    }
+
+    def _ignored(self) -> list[str]:
+        """The literal entries under ``paths-ignore``, in file order."""
+        lines = self.WORKFLOW.read_text(encoding="utf-8").splitlines()
+        start = next(
+            index for index, line in enumerate(lines)
+            if line.strip() == "paths-ignore:"
+        )
+        entries: list[str] = []
+        for line in lines[start + 1:]:
+            stripped = line.strip()
+            if not stripped.startswith("- "):
+                break
+            entries.append(stripped[2:].strip().strip('"').strip("'"))
+        return entries
+
+    def test_every_entry_is_justified(self) -> None:
+        self.assertEqual(sorted(self._ignored()), sorted(self.JUSTIFIED))
+
+    def test_the_release_inputs_are_never_skipped(self) -> None:
+        # `tools/release.py check` reads three hand-written files, and one
+        # of them is the changelog.  A skip that covered it would let a
+        # malformed release section land unread -- the exact failure this
+        # class exists for.
+        import release
+
+        guarded = {
+            path.name for path in (
+                release.CHANGELOG, release.CITATION,
+            )
+        }
+        for entry in self._ignored():
+            with self.subTest(entry=entry):
+                self.assertNotIn(entry.rstrip("/*"), guarded)
+
+    def test_no_directory_is_skipped(self) -> None:
+        # Every directory in this repository holds at least one file a
+        # test reads, and a glob hides which ones.
+        for entry in self._ignored():
+            with self.subTest(entry=entry):
+                self.assertNotIn("*", entry)
+                self.assertFalse((ROOT / entry).is_dir(), entry)
+
+    def test_pull_requests_are_not_filtered(self) -> None:
+        # Filtering ``pull_request`` would leave a required check pending
+        # forever on a docs-only PR, because no run would be created.
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        pull = text.index("pull_request:")
+        self.assertNotIn(
+            "paths-ignore",
+            text[pull:text.index("workflow_dispatch:")],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

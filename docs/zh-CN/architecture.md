@@ -34,8 +34,7 @@ Python API 用一套可读、中等长度的风格 —— `snake_case` 函数、
 ├── .github/workflows/
 │   ├── ci.yml            # 测试、类型检查、生成器、wheel 校验
 │   ├── docs.yml          # 严格构建站点并部署到 Pages
-│   ├── demo-image.yml    # tag -> 内核镜像 -> GitHub Container Registry
-│   └── release.yml       # tag -> PyPI -> GitHub Release
+│   └── release.yml       # 版本 tag -> PyPI -> GitHub Release
 ├── src/kernlens/
 │   ├── __init__.py       # 公开再导出与 __version__
 │   ├── cli.py            # `kernlens` 控制台脚本：path/install/doctor

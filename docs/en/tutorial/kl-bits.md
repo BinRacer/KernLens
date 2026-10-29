@@ -41,14 +41,14 @@ The `value:` row pairs the hex form with a 64-bit binary rendering, so the bit p
 ### Invocation
 
 ```gdb
-kl-bits 0xffffffff9a300000
+kl-bits 0xffffffffae900000
 ```
 
 ### Output
 
 ```text
-value: 0xffffffff9a300000  1111111111111111111111111111111110011010001100000000000000000000
-scan: popcount=38 leading_zeros=0 trailing_zeros=20 first_set=21 last_set=64
+value: 0xffffffffae900000  1111111111111111111111111111111110101110100100000000000000000000
+scan: popcount=39 leading_zeros=0 trailing_zeros=20 first_set=21 last_set=64
 power: is_power_of_2=False  log2_floor=63  log2_ceil=64
 ```
 

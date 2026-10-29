@@ -25,11 +25,11 @@ kl-status
 ### Output
 
 ```text
-KernLens 0.3.0 — color: off
-    KASLR slide: +0x19200000
-    _text: link=0xffffffff81000000 runtime=0xffffffff9a200000
-    page_offset: 0xffff9762c0000000
-    vmemmap: 0xffffd4fe00000000
+KernLens 0.3.0rc2 — color: on
+    KASLR slide: +0x2d800000
+    _text: link=0xffffffff81000000 runtime=0xffffffffae800000
+    page_offset: 0xffff90c340000000
+    vmemmap: 0xffffcd3b80000000
     topology: nr_cpus=4 nr_nodes=1
 
 kl-help lists every command, kl-help kl-<command> explains one

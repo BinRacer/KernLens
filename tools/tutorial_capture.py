@@ -92,35 +92,77 @@ def _probe() -> dict:
 
 
 def _slab_object() -> int:
-    """Return a real object address from a real cache.
+    """Return an object on a slab page that has a freelist to decode.
 
-    ``dentry`` is preferred because it exists on every SLUB kernel and
-    has a non-trivial usercopy window, so its ``info`` page has something
-    worth showing.
+    ``kl-slab details`` reports ``slab->freelist`` and, when that is not
+    ``NULL``, the free pointer stored in the first free object.  That
+    decoded pointer is the whole point of the page, and the README demo
+    quotes it, so the object has to come from a page where it exists.
 
-    A node's partial list is preferred over a per-CPU freelist because an
-    object is only useful for ``kl-slab details`` if its *page* still
-    holds a ``slab->freelist`` chain: that is what shows a decoded free
-    pointer.  A per-CPU slab is frequently drained (``freelist: NULL``)
-    because the allocator hands its last object to the caller, which
-    would render a page with nothing to decode.  The order therefore goes
-    partial list first, per-CPU second, active slab last.
+    Two sources look like they qualify and do not:
+
+    * **A per-CPU freelist** (``kmem_cache_cpu.freelist``).  It is
+      non-``NULL`` precisely while the page is the CPU's *active* slab,
+      and an active slab's ``slab->freelist`` is ``NULL`` -- the CPU
+      freelist replaced it.  Feeding one to ``details`` renders
+      ``freelist: NULL`` next to a claim that a chain was decoded.
+    * **A per-CPU active slab** (``kmem_cache_cpu.slab``), for the same
+      reason.
+
+    The node partial list is the source that works: an object on a
+    partially-free page always has a chain.  ``dentry`` is tried first
+    because it exists on every SLUB kernel, then ``kmalloc-1k`` (which
+    the demo's ``init`` seeds with SysV messages on purpose), then every
+    other cache -- a boot with no dentry partials is normal, and it is
+    not a reason to fail.
     """
-    cache = kdbg.slab_cache("dentry")
+    seed = [c.name for c in kdbg.slab_caches()]
+    preferred = [name for name in ("dentry", "kmalloc-1k") if name in seed]
+    order = preferred + [name for name in seed if name not in preferred]
+    for name in order:
+        found = _partial_slab_object(name)
+        if found:
+            return found
+    raise SystemExit(
+        "no slab page with a freelist to decode: every cache on this boot "
+        "has only full slabs.  The capture needs a boot with partial slabs "
+        "-- the demo's init seeds kmalloc-1k for exactly this reason."
+    )
+
+
+def _partial_slab_object(cache_name: str) -> int | None:
+    """Return the head object of *cache_name*'s first partial slab, if any."""
+    cache = kdbg.slab_cache(cache_name)
     if cache is None:
-        cache = kdbg.slab_caches()[0]
+        return None
     address = cache.address
     for node in range(max(kdbg.nr_nodes(), 1)):
         count, _node, _head_slab, head_freelist = kdbg.partial_info(
             address, node,
         )
-        if count and head_freelist:
+        if not count or not head_freelist:
+            continue
+        # The head slab of a partial list always has a chain; read it back
+        # rather than trust the list, because the pointer is what the page
+        # will be judged on.
+        page = _slab_page(head_freelist)
+        if page is not None and kdbg.read_field(page, "struct slab", "freelist"):
             return head_freelist
-    for cpu in range(kdbg.nr_cpus()):
-        freelist = kdbg.cpu_freelist(address, cpu)
-        if freelist:
-            return freelist
-    return kdbg.cpu_active_slab(address, 0) or 0
+    return None
+
+
+def _slab_page(obj: int) -> int | None:
+    """Return the ``struct slab`` page that contains *obj*.
+
+    The same two steps ``kl-slab details`` takes: translate the object's
+    direct-map address to its ``struct page``, then follow the compound
+    head so a tail page reports the head slab.  Reusing them keeps the
+    capture's idea of "the page" identical to the command's.
+    """
+    page = kdbg.head_to_page(obj)
+    if page is None:
+        return None
+    return kdbg.compound_head(page)
 
 
 def _cases(ctx: dict) -> list[tuple[str, list[str]]]:

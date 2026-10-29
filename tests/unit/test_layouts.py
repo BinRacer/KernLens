@@ -239,6 +239,24 @@ class VerifiedValueTests(unittest.TestCase):
             layouts.offset("struct prb_desc", "text_blk_lpos.begin"), 0x08,
         )
 
+    def test_idr_head_is_not_at_offset_zero(self) -> None:
+        """``struct idr`` is ``{ struct xarray idr_rt; u32 base; u32 next; }``.
+
+        The BPF inspector used to scan the idr's first words for anything
+        that looked like a kernel pointer, so an *empty* ``prog_idr`` made
+        it adopt the next global as a tree root.  The offset it needs is
+        this one: ``xa_head`` inside the embedded ``struct xarray``, after
+        ``xa_lock`` and ``xa_flags``.  Read from the 6.1.134 test VM's
+        DWARF (``sizeof(struct idr)`` is 24).
+        """
+        self.assertEqual(layouts.offset("struct idr", "idr_rt.xa_head"), 0x08)
+        self.assertEqual(layouts.offset("struct xarray", "xa_head"), 0x08)
+        self.assertEqual(layouts.sizeof("struct idr"), 0x18)
+        # The three fields are laid out consecutively, so a wrong xa_head
+        # would collide with one of them rather than land in padding.
+        self.assertEqual(layouts.offset("struct idr", "idr_base"), 0x10)
+        self.assertEqual(layouts.offset("struct idr", "idr_next"), 0x14)
+
 
 class VariantMatchingTests(unittest.TestCase):
     def test_version_bounds(self) -> None:

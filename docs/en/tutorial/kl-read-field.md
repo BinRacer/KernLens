@@ -21,14 +21,15 @@ Reads one field out of a struct at a given address, following a dotted path into
 ### Invocation
 
 ```gdb
-kl-read-field 0xffffd4fe00010000 'struct page' _refcount.counter
+kl-read-field 0xffffcd3b80010000 'struct page' _refcount.counter
 ```
 
 ### Output
 
 ```text
-field: ((struct page *)0xffffd4fe00010000)->_refcount.counter
+field: ((struct page *)0xffffcd3b80010000)->_refcount.counter
 value: 0x0
+type: int
 ```
 
 ### Reading it

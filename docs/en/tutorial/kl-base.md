@@ -27,8 +27,8 @@ kl-base
 ### Output
 
 ```text
-kernel base: 0xffffffff9a200000 (runtime)
-KASLR offset: +0x19200000
+kernel base: 0xffffffffae800000 (runtime)
+KASLR offset: +0x2d800000
 link _text: 0xffffffff81000000
 method: symbol
 status: kernel running
@@ -49,8 +49,8 @@ kl-base show
 ### Output
 
 ```text
-kernel base: 0xffffffff9a200000 (runtime)
-KASLR offset: +0x19200000
+kernel base: 0xffffffffae800000 (runtime)
+KASLR offset: +0x2d800000
 link _text: 0xffffffff81000000
 method: symbol
 status: kernel running
@@ -71,8 +71,8 @@ kl-base -v
 ### Output
 
 ```text
-kernel base: 0xffffffff9a200000 (runtime)
-KASLR offset: +0x19200000
+kernel base: 0xffffffffae800000 (runtime)
+KASLR offset: +0x2d800000
 link _text: 0xffffffff81000000
 method: symbol
 Physical: 0x1000000
@@ -95,10 +95,10 @@ kl-base idt 4
 
 ```text
 idt: base=0xfffffe0000000000 limit=0xfff count=256 source=monitor
-idt[0]: offset=0xffffffff9b600990 sel=0x10 type=0xe ist=0 dpl=0 kernel
-idt[1]: offset=0xffffffff9b600cd0 sel=0x10 type=0xe ist=3 dpl=0 kernel
-idt[2]: offset=0xffffffff9b6016f0 sel=0x10 type=0xe ist=2 dpl=0 kernel
-idt[3]: offset=0xffffffff9b600ba0 sel=0x10 type=0xe ist=0 dpl=3 kernel
+idt[0]: offset=0xffffffffafc00990 sel=0x10 type=0xe ist=0 dpl=0 kernel
+idt[1]: offset=0xffffffffafc00cd0 sel=0x10 type=0xe ist=3 dpl=0 kernel
+idt[2]: offset=0xffffffffafc016f0 sel=0x10 type=0xe ist=2 dpl=0 kernel
+idt[3]: offset=0xffffffffafc00ba0 sel=0x10 type=0xe ist=0 dpl=3 kernel
 ```
 
 ### Reading it
@@ -117,8 +117,8 @@ kl-base rebase
 
 ```text
 add symbol table from file "/home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux" at
-	.text_addr = 0xffffffff9a200000
-rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xffffffff9a200000
+	.text_addr = 0xffffffffae800000
+rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xffffffffae800000
 ```
 
 ### Reading it
@@ -132,13 +132,13 @@ The path is whatever `file` loaded -- `rebase` never guesses one -- and a sessio
 ### Invocation
 
 ```gdb
-kl-base offset 0x19200000
+kl-base offset 0x2d800000
 ```
 
 ### Output
 
 ```text
-KASLR offset: +0x19200000
+KASLR offset: +0x2d800000
 status: applied
 ```
 
@@ -151,14 +151,14 @@ status: applied
 ### Invocation
 
 ```gdb
-kl-base text 0xffffffff9a200000
+kl-base text 0xffffffffae800000
 ```
 
 ### Output
 
 ```text
-KASLR offset: +0x19200000
-link _text: 0xffffffff81000000 runtime _text: 0xffffffff9a200000
+KASLR offset: +0x2d800000
+link _text: 0xffffffff81000000 runtime _text: 0xffffffffae800000
 status: applied
 ```
 

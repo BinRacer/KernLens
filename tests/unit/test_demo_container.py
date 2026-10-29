@@ -1,12 +1,14 @@
 """The demo container has to stay reproducible and honest.
 
 It is the one artifact in the repository that needs a network, a
-compiler, and several minutes to produce, so nothing here builds it.  The
-checks are the facts that would otherwise drift: the kernel version the
-image compiles is the one the tutorial was captured from, the config
-fragment still carries what the commands read, the entrypoint still waits
-for userspace before attaching, and the published-image workflow still
-targets the registry the docs name.
+compiler, and several minutes to produce, so nothing here builds it and
+nothing in CI builds it either.  The checks are the facts that would
+otherwise drift: the kernel version the image compiles is the one the
+tutorial was captured from, the config fragment still carries what the
+commands read, the entrypoint still waits for userspace before attaching,
+the build stage can run the kernel's helper scripts, and no workflow has
+quietly taken over publishing an image this project would then have to
+maintain.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ DEMO = ROOT / "demo"
 DOCKERFILE = DEMO / "Dockerfile"
 ENTRYPOINT = DEMO / "entrypoint.sh"
 CONFIG = DEMO / "kernel" / "config.fragment"
-IMAGE_WORKFLOW = ROOT / ".github" / "workflows" / "demo-image.yml"
+WORKFLOWS = ROOT / ".github" / "workflows"
 
 
 def _text(path: Path) -> str:
@@ -91,6 +93,31 @@ class DockerfileTests(unittest.TestCase):
 
     def test_it_has_an_entrypoint(self) -> None:
         self.assertIn('ENTRYPOINT ["/opt/demo/entrypoint.sh"]', self.text)
+
+    def _kernel_stage_packages(self) -> list[str]:
+        """The kernel stage's `apt-get install` package list."""
+        stage = self.text.split("AS kernel", 1)[1].split("AS runtime", 1)[0]
+        block = stage.split("apt-get install", 1)[1]
+        packages: list[str] = []
+        for line in block.splitlines():
+            stripped = line.strip().rstrip("\\").strip()
+            if stripped.startswith("&&"):
+                break
+            if not stripped or stripped.startswith("-"):
+                continue
+            packages.append(stripped)
+        return packages
+
+    def test_the_kernel_stage_can_run_the_kernels_helper_scripts(self) -> None:
+        """`resolve_btfids` generates a header with `python3`.
+
+        The base image carries no Python, so a build without it dies at
+        `GEN tools/bpf/resolve_btfids/libbpf/bpf_helper_defs.h` with
+        `/usr/bin/env: 'python3': No such file or directory`.  That was
+        the second thing the first published-tag run of the image found,
+        after the tag rules had been fixed and the build got that far.
+        """
+        self.assertIn("python3", self._kernel_stage_packages())
 
 
 class ConfigTests(unittest.TestCase):
@@ -174,21 +201,38 @@ class EntrypointTests(unittest.TestCase):
         self.assertIn("demo-commands.gdb", self.text)
 
 
-class PublishedImageTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.text = _text(IMAGE_WORKFLOW)
+class LocalBuildPolicyTests(unittest.TestCase):
+    """The image is built by the reader, never by CI.
 
-    def test_it_runs_on_a_version_tag(self) -> None:
-        self.assertIn('tags: ["v*"]', self.text)
+    A kernel compile costs several minutes of a runner and produces an
+    artifact this project does not want to maintain: a registry image
+    pinned to one kernel build has to be rebuilt, retagged, and kept
+    reachable for as long as the tag is advertised.  The Dockerfile is
+    the deliverable and the reader builds it.
+    """
 
-    def test_it_can_push_to_the_registry(self) -> None:
-        self.assertIn("packages: write", self.text)
-        self.assertIn("ghcr.io", self.text)
-        self.assertIn("docker/build-push-action", self.text)
+    def test_no_workflow_publishes_the_image(self) -> None:
+        self.assertFalse(
+            (WORKFLOWS / "demo-image.yml").exists(),
+            "the demo image must not be built in CI",
+        )
+        for path in WORKFLOWS.glob("*.yml"):
+            with self.subTest(workflow=path.name):
+                text = _text(path)
+                self.assertNotIn("demo/Dockerfile", text)
+                self.assertNotIn("ghcr.io", text)
 
-    def test_it_builds_the_demo_dockerfile(self) -> None:
-        self.assertIn("file: demo/Dockerfile", self.text)
-        self.assertIn("context: .", self.text)
+    def test_the_docs_say_how_to_build_it(self) -> None:
+        for locale in ("en", "zh-CN"):
+            with self.subTest(locale=locale):
+                text = _text(ROOT / "docs" / locale / "demo-container.md")
+                self.assertIn("docker build -f demo/Dockerfile", text)
+
+    def test_the_docs_do_not_promise_a_published_image(self) -> None:
+        for locale in ("en", "zh-CN"):
+            with self.subTest(locale=locale):
+                text = _text(ROOT / "docs" / locale / "demo-container.md")
+                self.assertNotIn("ghcr.io", text)
 
 
 class DocumentationTests(unittest.TestCase):
@@ -199,8 +243,8 @@ class DocumentationTests(unittest.TestCase):
         self.assertIn("demo-container.md", mkdocs)
 
     def test_the_readme_shows_the_local_build(self) -> None:
-        # There is no published image until the first tagged release, so
-        # the README must show the command that works from a checkout.
+        # The image is built from the checkout; there is no registry tag
+        # a reader could pull instead.
         readme = _text(ROOT / "README.md")
         self.assertIn("docker build -f demo/Dockerfile", readme)
         self.assertIn("docker run --rm -it kernlens-demo", readme)

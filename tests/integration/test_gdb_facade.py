@@ -657,9 +657,37 @@ class KernelInspectorTests(FacadeTestBase):
     # --- BPF ------------------------------------------------------------
 
     def _put_idr(self, name: str, idr: int, head: int) -> None:
-        """Lay out a struct idr whose xa_head sits at offset 0."""
+        """Lay out a struct idr whose ``idr_rt.xa_head`` holds *head*."""
         self.link_global(name, idr)
-        self._put_u64(idr, head)
+        self._put_u64(idr + self._off("struct idr", "idr_rt.xa_head"), head)
+
+    def test_an_empty_idr_does_not_walk_the_next_global(self) -> None:
+        """A NULL ``xa_head`` means "no BPF programs", not "look further".
+
+        ``kl-kbpf`` used to scan the idr's first words for a pointer into
+        the kernel range and call the first hit the head.  On a kernel
+        with no BPF programs loaded that is the *next* global, and the
+        bytes after ``prog_idr`` happened to look like an interior
+        ``xa_node`` -- so the walk followed it and never terminated,
+        until Python raised and the command that should print
+        ``bpf progs: 0`` printed ``maximum recursion depth exceeded``.
+        Observed on the 6.1.134 test VM.
+        """
+        idr = 0x10000
+        self.link_global("prog_idr", idr)
+        # The real xa_head is NULL: nothing is registered.  The words
+        # after the 24-byte struct belong to the next global, and the scan
+        # used to mistake one of them for a tree root.
+        self._put_u64(idr + self._off("struct idr", "idr_rt.xa_head"), 0)
+        neighbour = 0xFFFF888000009000
+        self._put_u64(idr + 0x30, neighbour)
+        fake_gdb.memory_bytes[neighbour] = 1  # shift != 0: interior node
+        fake_gdb.memory_bytes[neighbour + 2] = 1  # count
+        self._put_u64(
+            neighbour + layouts.offset("struct xa_node", "slots"), neighbour,
+        )
+
+        self.assertEqual(self.inspector.bpf_progs(), ())
 
     def test_bpf_progs_reads_xarray(self) -> None:
         self._put_idr("prog_idr", 0x10000, 0xFFFF888000020000)

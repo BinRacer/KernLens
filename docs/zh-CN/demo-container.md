@@ -112,7 +112,9 @@ docker build -f demo/Dockerfile \
 - **没有模块、没有磁盘、没有网络。** `microvm` 加 initramfs 就是整个客户机。那些
   去找已加载模块或块设备的命令会如实报告它们找到的东西——什么也没有。
 - **TCG 比 KVM 慢。** 导览很小；在 TCG 下遍历大内核里的每一个缓存不会是瞬时的。
-- **还没有发布镜像。** 打版本 tag 时 `demo image` workflow 会构建同一个镜像并发到
-  GitHub Container Registry。在第一个版本之前，用本页顶部的命令在本地构建。
+- **镜像在本地构建，不发布。** 编译内核是几分钟的工作量，而一个 registry tag
+  会把这个项目钉在为一个“只有一条命令的距离”的产物持续重建上。检出里的
+  `demo/Dockerfile` 就是交付物：用本页顶部的命令构建它。没有任何 workflow
+  构建或发布镜像。
 
 ---

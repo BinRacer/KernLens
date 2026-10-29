@@ -21,7 +21,7 @@ given:
 
 ```console
 uv sync --group release
-uv run python tools/release.py check v0.3.0
+uv run python tools/release.py check v0.3.0rc2
 uv run pytest -q
 rm -rf dist && uv build
 uv run python tools/check_wheel.py dist/*.whl
@@ -33,11 +33,38 @@ cheap to move before it is pushed and expensive after.  `twine check`
 renders the README the way PyPI will, so a metadata error is found here
 rather than in a rejected upload.
 
+Two things it only checks when a tag is given, because the gate also
+runs on branches: the tag equals `__version__`, and `[Unreleased]` in
+the changelog is empty.  Entries left under `Unreleased` on a release
+commit are entries the release notes will not mention.
+
+## Release candidates
+
+A version may be `X.Y.ZrcN` (`0.3.0rc2`), which is a prerelease.  It is
+written the same way as any other version -- the same three files, the
+same changelog section, a tag `v0.3.0rc2` -- and two things change:
+
+- **The GitHub Release is flagged `--prerelease`**, so it does not become
+the repository's latest release.  `tools/release.py prerelease` decides
+this, from the same pattern `check` uses, so the two cannot disagree.
+- **Installers reach for it only when there is nothing else.**  pip
+*does* install an rc, but only while it is the highest version that
+satisfies the requirement: with `0.3.0rc2` the sole upload,
+`pip install kernlens` resolves to it.  The moment a final release
+exists, the rc stops being a candidate -- `pip install kernlens` takes
+`0.3.0`, and the rc is only reachable by naming it
+(`kernlens==0.3.0rc2`) or passing `--pre`.  Measured against TestPyPI on
+2026-10-30 rather than assumed: the first draft of this paragraph said
+`--pre` was required, and it is not.
+
+PyPI still refuses the version twice, so an rc is as permanent as a
+release.
+
 ## The tag
 
 ```console
-git tag -a v0.3.0 -m "KernLens 0.3.0"
-git push origin v0.3.0
+git tag -a v0.3.0rc2 -m "KernLens 0.3.0rc2"
+git push origin v0.3.0rc2
 ```
 
 Annotated, not lightweight: `git describe`, `gh release`, and the
@@ -86,6 +113,21 @@ gh workflow run release.yml -f index=testpypi
 TestPyPI also refuses a version twice, so a rehearsal is once per
 version.  If the rehearsal is wrong, bump the patch version rather than
 re-uploading.
+
+The rehearsal is worth running before the tag even when the release
+files pass: it is the only step that can fail for a reason outside the
+repository.  An unregistered publisher reports
+
+```text
+invalid-publisher: valid token, but no corresponding publisher
+```
+
+with the claims it tried printed underneath -- `sub`,
+`repository_owner`, `workflow_ref`, `environment`.  Those claims are the
+exact values to type into PyPI's *Add a publisher* form, so the failure
+is also the instruction.  It fails in the `publish` job, after `build`
+has already passed, and nothing is uploaded; fix the publisher and
+re-run the same version.
 
 ## If it goes wrong
 

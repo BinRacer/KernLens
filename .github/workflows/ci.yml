@@ -3,19 +3,18 @@ name: CI
 on:
   push:
     branches: ["main"]
-    # Skip a doc-only push.  The READMEs are deliberately absent: both are
-    # asserted by tests/integration/test_gdbinit.py (their command tables
-    # must match the frozen contract), so a README edit has to run the
-    # suite.  Kept on ``push`` only -- filtering ``pull_request`` too would
-    # leave a required check permanently pending on a doc-only PR, because
-    # no run would ever be created for it.
+    # Skip only files no test opens.  This list used to hold `docs/**`,
+    # `images/**`, `examples/api/gdbinit.example` and `CHANGELOG.md` --
+    # and every one of those is read by the suite, so a docs-only push
+    # went green without it.  The stale Chinese tutorial index that
+    # caused was found by the docs workflow a run later, by which time
+    # the failing commit was not the one that broke it.
+    #
+    # `tests/unit/test_structure.py::CiSkipListTests` pins this list: an
+    # entry it does not justify fails the suite.
     paths-ignore:
-      - "CHANGELOG.md"
       - "CREDITS.md"
       - "LICENSE"
-      - "docs/**"
-      - "images/**"
-      - "examples/api/gdbinit.example"
   pull_request:
   # Lets a run be started (or re-run) by hand from the Actions tab.
   workflow_dispatch:

@@ -7,104 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Nothing yet.
 
-- **Every user-facing surface now names a command `kl-*`, not
-  `kernlens-*`.**  `kl-help` used to list thirty `kernlens-` names and
-  mention the `kl-` alias underneath; the usage line, the guard
-  messages, and the tutorial pages did the same.  The alias is what a
-  user types, so the surfaces that a user reads now print it, and the
-  canonical name is stated once — as `Canonical: kernlens-slab` in
-  `--help`, in the second column of the command reference, and in each
-  tutorial page's header.  Two spellings of thirty commands is thirty
-  pairs to remember for no benefit; the canonical form stays because it
-  is the registered `gdb.Command` name a script should call.
-
-- **The command surface is 30 commands instead of 40.**  Ten commands were
-  not ten ideas; they were seven ideas spelled several ways, and the
-  duplicates were costing more in `kl-help` scan time than they returned.
-  Each merge keeps the behaviour and turns the second spelling into a
-  flag or a subcommand, so nothing became unreachable:
-
-  | Removed | Now |
-  | --- | --- |
-  | `kl-kbase` | `kl-base [--verbose] [--rebase]` |
-  | `kl-kaslr` | `kl-base text <runtime _text>` (a bare address works too) |
-  | `kl-kaslr-offset` | `kl-base offset <slide>` |
-  | `kl-kchecksec` | `kl-kconfig --check` |
-  | `kl-klookup` | `kl-sym --find <name>` |
-  | `kl-chain` | `kl-bt --chain` |
-  | `kl-page` | `kl-addr --brief` |
-  | `kl-pte` | `kl-pt --entry <entry>` |
-  | `kl-pagewalk` | `kl-walk --style pwndbg` |
-  | `kl-buddydump` | `kl-buddy dump` |
-
-  The four base/KASLR commands were one assignment read four ways -- five
-  call sites wrote `kdbg.kaslr_offset`, and `kl-kbase`'s two options were
-  already aliases for the other two commands.  `kl-chain`'s body was two
-  lines identical to what `kl-bt --chain` printed.  Merging them also
-  removes the state disagreement they allowed: `kl-base` always reports
-  the slide that is now in effect, which is the one thing the four
-  commands answered differently.
-
-- **`kl-base` takes a subcommand, and the old positional forms are
-  gone.**  `kl-base show|text|offset|idt|rebase`, plus a bare number that
-  is read as a runtime `_text` because that is the value a breakpoint or
-  a symbol listing hands you.  `kl-base idt` absorbed the interrupt-table
-  dump.
-
-- **`kl-buddy` takes a subcommand.**  `kl-buddy list|info|freelist|dump`,
-  with `-p/--pcp-only`, `-c/--cpu`, and `-f/--find` on the parser.
-
-### Removed
-
-- Removed the ten command names in the table above.  Aliases were reduced
-  from 43 to 31 for the same reason: a name that exists only to be an
-  alias is another line in `kl-help` for a reader to skip.
-- Removed the `kl-kaslr` / `kl-kaslr-offset` forwarding path in
-  `examples/tracing/cve_2025_38616_tracer.py`; the `kaslr-text` and
-  `kaslr-offset` compatibility commands it registers now delegate to
-  `kl-base text` and `kl-base offset`, so the tracer keeps working on the
-  merged surface.
+## [0.3.0rc2] - 2026-10-30
 
 ### Fixed
 
-- **`tools/tutorial_meta.json` is generated instead of hand-refreshed.**
-  It is the dump every tutorial page and the whole command reference are
-  rendered from, and nothing compared it with the parsers it described.
-  It had already drifted: `kl-buddy --MIGRATE_TYPES` existed in the
-  parser but in neither the recorded `usage` nor the recorded options, so
-  the tutorial documented a command without the flag.  The new
-  `tools/gen_tutorial_meta.py` writes the dump from the live registry,
-  and `tests/integration/test_gdbinit.py` compares the two, which is what
-  makes the drift detectable without a GDB on the CI runner.
+- **The demo image is built by the reader, not by CI, and its build
+  stage can run the kernel's helper scripts.**  Two things were wrong,
+  and both only showed up when a workflow was pointed at the Dockerfile.
+  `ubuntu:24.04` ships no `python3`, which the kernel's
+  `tools/bpf/resolve_btfids` needs to generate `libbpf/bpf_helper_defs.h`
+  (`/usr/bin/env: 'python3': No such file or directory`), so the compile
+  died partway through; the build stage now installs it, and it is there
+  for `scripts/bpf_doc.py --header`, nothing this repository runs.
 
-- **`kl-base rebase` now drops the copy the previous rebase added.**
-  `add-symbol-file` only ever adds, so every `rebase` stacked another
-  relocated copy of the same vmlinux in the progspace.  The leaked DWARF
-  was the visible cost; the real one was wrong answers -- after rebasing
-  to `0xffffffffa7600000` and then to `0xffffffffa8000000`, `info symbol
-  0xffffffffa8000000` reported `pnp_disable_dev + 112`, the stale copy's
-  nearest symbol.  The command now removes the previous copies first and
-  reports `(dropped N stale copy)` when there were any.  Removal stops
-  at the primary symbol file, so `file`'s own table is never touched.
+  The workflow itself is gone.  A kernel compile is minutes of runner
+  time, and a registry tag would have to be rebuilt and kept reachable
+  for as long as it is advertised -- maintenance for an artifact that is
+  one command away from the checkout.  `.github/workflows/demo-image.yml`
+  is removed, `docs/demo-container.md` states the policy instead of
+  promising a published image, and `tests/unit/test_demo_container.py`
+  fails if any workflow starts building or pushing one again.
 
-- **`kl-base rebase` re-opens the KASLR latch, like every other
-  `kl-base` spelling.**  It called `find_kbase()` directly, so a session
-  whose first alignment had already given up kept the latch closed and
-  `rebase` reported "cannot locate the kernel text base" even after the
-  user fixed what had stopped detection.  A retry that cannot retry is
-  worse than no retry, because it says the thing was tried.
-
-- **The tutorial capture could pick a slab page with nothing to decode.**
-  `_slab_object()` used a per-CPU freelist, and a per-CPU slab is
-  frequently drained -- the allocator hands its last object to the caller
-  and `slab->freelist` becomes `NULL`.  A capture from such a boot made
-  the demo claim it decoded a freelist pointer while showing a page with
-  none.  The chooser now prefers a node's partial list (an object on a
-  partially-free page), which always has a chain to decode.
-
-## [0.3.0] - 2026-10-28
+## [0.3.0rc1] - 2026-10-29
 
 ### Added
 
@@ -710,10 +636,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stage carries GDB, QEMU, a 13 MB `bzImage`, a 74 MB `vmlinux`, and a
   337 KB initramfs.  `demo/entrypoint.sh` boots a `microvm` under TCG (no
   `/dev/kvm`), waits for the initramfs marker, then runs an address-free
-  tour that resolves `init_task` through the reader.  The workflow
-  `.github/workflows/demo-image.yml` builds and publishes the image on a
-  version tag; `docs/demo-container.md` covers the build, the mirror
-  argument, and the limits.
+  tour that resolves `init_task` through the reader.
+  `docs/demo-container.md` covers the build, the mirror argument, and
+  the limits.
 
 ### Changed
 
@@ -1095,6 +1020,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mixins share, which also lets each mixin be checked alone.  The
   `_page_is_enum` cache had no slot at all; see Fixed.
 
+- **Every user-facing surface now names a command `kl-*`, not
+  `kernlens-*`.**  `kl-help` used to list thirty `kernlens-` names and
+  mention the `kl-` alias underneath; the usage line, the guard
+  messages, and the tutorial pages did the same.  The alias is what a
+  user types, so the surfaces that a user reads now print it, and the
+  canonical name is stated once — as `Canonical: kernlens-slab` in
+  `--help`, in the second column of the command reference, and in each
+  tutorial page's header.  Two spellings of thirty commands is thirty
+  pairs to remember for no benefit; the canonical form stays because it
+  is the registered `gdb.Command` name a script should call.
+
+- **The command surface is 30 commands instead of 40.**  Ten commands were
+  not ten ideas; they were seven ideas spelled several ways, and the
+  duplicates were costing more in `kl-help` scan time than they returned.
+  Each merge keeps the behaviour and turns the second spelling into a
+  flag or a subcommand, so nothing became unreachable:
+
+  | Removed | Now |
+  | --- | --- |
+  | `kl-kbase` | `kl-base [--verbose] [--rebase]` |
+  | `kl-kaslr` | `kl-base text <runtime _text>` (a bare address works too) |
+  | `kl-kaslr-offset` | `kl-base offset <slide>` |
+  | `kl-kchecksec` | `kl-kconfig --check` |
+  | `kl-klookup` | `kl-sym --find <name>` |
+  | `kl-chain` | `kl-bt --chain` |
+  | `kl-page` | `kl-addr --brief` |
+  | `kl-pte` | `kl-pt --entry <entry>` |
+  | `kl-pagewalk` | `kl-walk --style pwndbg` |
+  | `kl-buddydump` | `kl-buddy dump` |
+
+  The four base/KASLR commands were one assignment read four ways -- five
+  call sites wrote `kdbg.kaslr_offset`, and `kl-kbase`'s two options were
+  already aliases for the other two commands.  `kl-chain`'s body was two
+  lines identical to what `kl-bt --chain` printed.  Merging them also
+  removes the state disagreement they allowed: `kl-base` always reports
+  the slide that is now in effect, which is the one thing the four
+  commands answered differently.
+
+- **`kl-base` takes a subcommand, and the old positional forms are
+  gone.**  `kl-base show|text|offset|idt|rebase`, plus a bare number that
+  is read as a runtime `_text` because that is the value a breakpoint or
+  a symbol listing hands you.  `kl-base idt` absorbed the interrupt-table
+  dump.
+
+- **`kl-buddy` takes a subcommand.**  `kl-buddy list|info|freelist|dump`,
+  with `-p/--pcp-only`, `-c/--cpu`, and `-f/--find` on the parser.
+
 ### Removed
 
 - Removed the legacy root modules (`BitOps.py`, `IntCodec.py`,
@@ -1105,7 +1077,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   references are `docs/architecture.md`, `docs/naming.md`, README, and
   this changelog.
 
+- Removed the ten command names in the table above.  Aliases were reduced
+  from 43 to 31 for the same reason: a name that exists only to be an
+  alias is another line in `kl-help` for a reader to skip.
+- Removed the `kl-kaslr` / `kl-kaslr-offset` forwarding path in
+  `examples/tracing/cve_2025_38616_tracer.py`; the `kaslr-text` and
+  `kaslr-offset` compatibility commands it registers now delegate to
+  `kl-base text` and `kl-base offset`, so the tracer keeps working on the
+  merged surface.
+
 ### Fixed
+
+- **`kl-kbpf` printed "maximum recursion depth exceeded" on a kernel with no
+  BPF programs.**  `prog_idr` and `map_idr` are `struct idr`, which embeds
+  `struct xarray`, and the walk needs `xa_head`'s offset.  It did not
+  resolve one: it scanned the idr's first eight words for a pointer into
+  the kernel address range and called the first hit the head.  An empty
+  `prog_idr` has a NULL `xa_head`, so the scan read the *next global*
+  instead, and because the bytes there happened to look like an interior
+  `xa_node` the walk followed it without terminating.  The command that
+  should print `bpf progs: 0` raised instead.  `struct idr` and `struct
+  xarray` are now in the layouts registry (`idr_rt.xa_head` at `0x08`),
+  read from the 6.1.134 test VM's DWARF, so the offset is resolved like
+  every other one -- and `tools/gen_layouts.py` now probes it.
 
 - **`kl-color off` did not reach the help epilog, so the tutorial pages
   showed `[35mAlias:[0m`.**  The `Examples:` / `Notes:` / `Alias:`
@@ -1474,6 +1468,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `IntFmt.bytes_*_array` now accepts either `ByteOrder` or a
   `ByteOrderCodec` (e.g. `byteorder=LE`), matching the documented API.
 
+- **`tools/tutorial_meta.json` is generated instead of hand-refreshed.**
+  It is the dump every tutorial page and the whole command reference are
+  rendered from, and nothing compared it with the parsers it described.
+  It had already drifted: `kl-buddy --MIGRATE_TYPES` existed in the
+  parser but in neither the recorded `usage` nor the recorded options, so
+  the tutorial documented a command without the flag.  The new
+  `tools/gen_tutorial_meta.py` writes the dump from the live registry,
+  and `tests/integration/test_gdbinit.py` compares the two, which is what
+  makes the drift detectable without a GDB on the CI runner.
+
+- **`kl-base rebase` now drops the copy the previous rebase added.**
+  `add-symbol-file` only ever adds, so every `rebase` stacked another
+  relocated copy of the same vmlinux in the progspace.  The leaked DWARF
+  was the visible cost; the real one was wrong answers -- after rebasing
+  to `0xffffffffa7600000` and then to `0xffffffffa8000000`, `info symbol
+  0xffffffffa8000000` reported `pnp_disable_dev + 112`, the stale copy's
+  nearest symbol.  The command now removes the previous copies first and
+  reports `(dropped N stale copy)` when there were any.  Removal stops
+  at the primary symbol file, so `file`'s own table is never touched.
+
+- **`kl-base rebase` re-opens the KASLR latch, like every other
+  `kl-base` spelling.**  It called `find_kbase()` directly, so a session
+  whose first alignment had already given up kept the latch closed and
+  `rebase` reported "cannot locate the kernel text base" even after the
+  user fixed what had stopped detection.  A retry that cannot retry is
+  worse than no retry, because it says the thing was tried.
+
+- **The tutorial capture could pick a slab page with nothing to decode.**
+  `_slab_object()` used a per-CPU freelist, and a per-CPU slab is
+  frequently drained -- the allocator hands its last object to the caller
+  and `slab->freelist` becomes `NULL`.  A capture from such a boot made
+  the demo claim it decoded a freelist pointer while showing a page with
+  none.  The chooser now prefers a node's partial list (an object on a
+  partially-free page), which always has a chain to decode.
+
 ## Version history note
 
 Earlier revisions of this file carried `0.1.0` and `0.2.0` headings.
@@ -1485,5 +1514,10 @@ licence bootstrap -- while listing modules that first appeared on the
 release records.
 
 Their entries are folded into the release above, in their original
-wording.  `0.3.0` is the first tagged release, and every entry in it
-describes code that exists at the tag.
+wording.  `0.3.0rc1` is the first tagged release, and every entry in it
+describes code that exists at the tag.  It is a release candidate
+because the tag is the first time this code has been built by the
+release workflow on a machine that is not the one it was written on: the
+Python version is `0.3.0rc1`, installers skip it unless asked, and
+`0.3.0` follows once it has been installed from PyPI somewhere other
+than here.

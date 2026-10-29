@@ -19,15 +19,15 @@ Translates a virtual address to physical by consulting the live page tables, fal
 ### Invocation
 
 ```gdb
-kl-v2p 0xffff9762c0400000
+kl-v2p 0xffff90c340400000
 ```
 
 ### Output
 
 ```text
-Virtual: 0xffff9762c0400000
+Virtual: 0xffff90c340400000
 Physical: 0x400000
-page: 0xffffd4fe00010000
+page: 0xffffcd3b80010000
 PFN: 1024  type: buddy
 refcount: 0
 ```

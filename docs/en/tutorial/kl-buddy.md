@@ -46,16 +46,17 @@ DMA    0     6      1        64
 DMA    0     7      1        128
 DMA    0     9      1        512
 DMA    0     10     3        3072
-DMA32  0     0      92       92
-DMA32  0     1      32       64
-DMA32  0     2      7        28
-DMA32  0     3      10       80
-DMA32  0     5      1        32
-DMA32  0     7      1        128
+DMA32  0     0      147      147
+DMA32  0     1      55       110
+DMA32  0     2      30       120
+DMA32  0     3      7        56
+DMA32  0     4      4        64
+DMA32  0     5      3        96
+DMA32  0     6      1        64
 DMA32  0     8      1        256
-DMA32  0     9      3        1536
+DMA32  0     9      2        1024
 DMA32  0     10     1        1024
-14 non-empty order(s)
+15 non-empty order(s)
 ```
 
 ### Reading it
@@ -101,11 +102,11 @@ kl-buddy info pfn:1024
 ```text
 Input: pfn:1024
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd4fe00010000
+Page: 0xffffcd3b80010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd4fe00010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffcd3b80010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 ```
@@ -119,19 +120,19 @@ Own block head: order 10  (this pfn is aligned to its own block)
 ### Invocation
 
 ```gdb
-kl-buddy info 0xffff9762c0400000
+kl-buddy info 0xffff90c340400000
 ```
 
 ### Output
 
 ```text
-Input: 0xffff9762c0400000
+Input: 0xffff90c340400000
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd4fe00010000
+Page: 0xffffcd3b80010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd4fe00010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffcd3b80010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 ```
@@ -153,11 +154,11 @@ kl-buddy info pfn:1024 -v
 ```text
 Input: pfn:1024
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd4fe00010000
+Page: 0xffffcd3b80010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd4fe00010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffcd3b80010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 Block span: pfn 0x400-0x7ff  phys 0x400000-0x7fffff
@@ -203,9 +204,9 @@ kl-buddy freelist -z DMA -o 10 -m Movable -v
 
 ```text
 free_area[order 10]  mtype=Movable  zone=DMA  node=0  nr_free=3  pages=3072
-    - #0 pfn=0x400 phys=0x400000 virt=0xffff9762c0400000
-    - #1 pfn=0x800 phys=0x800000 virt=0xffff9762c0800000
-    - #2 pfn=0xc00 phys=0xc00000 virt=0xffff9762c0c00000
+    - #0 pfn=0x400 phys=0x400000 virt=0xffff90c340400000
+    - #1 pfn=0x800 phys=0x800000 virt=0xffff90c340800000
+    - #2 pfn=0xc00 phys=0xc00000 virt=0xffff90c340c00000
 ```
 
 ### Reading it
@@ -244,23 +245,23 @@ kl-buddy dump
 
 ```text
 zone: all order=None mtype=all
-    - [0x00] 0xffff9762c0120000 [page: 0xffffd4fe00004800, phys: 0x120000]
-    - [0x01] 0xffff9762c0140000 [page: 0xffffd4fe00005000, phys: 0x140000]
-    - [0x02] 0xffff9762c0180000 [page: 0xffffd4fe00006000, phys: 0x180000]
-    - [0x03] 0xffff9762c0200000 [page: 0xffffd4fe00008000, phys: 0x200000]
-    - [0x04] 0xffff9762c0400000 [page: 0xffffd4fe00010000, phys: 0x400000]
-    - [0x05] 0xffff9762c0800000 [page: 0xffffd4fe00020000, phys: 0x800000]
-    - [0x06] 0xffff9762c0c00000 [page: 0xffffd4fe00030000, phys: 0xc00000]
-    - [0x07] 0xffff9762c7004000 [page: 0xffffd4fe001c0100, phys: 0x7004000]
-    - [0x08] 0xffff9762c7039000 [page: 0xffffd4fe001c0e40, phys: 0x7039000]
-    - [0x09] 0xffff9762c6b79000 [page: 0xffffd4fe001ade40, phys: 0x6b79000]
-    - [0x0a] 0xffff9762c6b7c000 [page: 0xffffd4fe001adf00, phys: 0x6b7c000]
-    - [0x0b] 0xffff9762c7002000 [page: 0xffffd4fe001c0080, phys: 0x7002000]
-    - [0x0c] 0xffff9762c6b64000 [page: 0xffffd4fe001ad900, phys: 0x6b64000]
-    - [0x0d] 0xffff9762c6675000 [page: 0xffffd4fe00199d40, phys: 0x6675000]
-    - [0x0e] 0xffff9762c70f4000 [page: 0xffffd4fe001c3d00, phys: 0x70f4000]
-    - [0x0f] 0xffff9762c70dd000 [page: 0xffffd4fe001c3740, phys: 0x70dd000]
-... (truncated, 155 page(s) total)
+    - [0x00] 0xffff90c340120000 [page: 0xffffcd3b80004800, phys: 0x120000]
+    - [0x01] 0xffff90c340140000 [page: 0xffffcd3b80005000, phys: 0x140000]
+    - [0x02] 0xffff90c340180000 [page: 0xffffcd3b80006000, phys: 0x180000]
+    - [0x03] 0xffff90c340200000 [page: 0xffffcd3b80008000, phys: 0x200000]
+    - [0x04] 0xffff90c340400000 [page: 0xffffcd3b80010000, phys: 0x400000]
+    - [0x05] 0xffff90c340800000 [page: 0xffffcd3b80020000, phys: 0x800000]
+    - [0x06] 0xffff90c340c00000 [page: 0xffffcd3b80030000, phys: 0xc00000]
+    - [0x07] 0xffff90c34717d000 [page: 0xffffcd3b801c5f40, phys: 0x717d000]
+    - [0x08] 0xffff90c3471c6000 [page: 0xffffcd3b801c7180, phys: 0x71c6000]
+    - [0x09] 0xffff90c346a5b000 [page: 0xffffcd3b801a96c0, phys: 0x6a5b000]
+    - [0x0a] 0xffff90c347184000 [page: 0xffffcd3b801c6100, phys: 0x7184000]
+    - [0x0b] 0xffff90c346ac3000 [page: 0xffffcd3b801ab0c0, phys: 0x6ac3000]
+    - [0x0c] 0xffff90c346bed000 [page: 0xffffcd3b801afb40, phys: 0x6bed000]
+    - [0x0d] 0xffff90c3471a2000 [page: 0xffffcd3b801c6880, phys: 0x71a2000]
+    - [0x0e] 0xffff90c346bb3000 [page: 0xffffcd3b801aecc0, phys: 0x6bb3000]
+    - [0x0f] 0xffff90c346481000 [page: 0xffffcd3b80192040, phys: 0x6481000]
+... (truncated, 258 page(s) total)
 ... (1 more line(s), 19 total)
 ```
 
@@ -282,13 +283,13 @@ kl-buddy dump -z DMA
 
 ```text
 zone: DMA order=None mtype=all
-    - [0x00] 0xffff9762c0120000 [page: 0xffffd4fe00004800, phys: 0x120000]
-    - [0x01] 0xffff9762c0140000 [page: 0xffffd4fe00005000, phys: 0x140000]
-    - [0x02] 0xffff9762c0180000 [page: 0xffffd4fe00006000, phys: 0x180000]
-    - [0x03] 0xffff9762c0200000 [page: 0xffffd4fe00008000, phys: 0x200000]
-    - [0x04] 0xffff9762c0400000 [page: 0xffffd4fe00010000, phys: 0x400000]
-    - [0x05] 0xffff9762c0800000 [page: 0xffffd4fe00020000, phys: 0x800000]
-    - [0x06] 0xffff9762c0c00000 [page: 0xffffd4fe00030000, phys: 0xc00000]
+    - [0x00] 0xffff90c340120000 [page: 0xffffcd3b80004800, phys: 0x120000]
+    - [0x01] 0xffff90c340140000 [page: 0xffffcd3b80005000, phys: 0x140000]
+    - [0x02] 0xffff90c340180000 [page: 0xffffcd3b80006000, phys: 0x180000]
+    - [0x03] 0xffff90c340200000 [page: 0xffffcd3b80008000, phys: 0x200000]
+    - [0x04] 0xffff90c340400000 [page: 0xffffcd3b80010000, phys: 0x400000]
+    - [0x05] 0xffff90c340800000 [page: 0xffffcd3b80020000, phys: 0x800000]
+    - [0x06] 0xffff90c340c00000 [page: 0xffffcd3b80030000, phys: 0xc00000]
 7 free page(s)
 ```
 
@@ -301,14 +302,14 @@ The same filters as `list` (`-z`, `-o`, `-m`, `-n`) apply.  The DMA zone here is
 ### Invocation
 
 ```gdb
-kl-buddy dump -f 0xffff9762c0400000
+kl-buddy dump -f 0xffff90c340400000
 ```
 
 ### Output
 
 ```text
 zone: all order=None mtype=all
-    - [0x04] 0xffff9762c0400000 [page: 0xffffd4fe00010000, phys: 0x400000]
+    - [0x04] 0xffff90c340400000 [page: 0xffffcd3b80010000, phys: 0x400000]
 1 free page(s)
 ```
 

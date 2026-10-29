@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kernlens"
-version = "0.3.0"
+version = "0.3.0rc2"
 # The same sentence as the GitHub repository description, because one
 # project should not describe itself two ways: this string is what PyPI
 # shows, and the repository blurb is what a reader sees before installing.

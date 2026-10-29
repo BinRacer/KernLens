@@ -21,18 +21,18 @@ Address arithmetic in both directions: a virtual address split into its per-leve
 ### Invocation
 
 ```gdb
-kl-pt 0xffff9762c0400000
+kl-pt 0xffff90c340400000
 ```
 
 ### Output
 
 ```text
-VA: 0xffff9762c0400000
-4-level: pgd=302 pud=395 pmd=2 pte=0 off=0x0
-5-level: pgd=511 p4d=302 pud=395 pmd=2 pte=0 off=0x0
-huge: 2m_base=0xffff9762c0400000 1g_base=0xffff9762c0000000
+VA: 0xffff90c340400000
+4-level: pgd=289 pud=269 pmd=2 pte=0 off=0x0
+5-level: pgd=511 p4d=289 pud=269 pmd=2 pte=0 off=0x0
+huge: 2m_base=0xffff90c340400000 1g_base=0xffff90c340000000
 aligned: 2m=True 1g=False page_offset=0x0
-canonical: 4-level=0xffff9762c0400000 5-level=0xffff9762c0400000
+canonical: 4-level=0xffff90c340400000 5-level=0xffff90c340400000
 ```
 
 ### Reading it
@@ -44,18 +44,18 @@ The 4-level row shows five entries (pgd/pud/pmd/pte/off) and the 5-level row six
 ### Invocation
 
 ```gdb
-kl-pt 0xffffffff9a300000
+kl-pt 0xffffffffae900000
 ```
 
 ### Output
 
 ```text
-VA: 0xffffffff9a300000
-4-level: pgd=511 pud=510 pmd=209 pte=256 off=0x0
-5-level: pgd=511 p4d=511 pud=510 pmd=209 pte=256 off=0x0
-huge: 2m_base=0xffffffff9a200000 1g_base=0xffffffff80000000
+VA: 0xffffffffae900000
+4-level: pgd=511 pud=510 pmd=372 pte=256 off=0x0
+5-level: pgd=511 p4d=511 pud=510 pmd=372 pte=256 off=0x0
+huge: 2m_base=0xffffffffae800000 1g_base=0xffffffff80000000
 aligned: 2m=False 1g=False page_offset=0x0
-canonical: 4-level=0xffffffff9a300000 5-level=0xffffffff9a300000
+canonical: 4-level=0xffffffffae900000 5-level=0xffffffffae900000
 ```
 
 ### Reading it
@@ -87,7 +87,7 @@ Physical: 0x120000  pfn=288
 ### Invocation
 
 ```gdb
-kl-pt --entry 0x8000000000120063 0xffff9762c0400000
+kl-pt --entry 0x8000000000120063 0xffff90c340400000
 ```
 
 ### Output
@@ -96,7 +96,7 @@ kl-pt --entry 0x8000000000120063 0xffff9762c0400000
 PTE: 0x8000000000120063 present=True bit7=PS/PAT
 Flags: P RW A D NX
 Physical: 0x120000  pfn=288
-VA: 0xffff9762c0400000
+VA: 0xffff90c340400000
 4k leaf: 0x120000
 2m leaf: 0x0
 1g leaf: 0x400000

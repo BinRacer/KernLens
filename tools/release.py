@@ -15,11 +15,17 @@ disagreement rather than on PyPI.
 so the release notes are the changelog and not a second summary that
 misses an entry.
 
+A version may carry a release-candidate suffix (``0.3.0rc2``), which is a
+prerelease: PyPI stores it like any other version but installers skip it
+unless asked, so ``prerelease`` exists to tell the workflow whether the
+GitHub Release should be flagged as one.
+
 Usage::
 
-    python tools/release.py check          # against the current version
-    python tools/release.py check v0.3.0   # against a tag
+    python tools/release.py check              # against the current version
+    python tools/release.py check v0.3.0rc2    # against a tag
     python tools/release.py notes
+    python tools/release.py prerelease v0.3.0rc2
 """
 
 from __future__ import annotations
@@ -42,11 +48,38 @@ _SECTION_END = re.compile(r"^## ")
 _CFF_VERSION = re.compile(r"(?m)^version:\s*(\S+)\s*$")
 _CFF_DATE = re.compile(r"(?m)^date-released:\s*(\S+)\s*$")
 
+#: ``X.Y.Z``, optionally followed by the one prerelease suffix this project
+#: uses.  Deliberately narrower than PEP 440: ``0.3.0-rc1``, ``0.3.0.dev1``
+#: and ``0.3.0rc2.post1`` all normalise to something ``git tag`` and a
+#: filename have to agree on, and only one spelling is worth supporting.
+_VERSION = re.compile(r"^(?P<base>\d+\.\d+\.\d+)(?:rc(?P<release>\d+))?$")
+#: How far ahead of today a changelog date may be.
+#:
+#: One day, because the workstation and the CI runner do not share a
+#: timezone.  This project writes changelog dates in the local ``+0800``
+#: day, and GitHub's runners report UTC -- so a release tagged at 04:00
+#: local time is dated today here and *tomorrow* there, and a strict
+#: comparison failed the rehearsal with "the changelog date ... is in the
+#: future" while the date was simply correct.  A real future date (a typo,
+#: or a release scheduled ahead of its content) is still caught, because
+#: it misses by more than the offset the check exists to tolerate.
+_TOMORROW = datetime.timedelta(days=1)
 
 def _version() -> str:
     import kernlens
 
     return kernlens.__version__
+
+
+def is_prerelease(version: str) -> bool:
+    """Whether *version* is a release candidate.
+
+    The workflow needs this to decide on ``gh release create
+    --prerelease``, and it is the same rule ``check`` applies to the tag,
+    so a version that ``check`` accepts cannot be classified two ways.
+    """
+    match = _VERSION.match(version)
+    return bool(match and match.group("release"))
 
 
 def section(
@@ -96,12 +129,24 @@ def check(
     """Return every reason this tree cannot be released, in order."""
     problems: list[str] = []
     current = _version() if version is None else version
+    if _VERSION.match(current) is None:
+        problems.append(
+            f"__version__ {current!r} is not X.Y.Z or X.Y.ZrcN"
+        )
     if tag is not None:
         if not tag.startswith("v"):
             problems.append(f"tag {tag!r} does not start with 'v'")
         elif tag[1:] != current:
             problems.append(
                 f"tag {tag} does not match __version__ {current}"
+            )
+        # Only checked against a tag: while a version is being written the
+        # entries belong under [Unreleased], and this runs on every branch.
+        pending = section("Unreleased", changelog=changelog)
+        if pending is not None and "- " in pending[1]:
+            problems.append(
+                "CHANGELOG.md still has entries under [Unreleased]; move "
+                f"them into the section for {current} before tagging"
             )
 
     found = section(current, changelog=changelog)
@@ -115,7 +160,7 @@ def check(
             )
         elif (today or datetime.date.today()) < datetime.date.fromisoformat(
             date,
-        ):
+        ) - _TOMORROW:
             problems.append(f"the changelog date {date} is in the future")
         if "- " not in body:
             problems.append(
@@ -144,17 +189,25 @@ def check(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run ``check`` or print ``notes``."""
+    """Run ``check``, print ``notes``, or classify a version."""
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     check_parser = sub.add_parser("check", help="verify the release files")
     check_parser.add_argument("tag", nargs="?", default=None)
     notes_parser = sub.add_parser("notes", help="print the release notes")
     notes_parser.add_argument("version", nargs="?", default=None)
+    pre_parser = sub.add_parser(
+        "prerelease", help="print true when a version is a release candidate",
+    )
+    pre_parser.add_argument("version", nargs="?", default=None)
     args = parser.parse_args(argv)
 
     if args.command == "notes":
         print(notes(args.version), end="")
+        return 0
+    if args.command == "prerelease":
+        target = _version() if args.version is None else args.version
+        print("true" if is_prerelease(target.removeprefix("v")) else "false")
         return 0
 
     problems = check(args.tag)

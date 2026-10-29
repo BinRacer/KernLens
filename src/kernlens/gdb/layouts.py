@@ -526,6 +526,42 @@ _LAYOUTS: tuple[StructLayout, ...] = (
         sizes={"struct printk_info": 0x70},
     ),
     StructLayout(
+        type_name="struct xarray",
+        origin_version="v4.17",
+        origin_path="lib/xarray.c / include/linux/xarray.h",
+        variants=(
+            StructVariant(
+                note=(
+                    "xa_head is the only pointer; xa_lock/xa_flags precede "
+                    "it, so the head is never at offset 0"
+                ),
+                fields={
+                    "xa_head": 0x08,
+                },
+            ),
+        ),
+        sizes={"struct xarray": 0x10},
+    ),
+    StructLayout(
+        type_name="struct idr",
+        origin_version="v4.17",
+        origin_path="lib/idr.c / include/linux/idr.h",
+        variants=(
+            StructVariant(
+                note=(
+                    "idr_rt is an embedded struct xarray, so xa_head is "
+                    "reachable only through it; idr_base/idr_next follow"
+                ),
+                fields={
+                    "idr_rt.xa_head": 0x08,
+                    "idr_base": 0x10,
+                    "idr_next": 0x14,
+                },
+            ),
+        ),
+        sizes={"struct idr": 0x18},
+    ),
+    StructLayout(
         type_name="struct xa_node",
         origin_version="v4.17",
         origin_path="lib/xarray.c / include/linux/xarray.h",

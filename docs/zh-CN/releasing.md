@@ -18,7 +18,7 @@
 
 ```console
 uv sync --group release
-uv run python tools/release.py check v0.3.0
+uv run python tools/release.py check v0.3.0rc2
 uv run pytest -q
 rm -rf dist && uv build
 uv run python tools/check_wheel.py dist/*.whl
@@ -29,11 +29,45 @@ uv run twine check dist/*
 `twine check` 会按 PyPI 的方式渲染 README，所以元数据错误在这里被发现，而不是在一次
 被拒绝的上传里。
 
+有两项只在给了 tag 时才检查，因为这道闸门也在普通分支上跑：tag 必须等于
+`__version__`，且 changelog 里的 `[Unreleased]` 必须为空。留在发布提交
+`Unreleased` 下面的条目，就是发布说明不会提到的条目。
+
+## 预发布版本（rc）
+
+版本号可以是 `X.Y.ZrcN`（如 `0.3.0rc2`），即预发布。写法与普通版本完全一样——
+同样三个文件、同样的 changelog 小节、tag `v0.3.0rc2`——只有两点不同：
+
+- **GitHub Release 会带上 `--prerelease` 标记**，因此不会成为仓库的 latest
+  release。这个判断由 `tools/release.py prerelease` 做出，用的是 `check` 的同一个
+  正则，所以两者不可能互相矛盾。
+- **只有在没有别的版本可选时，安装器才会装它。** pip 确实会装 rc，但仅限于
+  它是满足要求的最高版本：当 `0.3.0rc2` 是唯一的上传时，
+  `pip install kernlens` 会解析到它。一旦存在正式版，rc 就不再是候选——
+  `pip install kernlens` 会拿 `0.3.0`，rc 只能靠点名
+  （`kernlens==0.3.0rc2`）或 `--pre` 才装得上。这段结论是 2026-10-30 对
+  TestPyPI 实测得出的，而不是推断的：本段初稿写的是「必须加 `--pre`」，那是错的。
+
+PyPI 仍然拒绝同一个版本上传两次，所以 rc 与正式版一样是永久的。
+
+发布前值得先跑一次演练，即使三个版本文件全部通过：它是唯一可能因为仓库
+之外的原因而失败的一步。未注册信任发布者时，报错是
+
+```text
+invalid-publisher: valid token, but no corresponding publisher
+```
+
+下面会打印它尝试过的 claims -- `sub`、`repository_owner`、
+`workflow_ref`、`environment`。这些 claim 就是 PyPI
+*Add a publisher* 表单里要填的值，所以这次失败本身就是填法说明。它失败在
+`publish` 任务，此时 `build` 已经通过，且没有任何上传；改好发布者后重跑
+同一个版本即可。
+
 ## 打 tag
 
 ```console
-git tag -a v0.3.0 -m "KernLens 0.3.0"
-git push origin v0.3.0
+git tag -a v0.3.0rc2 -m "KernLens 0.3.0rc2"
+git push origin v0.3.0rc2
 ```
 
 要注解 tag，不要轻量 tag：`git describe`、`gh release` 和 workflow 的

@@ -22,16 +22,16 @@ Follows the live tables from CR3 down to the leaf, decoding each entry.  This is
 ### Invocation
 
 ```gdb
-kl-walk 0xffff9762c0400000
+kl-walk 0xffff90c340400000
 ```
 
 ### Output
 
 ```text
-VA: 0xffff9762c0400000
-Paging: 4-level  root=0x3010000
-pgd      : idx=0x12e entry=0x3010970 value=0x4a01067 -> 0x4a01000
-pud      : idx=0x18b entry=0x4a01c58 value=0x4a02067 -> 0x4a02000
+VA: 0xffff90c340400000
+Paging: 4-level  root=0x7056000
+pgd      : idx=0x121 entry=0x7056908 value=0x4a01067 -> 0x4a01000
+pud      : idx=0x10d entry=0x4a01868 value=0x4a02067 -> 0x4a02000
 pmd      : idx=0x2 entry=0x4a02010 value=0x80000000004000e3 (huge leaf)
 Leaf: 2 MiB huge pa=0x400000 offset=0x0
 Flags: P RW A D PAT PS NX
@@ -46,16 +46,16 @@ Each level row is `name: idx= entry= value=`, so the entry's address and content
 ### Invocation
 
 ```gdb
-kl-walk 0xffff9762c0400000 5
+kl-walk 0xffff90c340400000 5
 ```
 
 ### Output
 
 ```text
-VA: 0xffff9762c0400000
-Paging: 5-level  root=0x3010000
-pgd      : idx=0x1ff entry=0x3010ff8 value=0x3015067 -> 0x3015000
-p4d      : idx=0x12e entry=0x3015970 value=0x0
+VA: 0xffff90c340400000
+Paging: 5-level  root=0x7056000
+pgd      : idx=0x1ff entry=0x7056ff8 value=0x3015067 -> 0x3015000
+p4d      : idx=0x121 entry=0x3015908 value=0x0
 Note: p4d entry is not present
 ```
 
@@ -68,16 +68,16 @@ The optional second argument forces the mode.  Here the walk reports an absent `
 ### Invocation
 
 ```gdb
-kl-walk 0xffff9762c0400000 --style pwndbg
+kl-walk 0xffff90c340400000 --style pwndbg
 ```
 
 ### Output
 
 ```text
 pmd    @ 0x4a02010 [002] pmde: 0x80000000004000e3  P RW A D PAT PS NX (huge)
-pud    @ 0x4a01c58 [18b] pude: 0x4a02067 -> 0x4a02000  P RW US A D
-pgd    @ 0x3010970 [12e] pgde: 0x4a01067 -> 0x4a01000  P RW US A D
-pagewalk result: 0xffff9762c0400000 [phys: 0x400000]
+pud    @ 0x4a01868 [10d] pude: 0x4a02067 -> 0x4a02000  P RW US A D
+pgd    @ 0x7056908 [121] pgde: 0x4a01067 -> 0x4a01000  P RW US A D
+pagewalk result: 0xffff90c340400000 [phys: 0x400000]
 ```
 
 ### Reading it

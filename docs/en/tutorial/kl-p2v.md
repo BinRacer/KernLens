@@ -26,8 +26,8 @@ kl-p2v 0x400000
 
 ```text
 Physical: 0x400000
-Virtual: 0xffff9762c0400000
-page: 0xffffd4fe00010000
+Virtual: 0xffff90c340400000
+page: 0xffffcd3b80010000
 PFN: 1024  type: buddy
 refcount: 0
 ```

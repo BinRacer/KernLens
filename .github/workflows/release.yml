@@ -10,6 +10,11 @@
 # step fails, the package is live and the release can be created by hand;
 # if the order were reversed, a failed upload would leave a release whose
 # artifacts do not exist.
+#
+# A release-candidate version (`0.3.0rc1`) publishes like any other, but
+# the GitHub Release is flagged `--prerelease`: an rc is not the release a
+# reader should land on.  `tools/release.py prerelease` is the one place
+# that decides, so the workflow and the tag cannot disagree.
 name: release
 
 on:
@@ -30,6 +35,11 @@ jobs:
   build:
     name: Build and check
     runs-on: ubuntu-latest
+    outputs:
+      # Decided here because this is the job with uv installed; the
+      # release job would otherwise need a second toolchain to answer a
+      # yes/no question about a string.
+      prerelease: ${{ steps.classify.outputs.prerelease }}
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -75,6 +85,19 @@ jobs:
 
       - name: Render the release notes
         run: uv run --frozen python tools/release.py notes > notes.md
+
+      - name: Classify the version
+        # A release candidate is published, not announced: the GitHub
+        # Release is flagged so it does not become the repository's
+        # "latest release".  `release.py prerelease` is the one place
+        # that decides, so this and `check` cannot disagree.
+        id: classify
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          set -eu
+          echo "prerelease=$(uv run --frozen python \
+            tools/release.py prerelease $TAG)" >> "$GITHUB_OUTPUT"
 
       - name: Upload the distributions
         uses: actions/upload-artifact@v4
@@ -154,13 +177,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: notes
-
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
         run: |
           set -eu
           printf '\nFull history: https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md\n' >> notes.md
+          # A release candidate is published, not announced: the flag
+          # keeps an rc from becoming the repository's latest release.
+          PRE=
+          if [ "$PRERELEASE" = true ]; then
+            PRE=--prerelease
+          fi
           gh release create "$TAG" dist/* docs/assets/demo.cast \
-            --title "$TAG" --notes-file notes.md
+            --title "$TAG" --notes-file notes.md $PRE
