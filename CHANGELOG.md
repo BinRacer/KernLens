@@ -997,6 +997,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A `vmlinux` with BTF but no DWARF lost its SLUB detail and BTF was
+  never read at all.**  GDB 15's `gdb.Objfile` has no `sections`
+  attribute, so `btf.find_in_gdb()` returned `None` on every current
+  release and every layout fell back to the registry; the demo image,
+  which keeps `.BTF` and strips DWARF, exposed the second half of the
+  same gap.  `btf._read_btf_section` now reads the objfile's own file when
+  GDB exposes no sections, and `SlubInspector` resolves
+  `kmem_cache`/`kmem_cache_cpu`/`slab`/`kmem_cache_node` members through
+  the same DWARF -> BTF -> registry chain the inspectors use, falling
+  back to a direct word read when GDB has no `struct` type.  On the demo
+  kernel `kl-slab info kmalloc-1k` went from four `active=NULL` rows and
+  `min_partial=?` to real per-CPU slabs, freelists, and
+  `min_partial=0x5`.  `CpuInfo.percpu_off` reads `__per_cpu_offset` by
+  address arithmetic instead of `&__per_cpu_offset[cpu]`, which also
+  needs a type GDB does not have; `SlabCache` carries `min_partial` from
+  the cache instead of re-reading it through an expression.
 - **`kernlens doctor` could report a successful load when the startup
   file had failed.**  The probe ran `source "..."`, but GDB's `source`
   does not strip quotes: it looked for a file whose name began with a

@@ -337,7 +337,7 @@ def _slabs_node_partial(
         # pwndbg shows the count against the cache's watermark, which is
         # `kmem_cache->min_partial` -- NOT a field of the node.  The
         # watermark is what decides whether an empty slab is kept.
-        min_partial = _cache_field_u64(address, "min_partial")
+        min_partial = getattr(cache, "min_partial", None)
         indent.print(
             indent.prefix(f"node {node_id}")
             + ": nr_partial=" + indent.aux_hex(count)
@@ -387,21 +387,6 @@ def _cache_slab_size(cache: int) -> int | None:
     if value is None:
         return None
     return PAGE_SIZE << ((value >> 16) & 0xFFFF)
-
-
-def _cache_field_u64(cache: int, field: str) -> int | None:
-    """Read one ``unsigned long`` member of ``struct kmem_cache``.
-
-    The offset comes from the loaded debug info (DWARF, then BTF, then
-    the registry), so a member that a ``CONFIG_*`` knob removed simply
-    resolves to ``None`` instead of reading a neighbouring field.
-    """
-    offset = kdbg.u64(
-        f"(unsigned long)&((struct kmem_cache *)0)->{field}"
-    )
-    if offset is None:
-        return None
-    return _safe_read_u64(cache + offset)
 
 
 def _slab_extra_rows(

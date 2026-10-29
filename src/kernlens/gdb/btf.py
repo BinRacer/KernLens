@@ -357,12 +357,14 @@ def extract_btf(data: bytes) -> bytes:
 def find_in_gdb() -> BTF | None:
     """Read the ``.BTF`` section of the loaded objfiles, if any.
 
-    The section bytes come from the inferior when one is selected
-    (a live target), and from the objfile's file on disk otherwise (a
-    bare ``file`` load).  Only the *loaded* image is consulted: a build
-    with no BTF yields ``None`` rather than borrowing the host's, which
-    would silently describe the wrong kernel.  Returns ``None`` outside
-    GDB (the parser is pure Python and unit-tested that way).
+    The section bytes come from the inferior when one is selected and
+    the section is mapped at a readable address; otherwise they come from
+    the objfile's file on disk, which is the normal path on GDB releases
+    whose ``Objfile`` exposes no ``sections``.  Only the *loaded* image is
+    consulted: a build with no BTF yields ``None`` rather than borrowing
+    the host's, which would silently describe the wrong kernel.  Returns
+    ``None`` outside GDB (the parser is pure Python and unit-tested that
+    way).
     """
     if gdb is None:
         return None
@@ -388,22 +390,24 @@ def _read_btf_section(objfile: Any) -> bytes | None:
     if gdb is None:  # pragma: no cover - callers check first
         return None
     section = _find_section(objfile, ".BTF")
-    if section is None:
-        return None
-    try:
-        start = int(section.start)
-        end = int(section.end)
-    except (AttributeError, TypeError, ValueError):
-        return None
-    # A live target maps the section; an offline ``file`` load does not,
-    # so read the objfile from disk in that case.
-    if end > start:
+    if section is not None:
         try:
-            inferior = gdb.selected_inferior()
-            if inferior is not None:
-                return bytes(inferior.read_memory(start, end - start))
-        except (AttributeError, gdb.error, TypeError, MemoryError):
-            pass
+            start = int(section.start)
+            end = int(section.end)
+        except (AttributeError, TypeError, ValueError):
+            start = end = 0
+        # A live target maps the section, but at its link-time address:
+        # with KASLR the read fails, and the file below is what works.
+        if end > start:
+            try:
+                inferior = gdb.selected_inferior()
+                if inferior is not None:
+                    return bytes(inferior.read_memory(start, end - start))
+            except (AttributeError, gdb.error, TypeError, MemoryError):
+                pass
+    # GDB 15's ``Objfile`` has no ``sections`` attribute at all, so the
+    # file is not a fallback here -- it is the normal path on current
+    # releases.  The objfile's own file describes the image it loaded.
     filename = getattr(objfile, "filename", None)
     if not filename:
         return None

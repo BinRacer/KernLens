@@ -478,6 +478,7 @@ class FakeKdbg:
                 # would mean "nothing is copyable".
                 slab_size=0x4000, inuse=KMALLOC_1K_SIZE,
                 useroffset=0, usersize=KMALLOC_1K_SIZE,
+                min_partial=5,
             ),
             SimpleNamespace(
                 address=KMALLOC_64_ADDR, name="kmalloc-64",
@@ -1624,10 +1625,6 @@ class MemoryTests(GdbinitTestBase):
         # node would land on a different field.  The 6.1 VM reports 5.
         cache = fake_kdbg.slab_cache("kmalloc-1k")
         fake_kdbg.partial[(cache.address, 0)] = (3, 0x3000, 0x4000, 0x5000)
-        fake_kdbg.words[
-            "(unsigned long)&((struct kmem_cache *)0)->min_partial"
-        ] = 0x10
-        fake_kdbg.words[f"*(unsigned long *)({cache.address + 0x10:#x})"] = 5
         out = self.invoke("kl-slab", "info kmalloc-1k")
         self.assertIn("min_partial=0x5", out)
 

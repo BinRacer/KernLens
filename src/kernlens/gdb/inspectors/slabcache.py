@@ -79,6 +79,10 @@ class SlabCache:
     #: kernel's check would reject every access if ``usersize`` were 0.
     useroffset: int | None = None
     usersize: int | None = None
+    #: ``min_partial`` -- the per-node watermark below which an empty
+    #: slab is kept instead of returned to the page allocator.  ``None``
+    #: when the member cannot be resolved.
+    min_partial: int | None = None
 
     @property
     def slab_size(self) -> int:
@@ -230,7 +234,20 @@ class SlabCacheInspector(InspectorBase):
             inuse=self._optional_u32(obj, "inuse") or 0,
             useroffset=self._optional_u32(obj, "useroffset"),
             usersize=self._optional_u32(obj, "usersize"),
+            min_partial=self._optional_u64(obj, "min_partial"),
         )
+
+    def _optional_u64(self, obj: int, field: str) -> int | None:
+        """Read an optional ``unsigned long`` member, or ``None``.
+
+        ``min_partial`` is an ``unsigned long``; the width matters even
+        though the watermark is small, because reading four bytes of it
+        would work only on little-endian builds.
+        """
+        offset = self._layout_offset("struct kmem_cache", field)
+        if offset is None:
+            return None
+        return self._read_u64(obj + offset)
 
     def _optional_u32(self, obj: int, field: str) -> int | None:
         """Read an optional ``u32`` member, or ``None`` when absent.

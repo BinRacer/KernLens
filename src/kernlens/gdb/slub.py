@@ -8,13 +8,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import cast, final
 
 import gdb
 
 from ..core import KAddr
 from ..output import Logger, Palette
-from ._types import _StrLike
+from ._types import _IntConvertible, _StrLike
 from .config import DebugConfig
 from .cpu import CpuInfo
 from .reader import MemoryReader
@@ -32,7 +33,7 @@ class SlubInspector:
     """
 
     __slots__: tuple[str, ...] = (
-        "_config", "_cpu", "_logger", "_reader", "_styler"
+        "_config", "_cpu", "_logger", "_offset_of", "_reader", "_styler"
     )
 
     def __init__(
@@ -42,12 +43,87 @@ class SlubInspector:
         styler: KernelStyler,
         logger: Logger,
         cpu: CpuInfo,
+        offset_of: Callable[[str, str], int | None] | None = None,
     ) -> None:
         self._config: DebugConfig = config
         self._reader: MemoryReader = reader
         self._styler: KernelStyler = styler
         self._logger: Logger = logger
         self._cpu: CpuInfo = cpu
+        #: Resolves ``offsetof(type, member)`` through the same
+        #: DWARF/BTF/registry chain the inspectors use.  Optional so the
+        #: inspector stays constructible without a kernel inspector (the
+        #: adapter tests build it on its own); without it, only the
+        #: expressions GDB can evaluate are available.
+        self._offset_of: Callable[[str, str], int | None] | None = offset_of
+
+    # --- member access ---------------------------------------------------
+
+    def _offset(self, type_name: str, path: str) -> int | None:
+        """Return ``offsetof(type_name, path)``, or ``None``.
+
+        The expression is what a DWARF build answers; BTF and the
+        registry are consulted when GDB has no type for *type_name*.
+        """
+        try:
+            value = gdb.parse_and_eval(
+                f"(unsigned long)&(({type_name} *)0)->{path}"
+            )
+            return int(cast(_IntConvertible, value))
+        except (gdb.error, TypeError, ValueError, AttributeError):
+            pass
+        if self._offset_of is None:
+            return None
+        return self._offset_of(type_name, path)
+
+    def _list_next(self, addr: int) -> int | None:
+        """Read ``list_head->next`` at *addr*.
+
+        ``struct list_head`` is two pointers, so the raw word is the
+        answer whether or not GDB has the type.
+        """
+        value = self._reader.u64(f"((struct list_head *){addr:#x})->next")
+        if value is not None:
+            return value
+        return self._reader.u64(f"*(unsigned long *){addr:#x}")
+
+    def _field(
+        self,
+        addr: int,
+        type_name: str,
+        field: str,
+        *,
+        size: int = 8,
+        index: int | None = None,
+    ) -> int | None:
+        """Read one struct member of *addr*, or ``None``.
+
+        The expression form is tried first because it honours whatever
+        debug info GDB has loaded.  GDB 15 cannot read BTF, though, so a
+        vmlinux stripped of DWARF -- exactly what a distribution debug
+        package or the demo image ships -- has no ``struct`` types for
+        GDB to evaluate.  The image's BTF still describes the build, so
+        the member offset is resolved through the inspector and the word
+        is read directly.
+        """
+        subscript = f"[{index}]" if index is not None else ""
+        value = self._reader.u64(
+            f"(({type_name} *){addr:#x})->{field}{subscript}"
+        )
+        if value is not None:
+            return value
+        offset = self._offset(type_name, field)
+        if offset is None:
+            return None
+        if index is not None:
+            # Every indexed member this module reads is an array of
+            # pointers (``kmem_cache->node``).
+            offset += 8 * index
+        if size == 8:
+            return self._reader.u64(f"*(unsigned long *){addr + offset:#x}")
+        if size == 4:
+            return self._reader.u64(f"*(unsigned int *){addr + offset:#x}")
+        raise ValueError(f"unsupported member size: {size}")
 
     # --- struct page translation ----------------------------------------
 
@@ -78,9 +154,7 @@ class SlubInspector:
         """Return the compound head of a kmalloc-1k tail page."""
         if not page:
             return 0
-        value = self._reader.u64(
-            f"((struct page *){page})->compound_head"
-        )
+        value = self._field(page, "struct page", "compound_head")
         if value is not None and (value & 1):
             return value & ~1
         return page
@@ -91,9 +165,7 @@ class SlubInspector:
         """Read ``kmem_cache->name``."""
         if not cache:
             return "?"
-        name_ptr = self._reader.u64(
-            f"((struct kmem_cache *){cache})->name"
-        )
+        name_ptr = self._field(cache, "struct kmem_cache", "name")
         if not name_ptr:
             return "?"
         try:
@@ -109,9 +181,7 @@ class SlubInspector:
         """Read ``kmem_cache->cpu_slab``, the ``__percpu`` template."""
         if not cache:
             return None
-        return self._reader.u64(
-            f"((struct kmem_cache *){cache})->cpu_slab"
-        )
+        return self._field(cache, "struct kmem_cache", "cpu_slab")
 
     def cpu_active_slab(self, cache: int, cpu: int) -> int | None:
         """Read ``kmem_cache_cpu(cpu)->slab``."""
@@ -122,9 +192,7 @@ class SlubInspector:
         if offset is None:
             return None
         addr = template + offset
-        return self._reader.u64(
-            f"((struct kmem_cache_cpu *){addr})->slab"
-        )
+        return self._field(addr, "struct kmem_cache_cpu", "slab")
 
     def cpu_freelist(self, cache: int, cpu: int) -> int | None:
         """Read ``kmem_cache_cpu(cpu)->freelist``."""
@@ -135,9 +203,7 @@ class SlubInspector:
         if offset is None:
             return None
         addr = template + offset
-        return self._reader.u64(
-            f"((struct kmem_cache_cpu *){addr})->freelist"
-        )
+        return self._field(addr, "struct kmem_cache_cpu", "freelist")
 
     # --- freeptr decoding ---------------------------------------------
 
@@ -152,9 +218,7 @@ class SlubInspector:
         """
         if not cache:
             return None
-        value = self._reader.u64(
-            f"((struct kmem_cache *){cache})->offset"
-        )
+        value = self._field(cache, "struct kmem_cache", "offset", size=4)
         if value is None or value < 0 or value > 0xFFFFFFFF:
             return None
         # The freeptr is a pointer, so its slot is word-aligned.  A
@@ -165,9 +229,7 @@ class SlubInspector:
         # When the cache size is available, reject offsets beyond the
         # whole object.  Do not use an arbitrary 1 MiB cutoff: large
         # caches can legitimately place the freeptr well past 1 MiB.
-        size = self._reader.u64(
-            f"((struct kmem_cache *){cache})->size"
-        )
+        size = self._field(cache, "struct kmem_cache", "size", size=4)
         if size is not None and size > 0 and value > size:
             return None
         return value
@@ -177,8 +239,8 @@ class SlubInspector:
         if not cache:
             return None
         try:
-            return self._reader.u64(
-                f"((struct kmem_cache *){cache})->random"
+            return self._field(
+                cache, "struct kmem_cache", "random", size=4,
             )
         except gdb.error:
             return None
@@ -225,23 +287,17 @@ class SlubInspector:
         """Return ``(count, node_ptr, head_slab, head_freelist)``."""
         if not cache:
             return (0, None, None, None)
-        node_ptr = self._reader.u64(
-            f"((struct kmem_cache *){cache})->node[{node_id}]"
+        node_ptr = self._field(
+            cache, "struct kmem_cache", "node", index=node_id,
         )
         if not node_ptr:
             return (0, None, None, None)
-        partial_off = self._reader.u64(
-            "(unsigned long)&((struct kmem_cache_node *)0)->partial"
-        )
-        slab_list_off = self._reader.u64(
-            "(unsigned long)&((struct slab *)0)->slab_list"
-        )
+        partial_off = self._offset("struct kmem_cache_node", "partial")
+        slab_list_off = self._offset("struct slab", "slab_list")
         if partial_off is None or slab_list_off is None:
             return (0, node_ptr, None, None)
         head_list = node_ptr + partial_off
-        next_ptr = self._reader.u64(
-            f"((struct list_head *){head_list:#x})->next"
-        )
+        next_ptr = self._list_next(head_list)
         if not next_ptr or next_ptr == head_list:
             return (0, node_ptr, None, None)
         count = 0
@@ -256,48 +312,38 @@ class SlubInspector:
             slab_page = cur - slab_list_off
             if count == 0:
                 first_slab_page = slab_page
-                freelist = self._reader.u64(
-                    f"((struct slab *){slab_page})->freelist"
+                freelist = self._field(
+                    slab_page, "struct slab", "freelist",
                 )
                 first_freelist = freelist if freelist is not None else 0
             count += 1
-            cur = self._reader.u64(
-                f"((struct list_head *){cur:#x})->next"
-            )
+            cur = self._list_next(cur)
         return (count, node_ptr, first_slab_page, first_freelist)
 
     def in_partial(self, cache: int, page: int, node_id: int) -> bool:
         """Whether ``page`` sits on the given node's partial list."""
         if not cache or not page:
             return False
-        node_ptr = self._reader.u64(
-            f"((struct kmem_cache *){cache})->node[{node_id}]"
+        node_ptr = self._field(
+            cache, "struct kmem_cache", "node", index=node_id,
         )
         if not node_ptr:
             return False
-        partial_off = self._reader.u64(
-            "(unsigned long)&((struct kmem_cache_node *)0)->partial"
-        )
-        slab_list_off = self._reader.u64(
-            "(unsigned long)&((struct slab *)0)->slab_list"
-        )
+        partial_off = self._offset("struct kmem_cache_node", "partial")
+        slab_list_off = self._offset("struct slab", "slab_list")
         if partial_off is None or slab_list_off is None:
             return False
         head = node_ptr + partial_off
         visited = 0
         seen: set[int] = set()
-        cur = self._reader.u64(
-            f"((struct list_head *){head:#x})->next"
-        )
+        cur = self._list_next(head)
         while cur and cur != head and visited < 10000:
             if cur in seen:
                 break
             seen.add(cur)
             if cur - slab_list_off == page:
                 return True
-            cur = self._reader.u64(
-                f"((struct list_head *){cur:#x})->next"
-            )
+            cur = self._list_next(cur)
             visited += 1
         return False
 
@@ -314,7 +360,7 @@ class SlubInspector:
         """
         if not page:
             return None
-        counters = self._reader.u64(f"((struct slab *){page})->counters")
+        counters = self._field(page, "struct slab", "counters", size=4)
         if counters is None:
             return None
         return (
@@ -357,7 +403,7 @@ class SlubInspector:
         """
         if not head or not obj or not cache:
             return None
-        size = self._reader.u64(f"((struct kmem_cache *){cache})->size")
+        size = self._field(cache, "struct kmem_cache", "size", size=4)
         if not size:
             return None
         page_offset = self._reader.read_kvar("page_offset_base")
@@ -386,7 +432,7 @@ class SlubInspector:
         if located is None:
             return (None, None)
         index, objects = located
-        size = self._reader.u64(f"((struct kmem_cache *){cache})->size")
+        size = self._field(cache, "struct kmem_cache", "size", size=4)
         if not size:
             return (None, None)
         previous = obj - size if index > 0 else None
@@ -412,9 +458,7 @@ class SlubInspector:
             )
             return
         page = self.compound_head(page)
-        cache = self._reader.u64(
-            f"((struct slab *){page})->slab_cache"
-        )
+        cache = self._field(page, "struct slab", "slab_cache")
         if not cache:
             self._logger.info(
                 header + " " + "page=" + self._styler.addr(page) + " "
@@ -423,9 +467,7 @@ class SlubInspector:
             return
 
         name = self.cache_name(cache)
-        counters = self._reader.u64(
-            f"((struct slab *){page})->counters"
-        )
+        counters = self._field(page, "struct slab", "counters", size=4)
         lines: list[str] = []
         if counters is not None:
             inuse = counters & 0xFFFF
@@ -463,9 +505,7 @@ class SlubInspector:
         self, lines: list[str], page: int, cache: int, head: int,
     ) -> None:
         """Append the ``slab->freelist`` line and H's depth to *lines*."""
-        slab_freelist = self._reader.u64(
-            f"((struct slab *){page})->freelist"
-        )
+        slab_freelist = self._field(page, "struct slab", "freelist")
         if slab_freelist is None:
             slab_freelist = 0
         freelist_label = self._styler.style(
