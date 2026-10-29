@@ -2,9 +2,18 @@
     <title id="banner-title">KernLens</title>
     <desc id="banner-desc">KernLens — Linux kernel introspection for GDB, 30 kl-* commands for page tables, SLUB, symbols, and KASLR</desc>
     <defs>
+        <!--
+          One gradient, and both ends have to read on #ffffff and on
+          #0d1117, because a single-file banner cannot swap colours per
+          theme.  The old blue-to-purple ended at #7209b7, which is
+          2.20:1 on the dark background: the "Lens" half of the wordmark
+          was nearly invisible there.  These two are 5.37 and 3.53, so
+          the worst case on either theme is 3.53; enough for 58px text,
+          which WCAG counts as large (AA large is 3.0).
+        -->
         <linearGradient id="wordmark" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#4361ee"/>
-            <stop offset="100%" stop-color="#7209b7"/>
+            <stop offset="100%" stop-color="#5b5bd6"/>
         </linearGradient>
         <style>
             text {
@@ -18,31 +27,43 @@
                 letter-spacing: -1px;
                 fill: url(#wordmark);
             }
-            /* Not the old grey: GitHub renders this image on light
-               #ffffff and on dark #0d1117, and #6b7280 clears 4.5:1 on
-               both (4.8:1 and 4.9:1).  A single-file banner cannot swap
-               colours per theme, so the fill has to work in both places.
-               (No angle brackets in these comments: this is XML text, and
-               a raw one would be parsed as the start of a tag.) */
+            /*
+              Sizes are chosen against a contrast ceiling rather than by
+              eye.  One fill on two backgrounds tops out at 4.35:1 --
+              computed by sweeping every grey -- so 4.5:1 (AA for small
+              text) is unreachable here.  WCAG counts bold text at 18.66px
+              and regular text at 24px as "large", where AA needs only
+              3.0, so the two small lines are set to pass that:
+
+                tagline 24px bold  #6b7280   4.83 light / 3.91 dark
+                surface 19px bold  #8b5cf6   4.23 light / 4.47 dark
+
+              19px clears the bold threshold with room for font
+              differences between viewers.  Do not shrink either line
+              without re-measuring: at 14px the surface line needed 4.5
+              and had 4.23 on white.
+              (No angle brackets in these comments: this is XML text, and
+              a raw one would be parsed as the start of a tag.)
+            */
             .tagline {
-                font-size: 19px;
-                font-weight: 500;
+                font-size: 24px;
+                font-weight: 700;
                 fill: #6b7280;
             }
             /* The one piece of information the old banner lacked: what the
                tool actually gives you.  Monospace because the commands are
-               typed, and #8b5cf6 reads on both themes. */
+               typed. */
             .surface {
                 font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
                     Consolas, monospace;
-                font-size: 14px;
-                font-weight: 500;
+                font-size: 19px;
+                font-weight: 600;
                 fill: #8b5cf6;
             }
         </style>
     </defs>
 
     <text class="wordmark" x="50%" y="60">KernLens</text>
-    <text class="tagline" x="50%" y="104">Linux kernel introspection for GDB</text>
-    <text class="surface" x="50%" y="136">30 kl-* commands · page tables · SLUB · symbols · KASLR</text>
+    <text class="tagline" x="50%" y="108">Linux kernel introspection for GDB</text>
+    <text class="surface" x="50%" y="142">30 kl-* commands · page tables · SLUB · symbols · KASLR</text>
 </svg>

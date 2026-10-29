@@ -572,17 +572,59 @@ class BannerTests(unittest.TestCase):
         self.assertIsNotNone(root.get("viewBox"))
 
     def test_carries_the_surface_count(self) -> None:
-        """The banner states the command count; a test keeps it true.
+        """Every command count in the banner must match the registry.
 
-        The count is auto-checked against the command registry rather than
-        the string, so a wrong number in the banner is a failure here.
+        The number appears twice -- once in the `<desc>` a screen reader
+        announces, once in the visible strip -- and the earlier version of
+        this test only asked whether the right string was *somewhere* in
+        the file.  So `<desc>` could say 40 while the visible text said
+        30, and the test passed: the wrong number was published in the
+        one copy nobody can see to check.
+
+        Both copies are therefore checked, and any count that is not the
+        registry's is a failure rather than merely an absence.
         """
+        import re
+
         from contract_spec import CANONICAL_COMMANDS
 
+        expected = len(CANONICAL_COMMANDS)
         text = "".join(
             (element.text or "") for element in self._root().iter()
         )
-        self.assertIn(f"{len(CANONICAL_COMMANDS)} kl-* commands", text)
+        found = re.findall(r"(\d+) kl-\* commands", text)
+        self.assertTrue(found, "the banner states no command count")
+        for number in found:
+            self.assertEqual(
+                int(number), expected,
+                f"the banner says {number} kl-* commands; the registry has "
+                f"{expected}",
+            )
+
+    def test_the_accessible_description_matches_the_visible_text(self) -> None:
+        """The `<desc>` is the only copy a screen-reader user gets.
+
+        It is hand-written prose, so it drifts independently of the
+        visible strip -- and while it drifts, the rendered banner still
+        looks right, which is why the mismatch survived.
+        """
+        import re
+
+        from contract_spec import CANONICAL_COMMANDS
+
+        root = self._root()
+        surfaces = [
+            "".join(element.itertext())
+            for element in root.iter()
+            if element.tag.endswith("desc") or element.get("class") == "surface"
+        ]
+        self.assertEqual(len(surfaces), 2, "expected a desc and a surface line")
+        for surface in surfaces:
+            with self.subTest(surface=surface[:40]):
+                counts = re.findall(r"(\d+) kl-\* commands", surface)
+                self.assertEqual(
+                    [int(n) for n in counts], [len(CANONICAL_COMMANDS)],
+                )
 
     def test_has_no_external_assets(self) -> None:
         """One file, no network, no rasters.
@@ -594,6 +636,122 @@ class BannerTests(unittest.TestCase):
         raw = self.PATH.read_text(encoding="utf-8")
         for banned in ("<image", "xlink:href", ".png", ".jpg", ".woff"):
             self.assertNotIn(banned, raw)
+
+    def test_the_text_is_large_enough_to_clear_contrast(self) -> None:
+        """The fill colours cannot reach 4.5:1, so the sizes have to.
+
+        A banner is one file, so it cannot change colour between GitHub's
+        light and dark themes.  Sweeping every grey shows the best a
+        single fill can do across #ffffff and #0d1117 is 4.35:1, which is
+        below the 4.5 AA requires for small text.  That ceiling is a
+        property of the two backgrounds, not of this banner.
+
+        WCAG therefore has to be satisfied through size: bold text counts
+        as "large" from 18.66px, and large text needs only 3.0.  Both
+        small lines are held above that threshold here, so a later edit
+        that shrinks one of them fails instead of quietly regressing.
+        """
+        import re
+
+        css = self.PATH.read_text(encoding="utf-8")
+        sizes = {
+            name: float(re.search(
+                rf"\.{name} \{{[^}}]*font-size:\s*([\d.]+)px", css, re.S,
+            ).group(1))
+            for name in ("wordmark", "tagline", "surface")
+        }
+        # 18.66 is the WCAG threshold for bold text; round up to 19px.
+        for name in ("tagline", "surface"):
+            with self.subTest(element=name):
+                self.assertGreaterEqual(
+                    sizes[name], 19.0,
+                    f".{name} is {sizes[name]}px; below 18.66px bold it "
+                    f"would need 4.5:1, which no single fill can reach",
+                )
+        # And the weights those thresholds assume.
+        for name in ("tagline", "surface"):
+            with self.subTest(element=name):
+                weight = re.search(
+                    rf"\.{name} \{{[^}}]*font-weight:\s*(\d+)", css, re.S,
+                ).group(1)
+                self.assertGreaterEqual(int(weight), 600)
+
+    def test_every_fill_is_readable_on_both_github_themes(self) -> None:
+        """The colours are measured, not eyeballed.
+
+        The wordmark used to end at #7209b7, which is 2.20:1 against
+        GitHub's dark background: the "Lens" half was almost invisible
+        there, and on the light theme it looked fine, so nothing caught
+        it.  Both backgrounds are checked here, because a banner is one
+        file and cannot pick a colour per theme.
+
+        The thresholds are WCAG AA.  3.0 applies to the wordmark (58px is
+        "large") and to the two small lines, which are set at 19px bold
+        or larger for exactly this reason; the ceiling for any single
+        fill across both backgrounds is 4.35:1, so 4.5 is not reachable
+        and is not asserted.
+        """
+        import re
+
+        raw = self.PATH.read_text(encoding="utf-8")
+
+        def channel(value: float) -> float:
+            value /= 255
+            return value / 12.92 if value <= 0.04045 else (
+                ((value + 0.055) / 1.055) ** 2.4
+            )
+
+        def luminance(colour: str) -> float:
+            colour = colour.lstrip("#")
+            red, green, blue = (
+                channel(int(colour[index:index + 2], 16))
+                for index in (0, 2, 4)
+            )
+            return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+        def ratio(one: str, other: str) -> float:
+            first, second = luminance(one), luminance(other)
+            high, low = max(first, second), min(first, second)
+            return (high + 0.05) / (low + 0.05)
+
+        backgrounds = {"light": "#ffffff", "dark": "#0d1117"}
+        # Two syntaxes, because a gradient stop is an attribute
+        # (`stop-color="#..."`) and a CSS rule is a declaration
+        # (`fill: #...`).  A regex that only matched the colon form
+        # silently skipped the gradient, which is the half that was
+        # wrong, so the guard passed on the broken file.
+        fills = re.findall(r"(?:stop-color|fill)\s*[:=]\s*[\"']?(#[0-9a-fA-F]{6})", raw)
+        self.assertTrue(fills, "no colours found in the banner")
+        # The gradient end that made "Lens" vanish has to be one of them,
+        # or this test is not looking where the defect was.
+        self.assertGreaterEqual(len(set(fills)), 4, f"only found {sorted(set(fills))}")
+        for fill in sorted(set(fills)):
+            for theme, background in backgrounds.items():
+                with self.subTest(colour=fill, theme=theme):
+                    self.assertGreaterEqual(
+                        ratio(fill, background), 3.0,
+                        f"{fill} is {ratio(fill, background):.2f}:1 on "
+                        f"{background}; the dark end must stay readable",
+                    )
+
+    def test_no_comment_contains_a_double_hyphen(self) -> None:
+        """``--`` is illegal inside an XML comment, and fails silently.
+
+        This is the second time it has happened: the file stops parsing
+        at that point, GitHub renders nothing, and the only symptom is a
+        blank space at the top of both READMEs.  ``test_parses_as_xml``
+        catches it, but the message ("invalid token, line 11") does not
+        say what to fix, so this names the real problem.
+
+        Typing a dash as ``--`` is an English habit, and the comments in
+        this file are prose.
+        """
+        import re
+
+        raw = self.PATH.read_text(encoding="utf-8")
+        for body in re.findall(r"<!--(.*?)-->", raw, re.S):
+            with self.subTest(comment=body.strip()[:50]):
+                self.assertNotIn("--", body)
 
 
 class DocumentationTrackingTests(unittest.TestCase):
