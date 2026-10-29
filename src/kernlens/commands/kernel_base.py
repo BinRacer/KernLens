@@ -134,7 +134,16 @@ def kernlens_base(
 
 
 def _show(verbose: bool, rebase: bool) -> None:
-    """Report the base and slide, applying what was detected."""
+    """Report the base and slide, applying what was detected.
+
+    ``kl-base`` is the manual retry for the framework's once-per-session
+    alignment: it drops the latch and spends a fresh set of probes.  The
+    user runs it after fixing whatever stopped detection -- loading the
+    matching vmlinux, attaching the target, resuming a VM -- and it has to
+    be the command that re-opens the question, because it is the one a
+    user reaches for when they believe the base is now knowable.
+    """
+    kdbg.reader.reopen_alignment()
     result = kdbg.find_kbase()
     indent = IndentContextManager()
     if result is None:

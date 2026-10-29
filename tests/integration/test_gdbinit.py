@@ -315,12 +315,20 @@ class FakeKdbg:
         # so the stub has to answer the call.  Counting it is what lets a
         # test assert the alignment happened rather than merely that it
         # did not crash.
-        self.reader = SimpleNamespace(ensure_kaslr=self.ensure_kaslr)
+        self.reader = SimpleNamespace(
+            ensure_kaslr=self.ensure_kaslr,
+            reopen_alignment=self.reopen_alignment,
+        )
         self.reset()
 
     def ensure_kaslr(self) -> int:
-        """Stand-in for the reader's on-demand detection."""
+        """Stand-in for the reader's once-per-session alignment."""
         self.ensure_kaslr_calls += 1
+        return self.kaslr_offset
+
+    def reopen_alignment(self) -> int:
+        """``kl-base`` re-opens the latch; the stub records it."""
+        self.reopen_alignment_calls += 1
         return self.kaslr_offset
 
     def reset(self) -> None:
@@ -329,6 +337,8 @@ class FakeKdbg:
         self.indent_nested = "    "
         #: How many times the framework asked the reader to align KASLR.
         self.ensure_kaslr_calls = 0
+        #: How many times ``kl-base`` asked to re-open the latch.
+        self.reopen_alignment_calls = 0
         self.kbase_result = _runtime_kbase_result()
         self.kaslr_offset = 0
         self.link_text_value: int | None = LINK_TEXT

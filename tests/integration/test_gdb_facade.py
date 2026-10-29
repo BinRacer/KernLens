@@ -1594,17 +1594,58 @@ class KaslrAdaptationTests(FacadeTestBase):
         self.assertEqual(self.reader.redetect_kaslr(), 0)
         self.assertEqual(self.config.kaslr_offset, 0)
 
-    def test_redetect_force_overrides_cached_failure(self) -> None:
-        attempt = {"n": 0}
+    def test_the_first_alignment_gives_up_after_three_probes(self) -> None:
+        """A session where detection cannot work stops paying for it.
+
+        The old shape retried forever: a read that failed forced another
+        probe, and the probe reset the failure memory on the way out, so
+        every command in a ``nokaslr`` session spent two IDT scans.  The
+        attempt count is the whole point of this latch.
+        """
+        probes = []
+        self.reader.set_kaslr_hooks(lambda: probes.append(1) or None)
+        for _ in range(5):
+            self.assertEqual(self.reader.ensure_kaslr(), 0)
+        self.assertEqual(len(probes), 3)
+
+    def test_a_command_after_the_first_one_probes_nothing(self) -> None:
+        probes = []
+        self.reader.set_kaslr_hooks(lambda: probes.append(1) or 0x9000)
+        self.assertEqual(self.reader.ensure_kaslr(), 0x9000)
+        for _ in range(5):
+            self.assertEqual(self.reader.ensure_kaslr(), 0x9000)
+        self.assertEqual(len(probes), 1)
+
+    def test_a_failed_alignment_is_not_retried(self) -> None:
+        probes = []
+        self.reader.set_kaslr_hooks(lambda: probes.append(1) or None)
+        self.reader.ensure_kaslr()
+        self.assertEqual(len(probes), 3)
+        self.reader.ensure_kaslr()
+        self.assertEqual(len(probes), 3)
+
+    def test_reopen_alignment_spends_a_fresh_set_of_probes(self) -> None:
+        """``kl-base`` is the manual retry, and it can be used repeatedly."""
+        probes = []
+        self.reader.set_kaslr_hooks(lambda: probes.append(1) or None)
+        self.reader.ensure_kaslr()
+        self.assertEqual(len(probes), 3)
+        self.reader.reopen_alignment()
+        self.assertEqual(len(probes), 6)
+        self.reader.reopen_alignment()
+        self.assertEqual(len(probes), 9)
+
+    def test_reopen_alignment_succeeds_when_detection_now_works(self) -> None:
+        state = {"ok": False}
 
         def recover() -> int | None:
-            attempt["n"] += 1
-            return None if attempt["n"] == 1 else 0x3000
+            return 0x7000 if state["ok"] else None
 
         self.reader.set_kaslr_hooks(recover)
-        self.assertEqual(self.reader.redetect_kaslr(), 0)      # cached failure
-        self.assertEqual(
-            self.reader.redetect_kaslr(force=True), 0x3000,   # forced retry
+        self.assertEqual(self.reader.ensure_kaslr(), 0)
+        state["ok"] = True          # the user loaded the matching vmlinux
+        self.assertEqual(self.reader.reopen_alignment(), 0x7000)
+        self.assertEqual(self.config.kaslr_offset, 0x7000,
         )
 
     def test_on_change_hook_fires(self) -> None:
@@ -1613,7 +1654,7 @@ class KaslrAdaptationTests(FacadeTestBase):
         self.reader.ensure_kaslr()
         self.assertEqual(events, [1])
         # No change -> no event.
-        self.reader.redetect_kaslr(force=True)
+        self.reader.redetect_kaslr()
         self.assertEqual(events, [1])
 
 

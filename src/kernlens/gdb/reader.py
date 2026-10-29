@@ -19,6 +19,16 @@ from .config import DebugConfig
 #: Mask for a 64-bit value.
 _MASK64 = 0xFFFFFFFFFFFFFFFF
 
+#: How many times the first alignment may probe before giving up.
+#:
+#: Detection is a full IDT scan, and a session where it cannot work --
+#: ``nokaslr``, an unreadable IDT, a target attached after the fact --
+#: fails the same way every time.  Retrying it on every read turned one
+#: command into two scans forever, which is what this bounds.  More than
+#: one attempt is still worth it because the first commands of a session
+#: can run while the inferior is still settling.
+_ALIGN_ATTEMPTS = 3
+
 
 @final
 class MemoryReader:
@@ -44,8 +54,8 @@ class MemoryReader:
     """
 
     __slots__: tuple[str, ...] = (
-        "_config", "_detect_failed", "_on_change", "_recover",
-        "_recovering",
+        "_align_attempts", "_align_closed", "_config",
+        "_on_change", "_recover", "_recovering",
     )
 
     def __init__(self, config: DebugConfig) -> None:
@@ -53,7 +63,11 @@ class MemoryReader:
         self._recover: Callable[[], int | None] | None = None
         self._on_change: Callable[[], None] | None = None
         self._recovering: bool = False
-        self._detect_failed: bool = False
+        #: Probes spent on the first alignment of this session.
+        self._align_attempts: int = 0
+        #: The first alignment is over -- succeeded or gave up.  From then
+        #: on a command reads the slide instead of probing for it.
+        self._align_closed: bool = False
 
     # --- KASLR self-healing ---------------------------------------------
 
@@ -76,25 +90,60 @@ class MemoryReader:
         return self._config.kaslr_offset
 
     def ensure_kaslr(self) -> int:
-        """Return the slide, auto-detecting it once when unset."""
+        """Align the slide once per session, then just read it.
+
+        The first command that needs the slide probes for it, up to
+        :data:`_ALIGN_ATTEMPTS` times, and every later command reads the
+        answer.  When the probes are exhausted the alignment is *closed*
+        with the slide at whatever it is, and no command probes again --
+        ``kl-base`` is how a user re-opens it, because that is the command
+        a user reaches for when they believe a base is now knowable.
+
+        The distinction that matters: this is a session-level latch, not a
+        per-read cache.  A per-read cache still paid one probe per command
+        in a session where detection could not succeed, and the earlier
+        ``force`` path reset the failure memory on every read, so the cost
+        never went away.
+        """
         if self._config.kaslr_offset:
+            self._align_closed = True
             return self._config.kaslr_offset
-        if self._detect_failed:
-            return 0
-        return self.redetect_kaslr()
+        if self._align_closed:
+            return self._config.kaslr_offset
+        while self._align_attempts < _ALIGN_ATTEMPTS:
+            self._align_attempts += 1
+            offset = self._probe()
+            if offset:
+                return offset
+        # Out of attempts: close the alignment so the rest of the session
+        # is free.  The slide stays whatever the last probe left, which is
+        # zero for a kernel that genuinely has none.
+        self._align_closed = True
+        return self._config.kaslr_offset
 
-    def redetect_kaslr(self, *, force: bool = False) -> int:
-        """(Re)derive the slide from the live kernel.
+    def reopen_alignment(self) -> int:
+        """Forget the latch and align again (``kl-base`` calls this).
 
-        Returns the slide in effect afterwards: the freshly detected one,
-        or the previous one when detection is unavailable/failed.  A
-        failed detection is remembered so it is not retried on every
-        read, unless *force* is set (the read-failure path).
+        Resetting the attempt count is what makes this a *retry* rather
+        than an override: a user who fixed the reason detection failed gets
+        the same three probes as a fresh session, and a user who did not
+        gets three more rather than an unbounded loop.
+        """
+        self._align_closed = False
+        self._align_attempts = 0
+        return self.ensure_kaslr()
+
+    def _probe(self) -> int:
+        """Run the recovery hook once and record the outcome.
+
+        Returns the slide on success and ``0`` on failure, so the caller
+        can treat truthiness as "the probe worked".  A ``0`` return is
+        also a legitimate answer -- a nokaslr kernel really has no slide --
+        which is why the caller bounds the attempts rather than testing
+        the value.
         """
         if self._recovering or self._recover is None:
-            return self._config.kaslr_offset
-        if self._detect_failed and not force:
-            return self._config.kaslr_offset
+            return 0
         self._recovering = True
         try:
             offset = self._recover()
@@ -103,14 +152,26 @@ class MemoryReader:
         finally:
             self._recovering = False
         if offset is None:
-            self._detect_failed = True
-            return self._config.kaslr_offset
-        self._detect_failed = False
+            return 0
         offset &= _MASK64
         if offset != self._config.kaslr_offset:
             self._config.kaslr_offset = offset
             if self._on_change is not None:
                 self._on_change()
+        return self._config.kaslr_offset
+
+    def redetect_kaslr(self) -> int:
+        """Probe the kernel for the slide, bypassing the latch once.
+
+        The read-failure path uses this: a read that succeeded before and
+        fails now means the slide moved (``kl-base --rebase``, a resumed
+        VM), so one more probe is warranted even when the alignment is
+        closed.  A successful probe re-opens nothing -- the slide is simply
+        correct again.
+        """
+        offset = self._probe()
+        if offset:
+            self._align_closed = True
         return offset
 
     def _readable(self, addr: int) -> bool:
@@ -143,7 +204,7 @@ class MemoryReader:
         )
         if value is not None:
             return value
-        detected = self.redetect_kaslr(force=True)
+        detected = self.redetect_kaslr()
         if detected != offset:
             value = self.u64(
                 f"*({type_name} *){((link + detected) & _MASK64):#x}"
@@ -164,7 +225,7 @@ class MemoryReader:
         addr = (link + offset) & _MASK64
         if self._readable(addr):
             return addr
-        detected = self.redetect_kaslr(force=True)
+        detected = self.redetect_kaslr()
         if detected != offset:
             addr = (link + detected) & _MASK64
             if self._readable(addr):
