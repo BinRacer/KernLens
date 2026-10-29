@@ -43,7 +43,7 @@ kernlens-color toggle
 ### Output
 
 ```text
-[35mKernLens color:[0m [32mon[0m
+KernLens color: on
 ```
 
 ### Reading it
@@ -61,7 +61,7 @@ kernlens-color on
 ### Output
 
 ```text
-[35mKernLens color:[0m [32mon[0m
+KernLens color: on
 ```
 
 ### Reading it

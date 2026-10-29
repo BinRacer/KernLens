@@ -1008,6 +1008,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`kl-color off` did not reach the help epilog, so the tutorial pages
+  showed `[35mAlias:[0m`.**  The `Examples:` / `Notes:` / `Alias:`
+  labels are painted through `message.notice`, and the epilog was built
+  once, in `CommandDefinition.__init__`, at import time.  Colour was on
+  then, so `\x1b[35m` was stored on the parser; `kl-color off` afterwards
+  changed `message`'s flag but not the text already there, and the escape
+  reached the surface in three places at once -- `kl-help <command>`,
+  `-h`/`--help`, and the generated tutorial.  `setup_epilog` now runs
+  again from `format_help()`/`print_help()`, so the labels follow the
+  flag in both directions, and it clears the epilog instead of leaving
+  stale text when a definition has no metadata.  `gen_tutorial.py` and
+  `gen_demo.py` strip SGR sequences themselves, because a `text` fence
+  cannot render one and an SVG may not contain one at all -- a capture
+  taken with colour on is legitimate, and the renderer is what has to
+  turn it into a readable artifact.
 - **A `vmlinux` with BTF but no DWARF lost its SLUB detail and BTF was
   never read at all.**  GDB 15's `gdb.Objfile` has no `sections`
   attribute, so `btf.find_in_gdb()` returned `None` on every current

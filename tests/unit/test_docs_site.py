@@ -88,6 +88,59 @@ class GeneratedFileTests(unittest.TestCase):
                 )
 
 
+class RenderedOutputTests(unittest.TestCase):
+    """Published output blocks must be readable text, not ANSI escapes.
+
+    A captured command prints its section labels through
+    ``message.notice``, which wraps them in ``\\x1b[35m ... \\x1b[0m``.  A
+    ```text``` fence cannot render that: the site showed a literal
+    ``[35mAlias:[0m`` where the label should have been, and the same text
+    was unreachable to a reader of the raw Markdown.
+
+    Two separate defects produced it, and either one alone would have.
+    The epilog was painted once at import time, so ``kl-color off`` could
+    not undo it (see ``HelpColourTests``); and the capture ran
+    ``kernlens-color on``, which left colour enabled for every case after
+    it.  These tests guard the artifacts, whatever the cause, because the
+    artifacts are what a reader sees.
+    """
+
+    #: Matches one SGR sequence: ``ESC [ params m``.
+    _SGR = re.compile(r"\x1b\[[0-9;]*m")
+
+    def test_no_published_page_contains_an_escape_sequence(self) -> None:
+        offenders = []
+        for path in sorted(DOCS.rglob("*.md")):
+            if self._SGR.search(path.read_text(encoding="utf-8")):
+                offenders.append(path.relative_to(ROOT).as_posix())
+        self.assertEqual(offenders, [], "run tools/gen_tutorial.py")
+
+    def test_no_generated_asset_contains_a_raw_escape(self) -> None:
+        # ``docs/assets/demo.svg`` is XML: a bare ESC makes it malformed,
+        # and ``demo.cast`` is a JSON text record.  Neither can carry
+        # colour, so neither may contain the byte.
+        for path in sorted((DOCS / "assets").iterdir()):
+            if not path.is_file():
+                continue
+            with self.subTest(asset=path.name):
+                raw = path.read_bytes()
+                self.assertNotIn(b"\x1b", raw)
+
+    def test_the_generators_strip_escapes_themselves(self) -> None:
+        """The strip has to live in the renderer, not in the capture.
+
+        A capture taken with colour on is a legitimate capture; the
+        renderer is what has to make a reader-facing artifact out of it.
+        Checking the source rather than the output means the guard still
+        holds when someone re-captures on a fresh kernel.
+        """
+        for name in ("gen_tutorial.py", "gen_demo.py"):
+            text = (ROOT / "tools" / name).read_text(encoding="utf-8")
+            with self.subTest(tool=name):
+                self.assertIn("_SGR", text)
+                self.assertRegex(text, r'_SGR\s*=\s*re\.compile\(r?"')
+
+
 class NavigationTests(unittest.TestCase):
     def test_every_nav_target_exists(self) -> None:
         for title, target in _nav():

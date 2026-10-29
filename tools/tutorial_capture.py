@@ -21,7 +21,13 @@ Run it from GDB::
     (gdb) python exec(open("tools/tutorial_capture.py").read())
 
 It writes ``tools/tutorial_capture.json`` beside this file.  Colour is
-turned off first so the captured text has no escape sequences in it.
+turned off first so the captured text is plain, but the capture also
+*runs* ``kernlens-color on`` and ``kernlens-color toggle`` to document
+them, so later cases in the same run are captured with colour on.  That
+is expected: the JSON records what the command printed.  Stripping the
+escape sequences is the renderer's job (``gen_tutorial.py`` and
+``gen_demo.py`` both do it), because a ```text``` fence cannot render an
+SGR sequence and an SVG cannot contain one at all.
 
 Adding an example: add the invocation to the matching list below and
 reference it verbatim from ``tools/tutorial_prose.py``;

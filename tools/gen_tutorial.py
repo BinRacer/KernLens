@@ -46,10 +46,23 @@ FOOTER = (
 #: Python 3.10, which this project still supports.
 EM_DASH = "\N{EM DASH}"
 
+#: ANSI SGR sequences, stripped from captured output before it is fenced.
+#:
+#: The capture is supposed to be taken with colour off, and mostly is --
+#: but a session that runs ``kernlens-color on`` (which the tutorial has
+#: to, to document it) leaves it on for every case after it, and the
+#: epilog labels were painted once at import time so they carried colour
+#: even when the session did not.  A fenced ```text``` block cannot render
+#: either: the reader sees ``[35mAlias:[0m``.  Stripping here means a
+#: capture taken in any session state still produces a readable page, and
+#: it keeps that guarantee in one place instead of depending on how the
+#: capture was taken.
+_SGR = re.compile(r"\x1b\[[0-9;]*m")
+
 
 def _code_block(text: str, language: str = "text") -> str:
     """Return *text* as a fenced block, crate-style."""
-    body = text.rstrip("\n")
+    body = _SGR.sub("", text).rstrip("\n")
     return f"```{language}\n{body}\n```\n"
 
 
