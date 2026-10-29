@@ -2588,6 +2588,87 @@ class HelpRenderingTests(unittest.TestCase):
         self.assertIn("Aliases: kl-a, kl-b", plain(definition.parser.epilog))
 
 
+class HelpColourTests(GdbinitTestBase):
+    """``kl-color off`` has to reach the epilog too.
+
+    The section labels are painted with ``message.notice``, and the
+    epilog was built once, at import time.  Colour was on then, so
+    ``\\x1b[35m`` was frozen into the string; ``kl-color off`` afterwards
+    changed ``message``'s flag but not the text already stored on the
+    parser, and the help kept its escapes.  The generated tutorial showed
+    it as a literal ``[35mAlias:[0m`` because a ```text``` fence cannot
+    render an SGR sequence.
+
+    Every test above this class passed throughout, because they all strip
+    escapes with ``plain()`` before asserting -- which is exactly what a
+    reader cannot do.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        # The flag is module-global and other tests toggle it.  Read it
+        # from ``framework`` rather than re-importing: the module was
+        # captured while the fake ``gdb`` was installed, and a fresh
+        # import would hand back a different instance with its own flag.
+        self._message = framework.message
+        self.addCleanup(
+            self._message.set_color_enabled, self._message.color_enabled(),
+        )
+
+    def test_epilog_follows_the_flag_both_ways(self) -> None:
+        definition = help_module.resolve_command("kl-walk")
+        self.assertTrue(definition.aliases)
+
+        for enabled in (True, False, True):
+            with self.subTest(colour=enabled):
+                self._message.set_color_enabled(enabled)
+                rendered = definition.format_help()
+                self.assertEqual(
+                    "\x1b[35m" in rendered, enabled,
+                    "epilog did not follow the colour flag",
+                )
+                # The label itself must survive either way: dropping the
+                # colour must not drop the section.
+                self.assertIn("Alias:", plain(rendered))
+
+    def test_print_help_follows_the_flag(self) -> None:
+        # ``print_help`` is what ``-h`` reaches, and it used to call
+        # ``parser.print_help()`` directly, bypassing any rebuild.
+        definition = help_module.resolve_command("kl-slab")
+        self._message.set_color_enabled(False)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            definition.print_help()
+        self.assertNotIn("\x1b[", out.getvalue())
+
+    def test_rendered_command_help_follows_the_flag(self) -> None:
+        # ``kl-help <command>`` goes through ``render_command_help``.
+        definition = help_module.resolve_command("kl-buddy")
+        self._message.set_color_enabled(False)
+        self.assertNotIn("\x1b[", help_module.render_command_help(definition))
+
+    def test_usage_error_pointer_follows_the_flag(self) -> None:
+        # The guided error prints a ``kl-help ...`` pointer through the
+        # same role helper, so it shares the bug class.
+        definition = help_module.resolve_command("kl-walk")
+        self._message.set_color_enabled(False)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            definition.usage_error("boom")
+        self.assertNotIn("\x1b[", out.getvalue())
+
+    def test_definition_with_no_metadata_renders_no_epilog(self) -> None:
+        # Rebuilding on every render must also clear, not keep stale text.
+        parser = argparse.ArgumentParser(description="stub")
+        definition = framework.CommandDefinition(
+            lambda: None, parser, framework.CommandCategory.HELP,
+            [], "", "",
+        )
+        self.assertIsNone(definition.parser.epilog)
+        definition.format_help()
+        self.assertIsNone(definition.parser.epilog)
+
+
 class FormattingHelperTests(GdbinitTestBase):
     """The live ``commands.formatting`` helpers used by the command bodies."""
 

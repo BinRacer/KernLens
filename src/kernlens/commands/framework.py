@@ -383,7 +383,24 @@ class CommandDefinition:
         return text
 
     def setup_epilog(self) -> None:
-        """Fold examples, notes, and aliases into the parser epilog."""
+        """Fold examples, notes, and aliases into the parser epilog.
+
+        Called from ``__init__`` so ``parser.epilog`` is populated for
+        anyone reading it, and again from :meth:`format_help` -- because
+        the labels are painted with :func:`message.notice`, whose output
+        depends on whether colour is on.  Building it once at import time
+        baked ``\\x1b[35m`` into the string, so ``kl-color off`` could
+        never take it back out and the help page kept its escapes after
+        colour had been switched off.  Nothing else re-renders the
+        epilog, so it has to be rebuilt where it is read.
+
+        The flag is read from :mod:`message` rather than forced from the
+        facade: every entry point that prints help has already called
+        :func:`message.set_color_enabled` with the facade's value
+        (``invoke`` does it first thing), so re-reading it here keeps the
+        epilog consistent with the rest of the same output block instead
+        of overriding it from a second source.
+        """
         parts: list[str] = []
         if self.examples:
             parts.append(message.notice("Examples:") + "\n" + self.examples)
@@ -392,8 +409,20 @@ class CommandDefinition:
         if self.aliases:
             label = "Alias:" if len(self.aliases) == 1 else "Aliases:"
             parts.append(message.notice(label) + " " + ", ".join(self.aliases))
-        if parts:
-            self.parser.epilog = "\n\n".join(parts)
+        # Reset rather than leave the previous text: a definition whose
+        # metadata was cleared would otherwise keep rendering the old
+        # epilog, colour and all.
+        self.parser.epilog = "\n\n".join(parts) if parts else None
+
+    def format_help(self) -> str:
+        """Render the parser help, rebuilding the epilog first."""
+        self.setup_epilog()
+        return self.parser.format_help()
+
+    def print_help(self) -> None:
+        """Print the parser help, rebuilding the epilog first."""
+        self.setup_epilog()
+        self.parser.print_help()
 
     @property
     def prog(self) -> str:
@@ -433,7 +462,7 @@ class CommandDefinition:
         message.set_color_enabled(kdbg.color_enabled)
         arg_list = lex_args(argument)
         if "-h" in arg_list or "--help" in arg_list:
-            self.parser.print_help()
+            self.print_help()
             return
         try:
             kwargs = vars(self.parser.parse_args(arg_list))
@@ -453,10 +482,6 @@ class CommandDefinition:
             self.usage_error(str(exc))
         else:
             warn_fallback_layouts()
-
-    def print_help(self) -> None:
-        """Print the argparse help for this command."""
-        self.parser.print_help()
 
 
 class _CommandHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -544,7 +569,7 @@ class KernLensBaseCommand(gdb.Command):
         self.definition.invoke(argument, from_tty)
 
     def print_help(self) -> None:
-        self.definition.parser.print_help()
+        self.definition.print_help()
 
 
 def _slug(command_name: str) -> str:
