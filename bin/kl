@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Copyright (c) 2026 BinRacer <native.lab@outlook.com>
+#
+# This work is licensed under the terms of the GNU GPL, version 3 or later.
+#
+# See the LICENSE file in the top-level directory for details.
+#
+# The short spelling of the host-side CLI.
+#
+# GDB's command line spells KernLens commands two ways: the canonical
+# `kernlens-<verb>` and the interactive `kl-<verb>` alias.  The host-side
+# CLI had only the long spelling, so a reader who had just typed
+# `kl-status` inside GDB had to remember `kernlens doctor` outside it.
+# `kl` is the same program under the short name.
+#
+#     ./bin/kl doctor
+#     ./bin/kl path
+#
+# It execs `bin/kernlens` rather than repeating the PYTHONPATH setup, so
+# the checkout path and the interpreter are resolved in exactly one place.
+
+set -eu
+
+self=$(readlink -f -- "$0" 2>/dev/null || printf '%s' "$0")
+here=$(CDPATH='' cd -- "$(dirname -- "$self")" && pwd)
+
+exec "$here/kernlens" "$@"

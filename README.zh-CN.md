@@ -136,6 +136,13 @@ kernlens doctor
 存在的启动文件、GDB 是否真的能 import `kernlens`，以及是否已经连上目标。
 `kl-status --doctor` 补充会话内的那一半。提 issue 时把这份报告贴进去。
 
+宿主侧命令与 GDB 内的命令使用同一套短拼写：`kl doctor` 就是
+`kernlens doctor`，而在 checkout 里 `./bin/kl` 无需安装即可直接使用。
+
+```console
+./bin/kernlens doctor     # 或：./bin/kl doctor
+```
+
 目前没有 PyPI 发布。启动文件现在是 package data，`kernlens` 控制台脚本会
 打印它的路径，所以从这个 checkout 构建的 wheel 可以直接加载，即使 GDB
 运行的是自己的解释器：

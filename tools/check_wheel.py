@@ -27,8 +27,16 @@ REQUIRED: tuple[str, ...] = (
     "kernlens/py.typed",
 )
 
-#: The console-script line that makes ``kernlens path`` exist.
-ENTRY_POINT = "kernlens = kernlens.cli:main"
+#: The console-script lines that make ``kernlens path`` and ``kl path``
+#: exist.  Two names for one function: the GDB command line spells every
+#: command ``kernlens-<verb>`` and its ``kl-<verb>`` alias, and the host
+#: CLI is the same tool seen from the other interpreter.  Shipping only the
+#: long name meant a reader who had just typed ``kl-status`` had to
+#: remember a different spelling one prompt later.
+ENTRY_POINTS = (
+    "kernlens = kernlens.cli:main",
+    "kl = kernlens.cli:main",
+)
 
 
 def check(wheel: Path) -> list[str]:
@@ -47,10 +55,12 @@ def check(wheel: Path) -> list[str]:
             problems.append("missing .dist-info/entry_points.txt")
         else:
             text = archive.read(entry_points[0]).decode("utf-8")
-            if ENTRY_POINT not in text.replace("\r\n", "\n"):
-                problems.append(
-                    f"entry_points.txt does not contain {ENTRY_POINT!r}"
-                )
+            text = text.replace("\r\n", "\n")
+            for entry_point in ENTRY_POINTS:
+                if entry_point not in text:
+                    problems.append(
+                        f"entry_points.txt does not contain {entry_point!r}"
+                    )
     return problems
 
 

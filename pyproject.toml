@@ -45,6 +45,7 @@ dependencies = [
 
 [project.scripts]
 kernlens = "kernlens.cli:main"
+kl = "kernlens.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/BinRacer/KernLens"

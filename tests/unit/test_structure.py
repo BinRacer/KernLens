@@ -449,6 +449,36 @@ class LayoutRegistryTests(unittest.TestCase):
 class ToolsLayoutTests(unittest.TestCase):
     """``tools/`` holds developer scripts, not part of the package."""
 
+    def test_the_short_host_cli_delegates_to_the_long_one(self) -> None:
+        """``bin/kl`` is the short spelling of ``bin/kernlens``.
+
+        GDB commands have two spellings -- ``kernlens-<verb>`` and its
+        ``kl-<verb>`` alias -- and the host-side CLI is the same tool for
+        the other interpreter.  Having only the long name meant a reader
+        who had just typed ``kl-status`` had to remember
+        ``kernlens doctor`` one prompt later.
+
+        The wrapper execs the long script instead of repeating its
+        ``PYTHONPATH`` setup: two copies of "where is ``src/``" is two
+        places to get it wrong, and the package path is the one thing
+        that has to be right for either to work at all.
+        """
+        short = ROOT / "bin" / "kl"
+        self.assertTrue(short.is_file())
+        # It has to be executable, or `./bin/kl doctor` is a permission
+        # error rather than a command.
+        self.assertTrue(short.stat().st_mode & 0o111)
+        text = short.read_text(encoding="utf-8")
+        self.assertIn('exec "$here/kernlens" "$@"', text)
+        # Only the code counts: the comment explains that the long script
+        # is where `PYTHONPATH` is set, which is the point of delegating.
+        code = "\n".join(
+            line for line in text.splitlines()
+            if not line.lstrip().startswith("#")
+        )
+        self.assertNotIn("PYTHONPATH", code)
+        self.assertIn("exec", code)
+
     def test_generator_lives_under_tools(self) -> None:
         self.assertTrue((ROOT / "tools" / "gen_layouts.py").is_file())
         package = SRC / "kernlens"

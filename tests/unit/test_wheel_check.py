@@ -27,6 +27,7 @@ def _wheel(root: Path, *, entries: dict[str, str] | None = None) -> Path:
         "kernlens-0.3.0.dist-info/entry_points.txt": (
             "[console_scripts]\n"
             "kernlens = kernlens.cli:main\n"
+            "kl = kernlens.cli:main\n"
         ),
     }
     contents.update(entries or {})
@@ -70,6 +71,28 @@ class WheelCheckTests(unittest.TestCase):
             problems = check_wheel.check(wheel)
         self.assertTrue(
             any("entry_points.txt" in problem for problem in problems),
+            problems,
+        )
+
+    def test_a_wheel_with_only_the_long_name_fails(self) -> None:
+        """Both spellings are required, not either.
+
+        A wheel that ships ``kernlens`` alone would install cleanly and
+        then refuse ``kl doctor`` -- which is the spelling the docs offer
+        beside it.  Checking each line separately is what turns that into
+        a build error instead of a missing command.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            wheel = _wheel(
+                Path(tmp),
+                entries={
+                    "kernlens-0.3.0.dist-info/entry_points.txt":
+                        "[console_scripts]\nkernlens = kernlens.cli:main\n",
+                },
+            )
+            problems = check_wheel.check(wheel)
+        self.assertTrue(
+            any("'kl = kernlens.cli:main'" in p for p in problems),
             problems,
         )
 

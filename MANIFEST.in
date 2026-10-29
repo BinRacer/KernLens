@@ -5,6 +5,7 @@ include CHANGELOG.md
 include gdbinit.py
 include install.sh
 include bin/kernlens
+include bin/kl
 include pyproject.toml
 include uv.lock
 include src/kernlens/py.typed

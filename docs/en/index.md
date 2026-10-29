@@ -150,6 +150,14 @@ sources an existing startup file, whether GDB can actually import
 `kernlens`, and whether a target is attached. `kl-status --doctor` adds
 the in-session half. Paste the report into an issue.
 
+The host-side commands have the same short spelling as the ones inside
+GDB: `kl doctor` is `kernlens doctor`, and from a checkout `./bin/kl`
+does the same without installing anything.
+
+```console
+./bin/kernlens doctor     # or: ./bin/kl doctor
+```
+
 There is no PyPI release yet. The startup file is package data now and a
 `kernlens` console script prints its path, so a wheel built from this
 checkout is loadable even though GDB runs its own interpreter:
