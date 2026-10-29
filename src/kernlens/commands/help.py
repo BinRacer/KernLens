@@ -75,8 +75,13 @@ def render_overview(definitions: Iterable[CommandDefinition]) -> str:
 
 
 def render_command_help(definition: CommandDefinition) -> str:
-    """Render the detailed help for one command (argparse format + colour)."""
-    return definition.parser.format_help().rstrip()
+    """Render the detailed help for one command (argparse format + colour).
+
+    Through the definition rather than ``parser.format_help()``: the
+    epilog's section labels are painted on demand, so rendering it any
+    other way reuses whatever colour state the import left behind.
+    """
+    return definition.format_help().rstrip()
 
 
 def print_help_for(definition: CommandDefinition) -> None:
