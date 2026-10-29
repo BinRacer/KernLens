@@ -155,6 +155,108 @@ class MembersTests(unittest.TestCase):
         )
 
 
+class DeclarationShapeTests(unittest.TestCase):
+    """Declarations that do not fit on one line are still members.
+
+    The extractor used to scan a single line for ``name;``.  Two shapes in
+    the real headers defeat that, and both shift every member index after
+    them -- which is what made the derived bands for ``struct bpf_prog``
+    unusable:
+
+    * a function pointer split across lines,
+    * ``DECLARE_FLEX_ARRAY(type, member)``, whose member name is the
+      macro's *second* argument.
+
+    Measured at v6.1: without the fix the parser counted 8 members before
+    ``bpf_prog::aux``; DWARF puts ``aux`` at index 9 of the collapsed list,
+    so the count was short and any range derived from it was wrong.
+    """
+
+    def test_a_function_pointer_split_over_two_lines(self) -> None:
+        body = (
+            "    int (*flat)(void);\n"
+            "    unsigned int (*bpf_func)(const void *ctx,\n"
+            "                             const struct bpf_insn *insn);\n"
+            "    struct bpf_prog_aux *aux;\n"
+        )
+        self.assertEqual(
+            abi_ranges.members(body, {}),
+            ("flat", "bpf_func", "aux"),
+        )
+
+    def test_a_flexible_array_macro_names_its_second_argument(self) -> None:
+        body = (
+            "    struct sock_fprog_kern *orig_prog;\n"
+            "    union {\n"
+            "        DECLARE_FLEX_ARRAY(struct sock_filter, insns);\n"
+            "        DECLARE_FLEX_ARRAY(struct bpf_insn, insnsi);\n"
+            "    };\n"
+        )
+        # Both alternatives appear, because a union is one slot and the
+        # list is an upper bound (see `test_union_alternatives_all_appear`).
+        self.assertEqual(
+            abi_ranges.members(body, {}),
+            ("orig_prog", "insns[]", "insnsi[]"),
+        )
+
+    def test_a_multi_line_declaration_is_not_split(self) -> None:
+        # The name of a plain declaration is on its last line, not the
+        # first; scanning per line emitted `struct` and lost the member.
+        body = (
+            "    struct list_head\n"
+            "        children;\n"
+            "    int after;\n"
+        )
+        self.assertEqual(abi_ranges.members(body, {}), ("children", "after"))
+
+    def test_a_doc_comment_does_not_become_a_member(self) -> None:
+        # `* @name:` inside a kernel doc comment used to pair with a later
+        # `;`.  Measured on `struct dma_buf` at v6.1: three `name`
+        # members and a stray `active`.
+        body = (
+            "    /**\n"
+            "     * @name: user-visible name\n"
+            "     * @owner: module reference\n"
+            "     */\n"
+            "    const char *name;\n"
+            "    struct module *owner;\n"
+        )
+        self.assertEqual(abi_ranges.members(body, {}), ("name", "owner"))
+
+    def test_the_bpf_prog_indexes_match_dwarf(self) -> None:
+        """The 6.1 member list, pinning the indexes the bands rely on.
+
+        Measured with GDB on the 6.1.134 image: collapsing the bitfield
+        block to the one declaration it is, the members before ``aux`` are
+        ``pages``, ``type``, ``expected_attach_type``, ``len``,
+        ``jited_len``, ``tag``, ``stats``, ``active``, ``bpf_func`` -- nine
+        of them, so ``aux`` is index 9.  Before the shape fix this list
+        said 8, because ``bpf_func`` was invisible.
+        """
+        body = (
+            "    u16 pages;\n"
+            "    enum bpf_prog_type type;\n"
+            "    enum bpf_attach_type expected_attach_type;\n"
+            "    u32 len;\n"
+            "    u32 jited_len;\n"
+            "    u8 tag[BPF_TAG_SIZE];\n"
+            "    struct bpf_prog_stats __percpu *stats;\n"
+            "    int __percpu *active;\n"
+            "    unsigned int (*bpf_func)(const void *ctx,\n"
+            "                             const struct bpf_insn *insn);\n"
+            "    struct bpf_prog_aux *aux;\n"
+            "    struct sock_fprog_kern *orig_prog;\n"
+            "    union {\n"
+            "        DECLARE_FLEX_ARRAY(struct sock_filter, insns);\n"
+            "        DECLARE_FLEX_ARRAY(struct bpf_insn, insnsi);\n"
+            "    };\n"
+        )
+        found = abi_ranges.members(body, {})
+        self.assertEqual(found.index("aux"), 9)
+        self.assertEqual(found.index("bpf_func"), 8)
+        self.assertIn("insns[]", found)
+
+
 class StructBodyTests(unittest.TestCase):
     """The body reader, so a union member cannot truncate the struct."""
 

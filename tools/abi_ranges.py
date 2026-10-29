@@ -77,8 +77,18 @@ TARGETS: dict[str, tuple[str, ...]] = {
     "struct free_area": ("include/linux/mmzone.h",),
     "struct pglist_data": ("include/linux/mmzone.h",),
     "struct per_cpu_pages": ("include/linux/mmzone.h",),
-    "struct kmem_cache_cpu": ("include/linux/slub_def.h",),
-    "struct kmem_cache_node": ("mm/slab.h",),
+    "struct kmem_cache_cpu": ("include/linux/slub_def.h", "mm/slub.c"),
+    "struct kmem_cache_node": ("mm/slab.h", "mm/slub.c"),
+    # The five below are the registry rows that disagreed with a 6.1
+    # DWARF probe: each had a single 7.0 or "6.x" variant, so the tool
+    # could not say where they moved.  ``mm_types.h`` is the fallback in
+    # ``derive()``, which is why asking about them before this returned
+    # "ABSENT" for every release.
+    "struct bpf_map": ("include/linux/bpf.h",),
+    "struct bpf_prog": ("include/linux/bpf.h", "include/linux/filter.h"),
+    "struct dma_buf": ("include/linux/dma-buf.h",),
+    "struct printk_info": ("kernel/printk/printk_ringbuffer.h",),
+    "struct module": ("include/linux/module.h",),
 }
 
 #: An unknown symbol defaults to **off**.  Most guarded members sit behind
@@ -99,12 +109,65 @@ DEFAULT_CONFIG: dict[str, str] = {
     "CONFIG_SLAB_FREELIST_RANDOM": "y", "CONFIG_HARDENED_USERCOPY": "y",
     "CONFIG_SLAB_MERGE_DEFAULT": "y", "CONFIG_SLUB_TINY": "n",
     "CONFIG_SECURITY": "y", "CONFIG_KASAN": "n", "CONFIG_DEBUG_VM": "n",
+    # Module support.  ``CONFIG_MODULE_UNLOAD`` guards ``struct
+    # module::refcnt`` and its ``source_list``/``target_list``/``exit``,
+    # so leaving it unset reports every one of those as "not a member of
+    # this span" -- which is what happened when the registry row for
+    # ``module.refcnt`` was checked against a real 6.1 kernel that has
+    # ``CONFIG_MODULE_UNLOAD=y``.  A kernel without module support has no
+    # ``struct module`` to describe, so "on" is the honest default here
+    # in a way it would not be for an optional feature.
+    "CONFIG_MODULES": "y", "CONFIG_MODULE_UNLOAD": "y",
+    "CONFIG_MODULE_SIG": "y", "CONFIG_KALLSYMS": "y",
+    "CONFIG_BPF_SYSCALL": "y", "CONFIG_BPF_JIT": "y",
+    "CONFIG_PRINTK": "y", "CONFIG_DMA_SHARED_BUFFER": "y",
 }
 
 _CONDITION = re.compile(
     r"^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b\s*(.*)$"
 )
-_LEAF = re.compile(r"\b([A-Za-z_]\w*)\s*(\[[^\]]*\])?\s*;")
+
+#: A declaration's leaf name and optional array suffix, ending in ``;``.
+#:
+#: Matched against a *joined* declaration rather than a single line, which
+#: is what makes the two shapes below visible.  Both were invisible before
+#: and both shift every index after them, which is why the derived bands
+#: for ``struct bpf_prog`` could not be trusted:
+#:
+#: * a function pointer split over two lines --
+#:   ``unsigned int (*bpf_func)(const void *ctx,`` / ``const struct bpf_insn *insn);``
+#: * the flexible-array macro --
+#:   ``DECLARE_FLEX_ARRAY(struct bpf_insn, insnsi);`` whose real member
+#:   name is the second argument.
+#:
+#: Measured at v6.1: with only ``_LEAF`` on single lines the parser counted
+#: 8 members before ``bpf_prog.aux`` where DWARF puts aux at +0x38, i.e. 7.
+_LEAF = re.compile(r"\b([A-Za-z_]\w*)\s*(\[[^\]]*\])?\s*$")
+
+#: An array-size bracket suffix, which is part of the leaf token.
+_ARRAY = re.compile(r"(\[[^\]]*\])$")
+
+#: ``DECLARE_FLEX_ARRAY(element_type, member_name)`` -- a flexible array
+#: written as a macro.  The member is the SECOND argument.
+_FLEX_ARRAY = re.compile(
+    r"DECLARE_FLEX_ARRAY\s*\(\s*[\w\s*]+,\s*([A-Za-z_]\w*)\s*\)"
+)
+
+#: A function-pointer declarator, whose name is the parenthesised star:
+#: ``<ret> (*name)(<args>)``.
+_FN_POINTER = re.compile(r"\(\s*\*\s*(?:const\s+)?([A-Za-z_]\w*)\s*\)\s*\(")
+
+
+#: A whole ``/* ... */`` comment, newlines included.
+#:
+#: ``members()`` used to match this line by line, which cannot work: a
+#: kernel doc comment spans many lines and marks its fields with ``@``,
+#: so ``* @name:`` followed by an unrelated ``;`` some lines later read
+#: as a declaration of a member called ``name``.  Measured on
+#: ``struct dma_buf`` at v6.1: three ``name`` members and a stray
+#: ``active``/``poll``, which shifted every index the range derivation
+#: reports and made ``list_node`` look absent from 6.10 to 6.15.
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
 _WORD = re.compile(r"\b([A-Za-z_]\w*)\b")
 _RELEASE = re.compile(r"v\d+\.\d+")
 
@@ -190,6 +253,10 @@ def struct_body(text: str, struct: str) -> str | None:
     definition they want.
     """
     name = struct.split(" ", 1)[1]
+    # The brace counter below must not count braces inside a comment: a
+    # doc comment in a kernel header can contain one, and an unmatched
+    # ``{`` there ends the body at the wrong place.
+    text = _BLOCK_COMMENT.sub("", text)
     match = re.search(rf"^struct\s+{re.escape(name)}\s*\{{", text, re.M)
     if match is None:
         return None
@@ -234,11 +301,46 @@ def members(body: str, config: dict[str, str]) -> tuple[str, ...]:
     **leaf** name (the innermost ``name;``), because a union member is a
     slot -- the container declaration around it adds no offset of its
     own and would only add churn.
+
+    Declarations are joined until the terminating ``;`` before being
+    parsed.  Matching a single line was wrong in both directions: it
+    missed a function pointer split across two lines and the
+    ``DECLARE_FLEX_ARRAY`` macro, and it could pair a name with a ``;``
+    from a later, unrelated statement.
     """
     out: list[str] = []
     frames: list[list[bool]] = []  # [current-branch-live, any-branch-taken]
-    for raw in body.splitlines():
-        line = re.sub(r"/\*.*?\*/", "", raw).strip()
+    pending: list[str] = []        # declaration text accumulated so far
+
+    def flush() -> None:
+        """Emit the pending declaration's leaf member, if it has one."""
+        text = " ".join(pending)
+        pending.clear()
+        if not all(frame[0] for frame in frames):
+            return
+        # Flexible arrays first: their member name is inside the macro,
+        # and the macro's own last identifier is not a member.
+        flex = _FLEX_ARRAY.search(text)
+        if flex:
+            out.append(flex.group(1) + "[]")
+            return
+        # A function pointer declares its name in the parenthesised star.
+        pointer = _FN_POINTER.search(text)
+        if pointer:
+            out.append(pointer.group(1))
+            return
+        # Otherwise the leaf is the last identifier before the ``;``.
+        stripped = text.rstrip().rstrip(";").rstrip()
+        leaf = _LEAF.search(stripped)
+        if leaf is None:
+            return
+        suffix = _ARRAY.search(stripped[leaf.start(1):])
+        out.append(f"{leaf.group(1)}{suffix.group(1) if suffix else ''}")
+
+    # Comments first, as whole blocks: a doc comment carries ``@field:``
+    # markers that would otherwise look like declarations.
+    for raw in _BLOCK_COMMENT.sub("", body).splitlines():
+        line = re.sub(r"//.*$", "", raw).strip()
         if not line:
             continue
         condition = _CONDITION.match(line)
@@ -260,11 +362,23 @@ def members(body: str, config: dict[str, str]) -> tuple[str, ...]:
             elif keyword == "endif" and frames:
                 frames.pop()
             continue
-        if all(frame[0] for frame in frames):
-            out.extend(
-                f"{leaf.group(1)}{leaf.group(2) or ''}"
-                for leaf in _LEAF.finditer(line)
-            )
+        if line in ("{", "}", "};"):
+            continue
+        pending.append(line)
+        # A declaration can end mid-line (``int a; int b;``), so keep the
+        # remainder queued rather than dropping it.
+        while ";" in " ".join(pending):
+            joined = " ".join(pending)
+            head, _, tail = joined.partition(";")
+            pending.clear()
+            pending.append(head)
+            flush()
+            if tail.strip():
+                pending.append(tail.strip())
+        # An inline ``{ ... }`` body (a nested struct or a function) is
+        # not a member; drop anything still pending that never closed.
+        if "{" in " ".join(pending) and ";" not in " ".join(pending):
+            pending.clear()
     return tuple(out)
 
 
