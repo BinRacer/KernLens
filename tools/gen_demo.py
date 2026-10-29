@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,12 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CAPTURE = ROOT / "tools" / "tutorial_capture.json"
 DEFAULT_SVG = ROOT / "docs" / "assets" / "demo.svg"
 DEFAULT_CAST = ROOT / "docs" / "assets" / "demo.cast"
+
+#: ANSI SGR sequences.  Removed before the capture is laid out: the SVG is
+#: XML, where a raw ``\x1b`` is not a legal character, and the ``.cast``
+#: records plain text too.  Neither artifact can express colour, so the
+#: sequences have to go rather than be escaped.
+_SGR = re.compile(r"\x1b\[[0-9;]*m")
 
 #: Canvas geometry, in SVG user units.
 WIDTH = 1000
@@ -74,7 +81,7 @@ def _pick(cases: list[dict[str, Any]]) -> list[tuple[str, str]]:
         )
     picked = [walk, slab]
     return [
-        (case["invocation"].replace("kernlens-", "kl-", 1), case["output"])
+        (case["invocation"].replace("kernlens-", "kl-", 1), _SGR.sub("", case["output"]))
         for case in picked
     ]
 

@@ -115,17 +115,17 @@ options:
   -h, --help           show this help message and exit
   -p ROOT, --pgd ROOT  top-level table to start from (default: the live CR3)
 
-[35mExamples:[0m
+Examples:
 kl-walk 0xffff888000001234
 kl-walk 0xffff800000201234 5
 kl-walk 0xffff888000001234 --pgd 0x10000
 
-[35mNotes:[0m
+Notes:
 ``-p/--pgd`` walks a table other than the live CR3 -- a saved or
 foreign root, so a page table of another task can be followed
 without switching to it.
 
-[35mAlias:[0m kl-walk
+Alias: kl-walk
 ```
 
 ### Reading it
@@ -162,7 +162,7 @@ options:
   --reclaim             also show whether SLAB_RECLAIM_ACCOUNT is set (with `info`)
   --ctor                also show the cache's constructor symbol (with `info`)
 
-[35mExamples:[0m
+Examples:
 kl-slab list
 kl-slab list kmalloc
 kl-slab info kmalloc-1k -v
@@ -170,7 +170,7 @@ kl-slab contains 0xffff8880032a1c40
 kl-slab details 0xffff8880032a1c40 -c 0
 kl-slab 0xffff8880032a1c40            # legacy bare-address form
 
-[35mAliases:[0m kl-slab, kl-slabs
+Aliases: kl-slab, kl-slabs
 ```
 
 ### Reading it
