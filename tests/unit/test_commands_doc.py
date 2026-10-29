@@ -123,6 +123,47 @@ class CommandReferenceTests(unittest.TestCase):
                 # one full-width; both are hand-written, so both are read.
                 self.assertRegex(text, rf"tutorial/.*[(（]{pages}")
 
+    def test_the_package_description_names_no_command_count(self) -> None:
+        """The description must not pin a number the project outgrows.
+
+        An earlier version said "30 commands", and a test was written to
+        keep that number true.  That was the wrong guard: the command set
+        grows, so the number would have to be edited on every release,
+        and the README already carries a live count that a test keeps
+        honest.  Two copies of a number, one of them stale, is the exact
+        failure the README guard was added to prevent.
+
+        So this asserts the opposite.  A digit followed by "command" in
+        the description is the shape that goes stale; the description
+        says *what the thing is* instead ("GDB commands"), which stays
+        true however many there are.
+        """
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        match = re.search(r'^description = "(.*)"$', pyproject, re.M)
+        self.assertIsNotNone(match, "no description in pyproject.toml")
+        description = match.group(1)
+
+        # A count can be written on either side of the word -- "30
+        # commands" and "commands (30)" both go stale -- so this looks at
+        # a window around every digit rather than at a fixed shape.  A
+        # plain `\d+ commands` regex missed "commands (30)", which is why
+        # it is written this way.
+        #
+        # `x86_64` is the reason digits cannot simply be banned; it is
+        # 128 characters from the word "commands" in this sentence, so a
+        # 40-character window leaves it alone.
+        for digit in re.finditer(r"\d+", description):
+            window = description[max(0, digit.start() - 40):digit.end() + 40]
+            self.assertNotIn(
+                "command", window.lower(),
+                f"the description pins a count near {digit.group()!r} "
+                f"({window.strip()!r}); it will go stale as commands are added",
+            )
+
+        # It still has to say what the project is, or the fix for the
+        # stale number would be to delete the whole clause.
+        self.assertIn("GDB commands", description)
+
     def test_check_fails_when_a_page_drifts(self) -> None:
         """``--check`` has to notice, whichever language drifted.
 
