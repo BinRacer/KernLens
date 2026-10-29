@@ -72,6 +72,9 @@ PAGE_NOTES: dict[str, str] = {
     "tutorial/README.md": (
         "one page per command, with output captured from a real kernel"
     ),
+    "demo-container.md": (
+        "a kernel built from source, booted under QEMU, and attached in GDB"
+    ),
     "api.md": "the Python API: classes, facade functions, and examples",
     "api.zh-CN.md": "the same API reference in Chinese",
     "architecture.md": (
