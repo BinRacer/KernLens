@@ -311,12 +311,24 @@ class FakeKdbg:
         self.kbase = SimpleNamespace(
             find=self.find_kbase, idt=self.idt, entry=self.idt_entry,
         )
+        # The framework aligns the KASLR slide before every command body,
+        # so the stub has to answer the call.  Counting it is what lets a
+        # test assert the alignment happened rather than merely that it
+        # did not crash.
+        self.reader = SimpleNamespace(ensure_kaslr=self.ensure_kaslr)
         self.reset()
+
+    def ensure_kaslr(self) -> int:
+        """Stand-in for the reader's on-demand detection."""
+        self.ensure_kaslr_calls += 1
+        return self.kaslr_offset
 
     def reset(self) -> None:
         """Restore every canned answer; tests mutate these in place."""
         self.color_enabled = False
         self.indent_nested = "    "
+        #: How many times the framework asked the reader to align KASLR.
+        self.ensure_kaslr_calls = 0
         self.kbase_result = _runtime_kbase_result()
         self.kaslr_offset = 0
         self.link_text_value: int | None = LINK_TEXT
@@ -2924,6 +2936,51 @@ class LayoutFallbackWarningTests(GdbinitTestBase):
         fake_kdbg.kernel = self._fake_kernel("struct bpf_map", "struct zone")
         out = self._run()
         self.assertIn("struct zone", out)
+
+
+class KaslrAlignmentTests(GdbinitTestBase):
+    """Every command aligns the KASLR slide before its body runs.
+
+    The reader re-derives KASLR for its own reads, but the symbol resolver
+    does not: it subtracts ``config.kaslr_offset`` from a runtime pc and
+    asks GDB about the result.  With the slide still zero it asked about a
+    link-time address and answered ``?? at ??`` -- so ``kl-sym`` was the
+    one command whose output depended on what had been run before it.  A
+    real 6.1.134 kernel showed it: ``kl-sym <runtime _text>`` resolved
+    only after ``kl-kvar`` or ``kl-base`` had incidentally set the slide.
+
+    The fix is in the framework rather than in ``kl-sym``, so these tests
+    pin the rule at that level: every command goes through it, and a
+    command added later inherits it without knowing it exists.
+    """
+
+    def test_a_symbol_command_aligns_before_running(self) -> None:
+        fake_kdbg.ensure_kaslr_calls = 0
+        self.invoke("kl-sym", f"{RUNTIME_TEXT:#x}")
+        self.assertEqual(fake_kdbg.ensure_kaslr_calls, 1)
+
+    def test_an_unrelated_command_aligns_too(self) -> None:
+        """The alignment is not conditional on the command reading memory."""
+        fake_kdbg.ensure_kaslr_calls = 0
+        self.invoke("kl-bits", "0xff")
+        self.assertEqual(fake_kdbg.ensure_kaslr_calls, 1)
+
+    def test_help_does_not_align(self) -> None:
+        """``-h`` prints and returns; there is nothing to align for."""
+        fake_kdbg.ensure_kaslr_calls = 0
+        self.invoke("kl-sym", "--help")
+        self.assertEqual(fake_kdbg.ensure_kaslr_calls, 0)
+
+    def test_a_usage_error_does_not_align(self) -> None:
+        """Bad arguments are rejected before the slide is touched.
+
+        Parsing happens first on purpose: a user who typo'd the command
+        should not pay for a KASLR probe, and a target that is not there
+        should not be woken up by an argument mistake.
+        """
+        fake_kdbg.ensure_kaslr_calls = 0
+        self.invoke("kl-addr", "--not-an-option")
+        self.assertEqual(fake_kdbg.ensure_kaslr_calls, 0)
 
 
 class HelpDispatchTests(GdbinitTestBase):

@@ -473,6 +473,33 @@ class CommandDefinition:
         except _UsageError:
             # ``usage_error`` already printed the guided message.
             return
+        # Every command gets the same slide, not just the ones that happen
+        # to read memory through the facade.
+        #
+        # The reader re-derives KASLR on demand for its own reads, but the
+        # consumers outside it do not: the symbol resolver subtracts
+        # ``config.kaslr_offset`` from a runtime pc before asking GDB, and
+        # with the offset still zero it asks about a link-time address and
+        # answers "?? at ??".  That made ``kl-sym`` the one command whose
+        # output depended on what had run before it -- the same runtime
+        # address resolved only after ``kl-kvar`` or ``kl-base`` had
+        # incidentally set the slide.
+        #
+        # Doing it here rather than in each body is the point: a command
+        # added later inherits it, and there is one place to change when
+        # the rule does.  It costs nothing when the slide is already known
+        # (``ensure_kaslr`` returns the cached value) and nothing when
+        # there is no target to ask (the detector reports failure once and
+        # is not retried).
+        #
+        # ``getattr`` because a test double is free not to model the
+        # reader: the alignment is a convenience for the real facade, and
+        # a stub that answers ``kaslr_offset`` directly has nothing to
+        # align.
+        reader = getattr(kdbg, "reader", None)
+        ensure = getattr(reader, "ensure_kaslr", None)
+        if ensure is not None:
+            ensure()
         try:
             self.function(**kwargs)
         except gdb.GdbError as exc:
