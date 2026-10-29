@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 168" preserveAspectRatio="xMidYMid meet" width="100%" role="img" aria-labelledby="banner-title banner-desc">
     <title id="banner-title">KernLens</title>
-    <desc id="banner-desc">KernLens — Linux kernel introspection for GDB, 30 kl-* commands for page tables, SLUB, symbols, and KASLR</desc>
+    <desc id="banner-desc">KernLens — GDB commands for reading a live Linux kernel: page tables, SLUB caches and freelists, struct page, symbols, KASLR</desc>
     <defs>
         <!--
           One gradient, and both ends have to read on #ffffff and on
@@ -50,9 +50,12 @@
                 font-weight: 700;
                 fill: #6b7280;
             }
-            /* The one piece of information the old banner lacked: what the
-               tool actually gives you.  Monospace because the commands are
-               typed. */
+            /* The command set is the whole point of the project, so it
+               comes first.  Names come from the canonical description in
+               pyproject.toml: "SLUB freelists" is the structure the code
+               decodes and "struct page" is a whole subsystem of the tool,
+               and the banner used to name neither.  Monospace because the
+               commands are typed. */
             .surface {
                 font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
                     Consolas, monospace;
@@ -63,7 +66,7 @@
         </style>
     </defs>
 
-    <text class="wordmark" x="50%" y="60">KernLens</text>
-    <text class="tagline" x="50%" y="108">Linux kernel introspection for GDB</text>
-    <text class="surface" x="50%" y="142">30 kl-* commands · page tables · SLUB · symbols · KASLR</text>
+    <text class="wordmark" x="50%" y="58">KernLens</text>
+    <text class="tagline" x="50%" y="106">GDB commands for a live Linux kernel</text>
+    <text class="surface" x="50%" y="140">page tables · SLUB freelists · struct page · symbols · KASLR</text>
 </svg>

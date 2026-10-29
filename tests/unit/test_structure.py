@@ -571,60 +571,65 @@ class BannerTests(unittest.TestCase):
         # in a 200px preview without a second asset.
         self.assertIsNotNone(root.get("viewBox"))
 
-    def test_carries_the_surface_count(self) -> None:
-        """Every command count in the banner must match the registry.
+    def test_any_command_count_it_states_matches_the_registry(self) -> None:
+        """If the banner names a count, the count has to be right.
 
-        The number appears twice -- once in the `<desc>` a screen reader
-        announces, once in the visible strip -- and the earlier version of
-        this test only asked whether the right string was *somewhere* in
-        the file.  So `<desc>` could say 40 while the visible text said
-        30, and the test passed: the wrong number was published in the
-        one copy nobody can see to check.
+        It used to say "30 kl-* commands" and a test required it to.  That
+        made the banner one more place the number had to be edited on
+        every release, which is the burden the package description was
+        freed from.  The tagline now says what the project *is* instead,
+        and the feature line lists capabilities with no number at all.
 
-        Both copies are therefore checked, and any count that is not the
-        registry's is a failure rather than merely an absence.
+        So a number is no longer required; a wrong one is still a
+        failure, because a banner is the least likely place anyone would
+        think to check.  Both copies are read -- the `<desc>` a screen
+        reader announces and the visible strip -- because each is
+        hand-written and they drift apart.
         """
         import re
 
         from contract_spec import CANONICAL_COMMANDS
 
         expected = len(CANONICAL_COMMANDS)
-        text = "".join(
-            (element.text or "") for element in self._root().iter()
-        )
-        found = re.findall(r"(\d+) kl-\* commands", text)
-        self.assertTrue(found, "the banner states no command count")
-        for number in found:
-            self.assertEqual(
-                int(number), expected,
-                f"the banner says {number} kl-* commands; the registry has "
-                f"{expected}",
-            )
+        for element in self._root().iter():
+            if not (element.tag.endswith("desc")
+                    or element.get("class") == "surface"):
+                continue
+            surface = "".join(element.itertext())
+            with self.subTest(surface=surface[:40]):
+                for number in re.findall(
+                    r"(\d+)\s+(?:kl-\*\s+)?commands", surface,
+                ):
+                    self.assertEqual(
+                        int(number), expected,
+                        f"the banner says {number} commands; the registry "
+                        f"has {expected}",
+                    )
 
-    def test_the_accessible_description_matches_the_visible_text(self) -> None:
-        """The `<desc>` is the only copy a screen-reader user gets.
+    def test_both_copies_name_the_same_capabilities(self) -> None:
+        """The `<desc>` and the visible strip must describe one tool.
 
-        It is hand-written prose, so it drifts independently of the
-        visible strip -- and while it drifts, the rendered banner still
-        looks right, which is why the mismatch survived.
+        They are separate prose, so they drift, and the rendered image
+        still looks right while they do.  That is how the banner ended up
+        promising "SLUB" without the freelist and omitting `struct page`
+        entirely, both of which the canonical description names and the
+        commands actually implement.
+
+        The feature list is the one from `pyproject.toml`, so this also
+        fails if the project decides to stop advertising something.
         """
-        import re
-
-        from contract_spec import CANONICAL_COMMANDS
-
         root = self._root()
-        surfaces = [
-            "".join(element.itertext())
+        copies = {
+            element.get("id") or "surface": "".join(element.itertext()).lower()
             for element in root.iter()
             if element.tag.endswith("desc") or element.get("class") == "surface"
-        ]
-        self.assertEqual(len(surfaces), 2, "expected a desc and a surface line")
-        for surface in surfaces:
-            with self.subTest(surface=surface[:40]):
-                counts = re.findall(r"(\d+) kl-\* commands", surface)
-                self.assertEqual(
-                    [int(n) for n in counts], [len(CANONICAL_COMMANDS)],
-                )
+        }
+        self.assertEqual(len(copies), 2, "expected a desc and a surface line")
+        for feature in ("page tables", "slub", "freelist", "struct page",
+                        "symbols", "kaslr"):
+            for name, text in copies.items():
+                with self.subTest(feature=feature, copy=name):
+                    self.assertIn(feature, text)
 
     def test_has_no_external_assets(self) -> None:
         """One file, no network, no rasters.
