@@ -116,31 +116,6 @@ shape of the graph: one concern per commit, a message that says why, and no
 merge commit that also carries unreviewed content.  Everything in this
 section about landing method is a preference; that is the requirement.
 
-### Cleaning up after a rewrite
-
-A force-push replaces commits but not the records pointing at them, so the
-Actions tab keeps listing runs for SHAs nobody can fetch.  `tools/clean_github.py`
-finds them: a run is stale when its `head_sha` is unreachable from every
-ref, which is a question only the object database can answer, so it shells
-out to `git rev-list --all`.
-
-```console
-uv run python tools/clean_github.py --repo BinRacer/KernLens          # report
-uv run python tools/clean_github.py --repo BinRacer/KernLens --apply  # delete
-```
-
-It is dry by default; deleting needs `--apply`, because a tool that removes
-records must not also be a tool you cannot safely run to see what it would
-remove.  Two things it reports rather than does:
-
-* **A merged pull request cannot be deleted.**  GitHub exposes no endpoint
-  for it.  Remove the branch and leave the PR closed, or rewrite the PR body
-  so it does not describe a state that no longer exists.
-* **Deleting a workflow run needs `Actions: write`.**  A fine-grained PAT
-  with only `Contents: write` is refused with 403, and the tool names that
-  permission instead of failing silently.  Workflow logs also expire on
-  their own, so an untouched stale run is not permanent.
-
 See [`docs/en/architecture.md`](docs/en/architecture.md) for the public API
 map, module responsibilities, the SLUB inspection model, and GDB
 loading details.  [`docs/en/naming.md`](docs/en/naming.md) defines the
