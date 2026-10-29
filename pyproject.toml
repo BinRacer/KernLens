@@ -5,7 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kernlens"
 version = "0.3.0"
-description = "KernLens: pure-Python Linux kernel introspection for GDB, including x86_64 page-table math, SLUB inspection, symbol/KASLR helpers, and ANSI diagnostics."
+# The same sentence as the GitHub repository description, because one
+# project should not describe itself two ways: this string is what PyPI
+# shows, and the repository blurb is what a reader sees before installing.
+# The lead "KernLens:" is dropped because the PyPI page heading already
+# carries the name.
+description = "Read a live Linux kernel from GDB: page tables at every level, SLUB caches and freelists, struct page, symbols, KASLR. Pure Python, x86_64."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"

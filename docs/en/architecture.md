@@ -128,7 +128,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   └── llms.txt          # generated plain-text index of the site
 ├── overrides/            # mkdocs theme overrides: the language switcher
 ├── hooks/
-│   └── language.py       # per-page <html lang>, and the Chinese stemmer
+│   └── language.py       # per-page <html lang>, and the Chinese title
 ├── demo/
 │   ├── Dockerfile        # builds the kernel, then the runtime image
 │   ├── entrypoint.sh     # boot QEMU, wait for userspace, attach GDB

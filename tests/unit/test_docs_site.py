@@ -386,7 +386,7 @@ class NavigationTests(unittest.TestCase):
         Two kinds of page are not nav entries, and each has a different
         reason, so each is checked differently:
 
-        - the 40 tutorial pages are reached from the generated index, and
+        - the 30 tutorial pages are reached from the generated index, and
           every language's index has to name them -- the pages themselves
           are not translated, so the Chinese index links to them where
           they are published (see ``LINK_DIR``);

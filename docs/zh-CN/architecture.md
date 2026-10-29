@@ -110,7 +110,7 @@ Python API 用一套可读、中等长度的风格 —— `snake_case` 函数、
 │   │   ├── api.md            # Python API 参考
 │   │   ├── commands.md       # 生成的命令/别名表
 │   │   ├── naming.md         # 命令、示例与 Python 命名规则
-│   │   └── tutorial/         # 每个命令一页，生成（40 页）
+│   │   └── tutorial/         # 每个命令一页，生成（30 页）
 │   ├── zh-CN/            # 中文页面，路径相同，独立目录
 │   │   ├── index.md      # 由 README.zh-CN.md 生成
 │   │   ├── api.md        # 同一份 API 参考的中文版
@@ -119,7 +119,7 @@ Python API 用一套可读、中等长度的风格 —— `snake_case` 函数、
 │   └── llms.txt          # 生成的站点纯文本索引
 ├── overrides/            # mkdocs 主题覆盖：语言切换器
 ├── hooks/
-│   └── language.py       # 逐页 <html lang>，以及中文分词器
+│   └── language.py       # 逐页 <html lang>，以及首页标题
 ├── demo/
 │   ├── Dockerfile        # 先构建内核，再构建运行时镜像
 │   ├── entrypoint.sh     # 启动 QEMU、等待用户态、附着 GDB

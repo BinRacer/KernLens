@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -79,6 +80,48 @@ class CommandReferenceTests(unittest.TestCase):
         for row in rows:
             with self.subTest(row=row.split("|")[1].strip()):
                 self.assertIn(row, chinese)
+
+    def test_the_readme_quotes_the_real_command_count(self) -> None:
+        """The count in prose has to match the registry.
+
+        Both READMEs said "40 commands" while the registry held 30, and
+        nothing noticed: the number is written by hand, in two languages,
+        in the sentence a reader meets first.  ``docs/zh-CN/architecture.md``
+        quoted it a third time as a page count.
+
+        The Chinese README used to promise that a test checked this.  It
+        did not, which is why the number drifted.  Now it does, so the
+        promise and the check agree.
+        """
+        expected = len(CANONICAL_COMMANDS)
+        quoted = [
+            (ROOT / "README.md", rf"\*\*{expected} commands\*\*"),
+            (ROOT / "README.zh-CN.md", rf"\*\*{expected} 个命令\*\*"),
+        ]
+        for path, pattern in quoted:
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertRegex(text, pattern)
+                # And no other number claims to be the total.
+                for wrong in re.findall(r"\*\*(\d+) (?:commands|个命令)\*\*", text):
+                    self.assertEqual(int(wrong), expected, path.name)
+
+    def test_the_architecture_page_counts_the_tutorial_pages(self) -> None:
+        """The tree diagram names how many tutorial pages are generated.
+
+        It is a third place the same number is written by hand, and it
+        was the third place it was wrong.
+        """
+        pages = len(list((ROOT / "docs" / "en" / "tutorial").glob("kl-*.md")))
+        self.assertEqual(pages, len(CANONICAL_COMMANDS))
+        for locale in ("en", "zh-CN"):
+            with self.subTest(locale=locale):
+                text = (ROOT / "docs" / locale / "architecture.md").read_text(
+                    encoding="utf-8",
+                )
+                # The English tree uses ASCII parentheses and the Chinese
+                # one full-width; both are hand-written, so both are read.
+                self.assertRegex(text, rf"tutorial/.*[(（]{pages}")
 
     def test_check_fails_when_a_page_drifts(self) -> None:
         """``--check`` has to notice, whichever language drifted.

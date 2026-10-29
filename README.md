@@ -15,6 +15,7 @@
   <p>
     <a href="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml"><img src="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
+    <a href="https://binracer.github.io/KernLens/"><img src="https://img.shields.io/badge/docs-site-4a9eff.svg" alt="Documentation site"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
     <img src="https://img.shields.io/badge/commands-30-informational" alt="30 commands">
@@ -26,8 +27,10 @@ Each one reads real memory through a single reader, decodes it with
 arithmetic you can check by hand, and prints the answer with the entry it
 came from -- so a wrong result looks wrong instead of looking plausible.
 
-`core/` and `output/` are pure Python and run without GDB at all; only
-the `gdb/` package needs a debuggee.
+It is for kernel pwn, module and driver debugging, and memory forensics,
+and registers only `kernlens-*` and `kl-*` names so it loads beside pwndbg
+without either tool shadowing the other. `core/` and `output/` are pure
+Python and run without GDB at all; only the `gdb/` package needs a debuggee.
 
 ## See it run
 
@@ -273,14 +276,14 @@ because the alternative is prose that is correct on the day it is written:
   `tools/check_wheel.py` fails when the startup file or the console
   script is missing -- the exact failure the old source-only policy
   existed to prevent.
-
-The `kl-*` command count on this page is checked against the command
-registry by the test suite, so it cannot quietly become false.
+- The `kl-*` command count on this page is checked against the command
+  registry by the test suite, so it cannot quietly become false.
 
 ## Documentation
 
 | Document | What is in it |
 | --- | --- |
+| [binracer.github.io/KernLens](https://binracer.github.io/KernLens/) | the whole tree as a searchable site, both languages -- start here |
 | [`docs/en/tutorial/`](docs/en/tutorial/) | one page per command, real output |
 | [`docs/en/demo-container.md`](docs/en/demo-container.md) | a kernel under QEMU, built from source and ready to attach |
 | [`docs/en/commands.md`](docs/en/commands.md) | every command and alias, generated |

@@ -19,16 +19,21 @@ hide:
   <p>
     <a href="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml"><img src="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml/badge.svg" alt="CI 状态"></a>
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
+    <a href="https://binracer.github.io/KernLens/zh-CN/"><img src="https://img.shields.io/badge/docs-site-4a9eff.svg" alt="文档站"></a>
     <a href="https://github.com/BinRacer/KernLens/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="许可证：GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
     <img src="https://img.shields.io/badge/commands-30-informational" alt="30 个命令">
   </p>
 </div>
 
-KernLens 给 GDB 增加 **40 个命令**，用来读一个正在运行的 Linux 内核。
+KernLens 给 GDB 增加 **30 个命令**，用来读一个正在运行的 Linux 内核。
 每个命令都通过同一个 reader 读真实内存，用可以手算核对的算术解码，并把
 结果连同"它来自哪个表项"一起打印出来 —— 所以错误的结果看起来就是错的，
 而不是看起来像真的。
+
+给内核 pwn、模块与驱动调试、以及在 GDB 里做内存取证的人用。它只注册
+`kernlens-*` 与 `kl-*` 两类名字，所以能和 pwndbg 装在同一个会话里，
+两边的命令都不撞。
 
 `core/` 与 `output/` 是纯 Python，完全不依赖 GDB；只有 `gdb/` 需要
 调试目标。
@@ -263,6 +268,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 
 | 文档 | 内容 |
 | --- | --- |
+| [binracer.github.io/KernLens/zh-CN](https://binracer.github.io/KernLens/zh-CN/) | 整棵树的可搜索站点，中文与 English 各一份 |
 | [`docs/en/tutorial/`](tutorial/README.md) | 每个命令一页，真实输出 |
 | [`docs/en/demo-container.md`](demo-container.md) | QEMU 里的内核，从源码构建、开箱可连 |
 | [`docs/en/commands.md`](commands.md) | 每个命令与别名，生成式 |
