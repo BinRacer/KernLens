@@ -24,7 +24,7 @@ requirement.  It is two, and they are unrelated:
 
 | | Host Python | GDB's embedded Python |
 | --- | --- | --- |
-| runs | the `kernlens` console script, `install.sh`, `kernlens doctor` | the startup file, every command, every `kernlens.*` import |
+| runs | the `kernlens` / `kl` console script, `install.sh`, `kernlens doctor` | the startup file, every command, every `kernlens.*` import |
 | floor | 3.10 (`requires-python`) | 3.10 (the package is imported, not reimplemented) |
 | printed by | `kernlens doctor` → `python` | `kernlens doctor` → `gdb-python` |
 

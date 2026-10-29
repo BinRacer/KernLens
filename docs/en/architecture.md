@@ -45,7 +45,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   └── release.yml       # tag -> PyPI -> GitHub Release
 ├── src/kernlens/
 │   ├── __init__.py       # public re-exports and __version__
-│   ├── cli.py            # `kernlens` console script: path/install/doctor
+│   ├── cli.py            # `kernlens` / `kl` console script: path/install/doctor
 │   ├── doctor.py         # host-side load-path checks
 │   ├── gdbinit.py        # GDB startup file, shipped as package data
 │   ├── install.py        # startup path + ~/.gdbinit marked block
@@ -136,7 +136,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   │   ├── config.fragment  # options the commands read, on defconfig
 │   │   └── init.c           # the whole userspace: mounts and boot marker
 │   └── README.md         # how to build and run it
-├── bin/kernlens          # checkout launcher for the console script
+├── bin/kernlens          # checkout launcher; `bin/kl` is the same tool
 ├── install.sh            # one-command checkout installer
 ├── gdbinit.py            # checkout shim -> src/kernlens/gdbinit.py
 ├── examples/

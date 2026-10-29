@@ -16,7 +16,8 @@ KernLens 从同一棵树以两种方式分发。`install.sh` 克隆 checkout，�
 `src/kernlens/gdbinit.py` 同时处理两种情况；根目录的 `gdbinit.py` 是
 兼容旧 `~/.gdbinit` 行的 shim。
 
-控制台脚本只运行在宿主侧。`kernlens path` 打印启动文件，
+控制台脚本只运行在宿主侧，并且有两个名字：`kernlens` 与短别名 `kl`，
+与每条 GDB 命令的长短拼写一一对应。`kernlens path` 打印启动文件，
 `kernlens install` 编辑 `~/.gdbinit`，`kernlens doctor` 检查加载路径，
 `kernlens version` 打印版本。它们都不 import `kernlens.gdb`，因为宿主
 解释器里没有 `gdb` 模块。

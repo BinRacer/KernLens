@@ -129,7 +129,7 @@ Python API 用一套可读、中等长度的风格 —— `snake_case` 函数、
 │   │   ├── config.fragment  # 在 defconfig 上加的命令会读的选项
 │   │   └── init.c           # 全部用户态：挂载与启动标记
 │   └── README.md         # 怎么构建、怎么跑
-├── bin/kernlens          # 控制台脚本的检出式启动器
+├── bin/kernlens          # 检出式启动器；`bin/kl` 是同一个工具
 ├── install.sh            # 一条命令的检出式安装
 ├── gdbinit.py            # 检出 shim -> src/kernlens/gdbinit.py
 ├── examples/

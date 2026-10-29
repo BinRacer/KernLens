@@ -687,6 +687,29 @@ class DocumentationTrackingTests(unittest.TestCase):
         )
         self.assertEqual(absent, [])
 
+    def test_every_bin_script_appears_in_the_tree(self) -> None:
+        """``bin/`` is small enough that every entry has to be named.
+
+        The top-level test only asks for the directory, so a second
+        launcher can be added and stay undocumented -- which is what
+        happened with ``bin/kl``.  Two spellings of one command is exactly
+        the kind of thing a reader has to be told, because the whole point
+        is that they are interchangeable.
+
+        The match is on ``bin/<name>``, not the bare name: ``kl`` is a
+        substring of ``kl-help`` and of half the tree, so a plain
+        containment test passes whether the launcher is documented or not.
+        """
+        import re
+
+        block = self._tree_block()
+        absent = sorted(
+            path.name for path in (ROOT / "bin").iterdir()
+            if path.is_file()
+            and not re.search(rf"bin/{re.escape(path.name)}\b", block)
+        )
+        self.assertEqual(absent, [])
+
     def test_doc_paths_name_real_files(self) -> None:
         """No document may cite a path that the tree does not have.
 

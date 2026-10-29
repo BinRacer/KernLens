@@ -19,7 +19,9 @@ a checkout, `site-packages` in a wheel.  `src/kernlens/gdbinit.py` does
 both; the root `gdbinit.py` is a shim so existing `~/.gdbinit` lines keep
 working.
 
-The console script is host-side only.  `kernlens path` prints the startup
+The console script is host-side only, and it answers to two names:
+`kernlens` and its short alias `kl`, the same pairing every GDB command
+has.  `kernlens path` prints the startup
 file, `kernlens install` edits `~/.gdbinit`, `kernlens doctor` checks the
 load path, and `kernlens version` prints the version.  None of them
 imports `kernlens.gdb`, because the host interpreter has no `gdb` module.
