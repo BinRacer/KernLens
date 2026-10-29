@@ -59,7 +59,11 @@ NOT_IN_REPO = frozenset({"/.gdbinit"})
 #: deleting the real marker failed no test.  That is the third way this
 #: guard was silently blind (see ``DOC_FILENAME``), and the same shape as
 #: the first two: a search over more than the thing being guarded.
-VENDORED = frozenset({".git", ".tmp", ".venv", "build", "dist", "__pycache__", "node_modules"})
+VENDORED = frozenset({
+    ".git", ".tmp", ".venv", "build", "dist", "__pycache__", "node_modules",
+    # ``mkdocs build`` output; it mirrors ``docs/`` and is gitignored.
+    "site",
+})
 
 
 def doc_filenames(text: str) -> list[str]:
@@ -608,6 +612,25 @@ class DocumentationTrackingTests(unittest.TestCase):
                 absent.append(str(path.relative_to(ROOT)))
         self.assertEqual(absent, [])
 
+    def test_every_top_level_directory_appears_in_the_tree(self) -> None:
+        """A directory nobody documented is a directory nobody finds.
+
+        The tree guard above is one-directional: everything it names
+        exists.  That direction passes just as well when a whole new
+        directory is added and never mentioned, which is how ``overrides/``
+        and ``hooks/`` would have arrived -- infrastructure the site
+        cannot build without, and invisible to a reader of the layout.
+        """
+        block = self._tree_block()
+        absent = sorted(
+            path.name for path in ROOT.iterdir()
+            if path.is_dir()
+            and path.name not in VENDORED
+            and not path.name.startswith(".")
+            and f"{path.name}/" not in block
+        )
+        self.assertEqual(absent, [])
+
     def test_doc_paths_name_real_files(self) -> None:
         """No document may cite a path that the tree does not have.
 
@@ -684,7 +707,7 @@ class ReadmeStructureTests(unittest.TestCase):
         unreachable is worse than the long README was.
         """
         for name in (
-            "docs/api.md", "docs/api.zh-CN.md",
+            "docs/api.md", "docs/zh-CN/api.md",
             "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md",
         ):
             with self.subTest(path=name):

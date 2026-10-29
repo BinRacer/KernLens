@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{#
+  Language switcher in the header, next to the search box.
+
+  Two languages, so two buttons rather than a dropdown: a menu that opens
+  to reveal one other option is a click to learn nothing.  The markup is
+  plain <a> elements so it works without JavaScript, and the current
+  language is marked with aria-current rather than a colour alone.
+
+  The hrefs are absolute (see SITE_LINKS in tools/gen_docs_site.py)
+  because the switcher appears on pages at different depths, and it
+  points at the other language's front page rather than a translation of
+  the current page: only the front page and the API reference exist in
+  Chinese, so any other target would be a 404 dressed up as a feature.
+#}
+{% block extrahead %}
+  {{ super() }}
+  {# `| url` makes the href relative to the current page, which is what a
+     page at `zh-CN/` needs; a hard-coded `assets/` would 404 there. #}
+  <link rel="stylesheet" href="{{ 'assets/extra.css' | url }}">
+{% endblock %}
+
+{% macro lang_switcher() %}
+  {%- set here = page.canonical_url or '' -%}
+  {%- set chinese = here.startswith('https://binracer.github.io/KernLens/zh-CN/') -%}
+  <nav class="kl-lang" aria-label="Language">
+    <a class="kl-lang__item{% if not chinese %} kl-lang__item--on{% endif %}"
+       href="https://binracer.github.io/KernLens/"
+       hreflang="en"
+       {% if not chinese %}aria-current="true"{% endif %}>English</a>
+    <a class="kl-lang__item{% if chinese %} kl-lang__item--on{% endif %}"
+       href="https://binracer.github.io/KernLens/zh-CN/"
+       hreflang="zh-CN"
+       {% if chinese %}aria-current="true"{% endif %}>简体中文</a>
+  </nav>
+{% endmacro %}
+
+{% block content %}
+  <div class="kl-lang-bar">{{ lang_switcher() }}</div>
+  {{ super() }}
+{% endblock %}

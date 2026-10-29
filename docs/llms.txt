@@ -10,16 +10,16 @@
 ## Pages
 
 - [Overview](https://binracer.github.io/KernLens/): what KernLens is, the demo, the install, and the command summary
-- [首页 (中文)](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
 - [Commands](https://binracer.github.io/KernLens/commands/): every command and alias, generated from the registry
 - [Tutorial](https://binracer.github.io/KernLens/tutorial/): one page per command, with output captured from a real kernel
 - [Demo container](https://binracer.github.io/KernLens/demo-container/): a kernel built from source, booted under QEMU, and attached in GDB
 - [Python API](https://binracer.github.io/KernLens/api/): the Python API: classes, facade functions, and examples
-- [Python API (中文)](https://binracer.github.io/KernLens/api.zh-CN/): the same API reference in Chinese
 - [Architecture](https://binracer.github.io/KernLens/architecture/): package layout, the loading path, and why the boundaries are there
 - [Compatibility](https://binracer.github.io/KernLens/compatibility/): which environments were measured, which are expected, and which are not claimed
 - [Releasing](https://binracer.github.io/KernLens/releasing/): what has to agree before a tag, and what the tag does
 - [Naming](https://binracer.github.io/KernLens/naming/): command, example, and filename conventions
+- [首页](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
+- [Python API](https://binracer.github.io/KernLens/zh-CN/api/): the same API reference in Chinese
 - [Contributing](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md)
 - [Security](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md)
 - [Changelog](https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md)

@@ -53,39 +53,95 @@ class GeneratedFileTests(unittest.TestCase):
                 )
 
     def test_each_generated_page_names_its_source(self) -> None:
-        for path in (DOCS / "index.md", DOCS / "zh-CN.md"):
-            with self.subTest(path=path.name):
+        # The banner is no longer the first line: the front matter has to
+        # be, or mkdocs reads the whole block as prose.  So the claim is
+        # "the page says where it came from", not "on line one".
+        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+            with self.subTest(path=path.relative_to(DOCS).as_posix()):
+                head = path.read_text(encoding="utf-8").splitlines()[:8]
+                self.assertTrue(
+                    any("tools/gen_docs_site.py" in line for line in head),
+                    head,
+                )
+
+    def test_the_front_matter_is_the_first_thing_in_the_file(self) -> None:
+        """YAML front matter only counts at the very top.
+
+        A comment above it -- which is what the generator wrote first --
+        silently demotes the block to prose and the page renders a stray
+        horizontal rule plus the literal ``hide:`` lines.  Nothing else in
+        the build reports that, so it is checked here.
+        """
+        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+            with self.subTest(path=path.relative_to(DOCS).as_posix()):
                 first = path.read_text(encoding="utf-8").splitlines()[0]
-                self.assertIn("tools/gen_docs_site.py", first)
+                self.assertEqual(first, "---")
 
     def test_no_link_still_points_at_the_checkout(self) -> None:
         # ``docs/api.md`` from ``docs/index.md`` would 404 under mkdocs:
-        # it has to become ``api.md``.  A ``../`` target is worse, because
-        # mkdocs cannot see the file at all.
-        for path in (DOCS / "index.md", DOCS / "zh-CN.md"):
+        # it has to become ``api.md``.  A ``docs/`` prefix means the
+        # rewrite did not happen at all.
+        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
             text = path.read_text(encoding="utf-8")
-            with self.subTest(path=path.name):
+            with self.subTest(path=path.relative_to(DOCS).as_posix()):
                 self.assertNotIn("](docs/", text)
-                self.assertNotIn("](../", text)
-                self.assertNotIn('href="../', text)
-                self.assertNotIn('src="../', text)
+
+    def test_the_english_front_page_does_not_climb(self) -> None:
+        """English is the default and lives at the site root.
+
+        ``../`` from ``index.md`` would leave the site directory, which
+        mkdocs cannot serve.  The Chinese page is the one that climbs,
+        and it has to -- see the test below.
+        """
+        text = (DOCS / "index.md").read_text(encoding="utf-8")
+        self.assertNotIn("](../", text)
+        self.assertNotIn('href="../', text)
+        self.assertNotIn('src="../', text)
+
+    def test_the_chinese_page_climbs_exactly_one_level(self) -> None:
+        """Every site path on the Chinese page needs one ``..``.
+
+        ``docs/`` is the site root, so ``zh-CN/index.md`` is one directory
+        down and an unprefixed ``assets/demo.svg`` would be emitted
+        verbatim by mkdocs (raw HTML is not rewritten) and resolve to
+        ``/zh-CN/assets/demo.svg`` -- a 404 that the English page never
+        showed, because there the same wrong guess and the truth coincide.
+        """
+        text = (DOCS / "zh-CN" / "index.md").read_text(encoding="utf-8")
+        self.assertIn('src="../assets/demo.svg"', text)
+        self.assertNotIn('src="assets/', text)
+        self.assertNotIn("](tutorial/", text)
 
     def test_every_relative_link_resolves_inside_the_site(self) -> None:
-        for path in (DOCS / "index.md", DOCS / "zh-CN.md"):
+        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+            here = path.parent.relative_to(DOCS)
             for target in _local_targets(path.read_text(encoding="utf-8")):
-                with self.subTest(page=path.name, target=target):
-                    self.assertTrue((DOCS / target).exists(), target)
+                with self.subTest(
+                    page=path.relative_to(DOCS).as_posix(), target=target,
+                ):
+                    self.assertTrue((DOCS / here / target).exists(), target)
 
-    def test_the_language_switcher_is_absolute(self) -> None:
-        # mkdocs does not rewrite raw HTML hrefs, so a relative one would
-        # be emitted verbatim and point at a file that is not in the site.
-        for path in (DOCS / "index.md", DOCS / "zh-CN.md"):
+    def test_the_generated_pages_carry_no_language_links(self) -> None:
+        """The switcher belongs to the theme, not to the page body.
+
+        The READMEs need their own switcher -- on GitHub those two files
+        are all there is.  On the site the header has one on every page,
+        so copying it in would put two identical controls on the front
+        page, one of them linking to itself.  The generator drops it.
+        """
+        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
             text = path.read_text(encoding="utf-8")
-            with self.subTest(page=path.name):
-                self.assertIn(f'href="{gen_docs_site.SITE}/"', text)
-                self.assertIn(
-                    f'href="{gen_docs_site.SITE}/zh-CN/"', text,
-                )
+            with self.subTest(path=path.relative_to(DOCS).as_posix()):
+                self.assertNotIn('README.zh-CN.md">', text)
+                self.assertNotIn('README.md">English', text)
+
+    def test_the_readmes_still_have_one(self) -> None:
+        # Dropping it from the generated copy must not mean dropping it
+        # from the file GitHub renders.
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                text = (ROOT / name).read_text(encoding="utf-8")
+                self.assertIn('README.md">English', text)
 
 
 class RenderedOutputTests(unittest.TestCase):
@@ -188,6 +244,138 @@ class NavigationTests(unittest.TestCase):
                 )
                 self.assertIn(f"[{title}]({url})", text)
                 self.assertNotIn("//)", text)
+
+
+class LanguageLayoutTests(unittest.TestCase):
+    """Each language owns a directory, and English owns the root.
+
+    English is the default, so it stays where it was -- ``/`` should be
+    the front page, not a redirect to ``/en/``.  Chinese lives under
+    ``docs/zh-CN/``, which means it is one directory deeper than every
+    page it links to.  That depth is the whole reason the demo image
+    failed there and nowhere else, so it is checked rather than assumed.
+    """
+
+    def test_the_chinese_pages_are_in_their_own_directory(self) -> None:
+        chinese = sorted(
+            path.name for path in (DOCS / "zh-CN").glob("*.md")
+        )
+        self.assertEqual(chinese, ["api.md", "index.md"])
+        # And no Chinese page is left loose in the root.
+        self.assertEqual(
+            [path.name for path in DOCS.glob("*.zh-CN.md")], [],
+        )
+
+    def test_no_english_page_grew_a_language_suffix(self) -> None:
+        # ``index.md``, not ``index.en.md``: English is the default and
+        # an unnamed page is what a default language should look like.
+        self.assertEqual(list(DOCS.glob("*.en.md")), [])
+        self.assertTrue((DOCS / "index.md").is_file())
+        self.assertTrue((DOCS / "api.md").is_file())
+
+    def test_the_nav_keeps_the_languages_apart(self) -> None:
+        """One section per language, and only the Chinese one is nested."""
+        nav = _nav()
+        targets = [target for _, target in nav]
+        self.assertIn("index.md", targets)
+        self.assertIn("zh-CN/index.md", targets)
+        self.assertNotIn("zh-CN.md", targets)
+        # English pages do not live under a language directory.
+        self.assertFalse(
+            [t for t in targets if t.startswith("en/")], targets,
+        )
+
+    def test_the_chinese_pages_declare_themselves_chinese(self) -> None:
+        """``<html lang>`` is per page, and the theme has one value.
+
+        ``mkdocs-material`` writes ``lang="{{ lang.t('language') }}"`` from
+        ``theme.language``, which is site-wide, so the Chinese pages were
+        served as ``lang="en"``.  That reaches further than the attribute:
+        mkdocs-material feeds it to search, so Chinese text got an English
+        stemmer and was effectively unsearchable.
+
+        The tag is outside every ``{% block %}``, so it cannot be
+        overridden by a template that still extends the theme; the hook in
+        ``hooks/language.py`` rewrites it after rendering instead.  The
+        unit test drives the hook directly, because ``mkdocs build`` is
+        not something the test suite runs.
+        """
+        import language
+
+        config = type("Config", (), {"docs_dir": str(DOCS)})()
+        chinese = type(
+            "Page", (), {"file": type("File", (), {"src_uri": "zh-CN/api.md"})()},
+        )()
+        english = type(
+            "Page", (), {"file": type("File", (), {"src_uri": "api.md"})()},
+        )()
+        rendered = '<html lang="en" class="no-js">'
+
+        self.assertEqual(
+            language.on_post_page(rendered, page=chinese, config=config),
+            '<html lang="zh-CN" class="no-js">',
+        )
+        self.assertEqual(
+            language.on_post_page(rendered, page=english, config=config),
+            rendered,
+        )
+
+    def test_the_language_hook_is_configured(self) -> None:
+        self.assertIn("hooks/language.py", _mkdocs())
+        self.assertTrue((ROOT / "hooks" / "language.py").is_file())
+
+
+class LanguageSwitcherTests(unittest.TestCase):
+    """The switcher has to be reachable, honest, and current.
+
+    It is a theme override because mkdocs-material has no slot for a
+    control that is not search, palette, or repository.  An override is
+    invisible to every other test here, so it gets its own.
+    """
+
+    OVERRIDE = ROOT / "overrides" / "main.html"
+
+    def test_the_override_is_wired_into_the_theme(self) -> None:
+        text = _mkdocs()
+        self.assertIn("custom_dir: overrides", text)
+        self.assertTrue(self.OVERRIDE.is_file())
+
+    def test_the_override_extends_the_theme(self) -> None:
+        # ``{% extends %}`` has to be the first tag, or Jinja ignores the
+        # blocks that follow and the page renders without a shell.
+        text = self.OVERRIDE.read_text(encoding="utf-8")
+        self.assertTrue(text.lstrip().startswith("{% extends"))
+
+    def test_both_languages_are_offered(self) -> None:
+        text = self.OVERRIDE.read_text(encoding="utf-8")
+        for label in ("English", "简体中文"):
+            with self.subTest(label=label):
+                self.assertIn(label, text)
+        self.assertIn(f'href="{gen_docs_site.SITE}/"', text)
+        self.assertIn(f'href="{gen_docs_site.SITE}/zh-CN/"', text)
+
+    def test_the_current_language_is_marked_for_assistive_tech(self) -> None:
+        # A colour difference alone is not a state a screen reader can
+        # report, so the current page also carries aria-current.
+        text = self.OVERRIDE.read_text(encoding="utf-8")
+        self.assertIn('aria-current="true"', text)
+
+    def test_the_switcher_targets_a_page_that_exists(self) -> None:
+        """Whatever the buttons point at has to be a published page.
+
+        Only two pages exist in Chinese, so the switcher lands on the
+        Chinese front page rather than a translation of the current one.
+        If that page were ever renamed, this is the test that notices.
+        """
+        text = self.OVERRIDE.read_text(encoding="utf-8")
+        for _, url in gen_docs_site.LANGUAGE_SWITCH:
+            with self.subTest(url=url):
+                self.assertIn(url, text)
+                relative = url[len(gen_docs_site.SITE):].strip("/")
+                page = DOCS / relative / "index.md" if relative else (
+                    DOCS / "index.md"
+                )
+                self.assertTrue(page.is_file(), page)
 
 
 class ConfigurationTests(unittest.TestCase):

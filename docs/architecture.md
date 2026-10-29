@@ -113,14 +113,18 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── compatibility.md  # measured / expected / unsupported environments
 │   ├── releasing.md      # what has to agree before a tag
 │   ├── index.md          # generated from README.md (site front page)
-│   ├── zh-CN.md          # generated from README.zh-CN.md
 │   ├── llms.txt          # generated plain-text index of the site
 │   ├── api.md            # Python API reference
-│   ├── api.zh-CN.md      # the same, in Chinese
 │   ├── commands.md       # generated command/alias table
-│   ├── assets/           # generated demo.svg + demo.cast
+│   ├── assets/           # generated demo.svg + demo.cast, and extra.css
 │   ├── naming.md         # command, example and Python naming rules
-│   └── tutorial/         # one generated page per command (40)
+│   ├── tutorial/         # one generated page per command (40)
+│   └── zh-CN/            # the Chinese pages, one directory down
+│       ├── index.md      # generated from README.zh-CN.md
+│       └── api.md        # the same API reference, in Chinese
+├── overrides/            # mkdocs theme overrides: the language switcher
+├── hooks/
+│   └── language.py       # per-page <html lang>, and the Chinese stemmer
 ├── demo/
 │   ├── Dockerfile        # builds the kernel, then the runtime image
 │   ├── entrypoint.sh     # boot QEMU, wait for userspace, attach GDB
@@ -175,7 +179,7 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── gen_tutorial_index.py         # renders docs/tutorial/README.md
 │   ├── gen_commands.py               # renders docs/commands.md
 │   ├── gen_demo.py                   # renders docs/assets/demo.*
-│   ├── gen_docs_site.py              # renders docs/index.md, zh-CN.md, llms.txt
+│   ├── gen_docs_site.py              # renders the two index pages + llms.txt
 │   ├── check_wheel.py                # the wheel contains the startup file
 │   ├── release.py                    # version gate + release notes
 │   ├── gen_layouts.py                # verifies struct layouts against BTF

@@ -221,7 +221,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 ```
 
 算术那一半不需要调试器，这正是它能在宿主机上被测试的原因。完整参考见
-[`docs/api.zh-CN.md`](docs/api.zh-CN.md)。
+[`docs/zh-CN/api.md`](docs/zh-CN/api.md)。
 
 ## 它凭什么不会说假话
 
@@ -253,7 +253,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 | [`docs/tutorial/`](docs/tutorial/) | 每个命令一页，真实输出 |
 | [`docs/demo-container.md`](docs/demo-container.md) | QEMU 里的内核，从源码构建、开箱可连 |
 | [`docs/commands.md`](docs/commands.md) | 每个命令与别名，生成式 |
-| [`docs/api.zh-CN.md`](docs/api.zh-CN.md) | Python API 参考 |
+| [`docs/zh-CN/api.md`](docs/zh-CN/api.md) | Python API 参考 |
 | [`docs/architecture.md`](docs/architecture.md) | 包结构、API 映射、设计说明 |
 | [`docs/compatibility.md`](docs/compatibility.md) | 实测过什么、预期可用什么、不承诺什么 |
 | [`examples/`](examples/README.md) | 可运行脚本，按意图分组 |
