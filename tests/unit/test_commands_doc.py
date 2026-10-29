@@ -164,6 +164,53 @@ class CommandReferenceTests(unittest.TestCase):
         # stale number would be to delete the whole clause.
         self.assertIn("GDB commands", description)
 
+    def test_the_readme_tagline_is_the_package_description(self) -> None:
+        """The first sentence a visitor reads must be the same sentence.
+
+        The README tagline and the repository blurb were two different
+        descriptions of one project: the tagline said "SLUB caches and
+        object chains" where everything else -- the body, the command
+        output, the source -- says *freelist*, and it omitted "Pure
+        Python, x86_64" entirely.  "object chain" is a phrase this
+        project invented; it appears in the README and nowhere in the
+        code.
+
+        So the tagline is pinned to the description in ``pyproject.toml``,
+        which is itself kept equal to the GitHub blurb by hand.  One
+        sentence, one place to edit, and a test that notices when the
+        README drifts away from it.
+        """
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        match = re.search(r"<p>\s*(GDB commands for reading.*?)\s*</p>", readme, re.S)
+        self.assertIsNotNone(match, "README has no tagline paragraph")
+        tagline = " ".join(re.sub(r"<[^>]+>", "", match.group(1)).split())
+
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        description = re.search(
+            r'^description = "(.*)"$', pyproject, re.M,
+        ).group(1)
+        self.assertEqual(
+            tagline, description,
+            "the README tagline and the package description have drifted apart",
+        )
+
+    def test_the_readmes_do_not_use_a_term_the_code_never_uses(self) -> None:
+        """A made-up name in the tagline is a claim about the tool.
+
+        "object chains" survived in the README because it reads fine in
+        English, not because it means anything here.  The SLUB structure
+        this project decodes is the `freelist`, which is what the source,
+        the captured output and the tutorial all call it.  A reader who
+        learns the wrong word has to unlearn it.
+        """
+        for name in ("README.md", "README.zh-CN.md"):
+            with self.subTest(readme=name):
+                text = (ROOT / name).read_text(encoding="utf-8")
+                self.assertNotIn(
+                    "object chain", text.lower(),
+                    "the SLUB structure is the freelist; see kl-slab",
+                )
+
     def test_check_fails_when_a_page_drifts(self) -> None:
         """``--check`` has to notice, whichever language drifted.
 

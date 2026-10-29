@@ -8,7 +8,8 @@
   </p>
 
   <p>
-    面向 GDB 的 Linux 内核检查工具 — 从原始内存、页表到 SLUB 内部结构与符号解析。
+    用 GDB 命令读一个正在运行的 Linux 内核：页表、SLUB 缓存与 freelist、
+    <code>struct page</code>、符号、KASLR。纯 Python，x86_64。
   </p>
 
   <p>

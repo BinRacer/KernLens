@@ -13,8 +13,8 @@ hide:
   
 
   <p>
-    Read a live Linux kernel from GDB: page tables at every level, SLUB
-    caches and object chains, <code>struct page</code>, symbols, KASLR.
+    GDB commands for reading a live Linux kernel: page tables, SLUB caches
+    and freelists, <code>struct page</code>, symbols and KASLR. Pure Python, x86_64.
   </p>
 
   <p>
