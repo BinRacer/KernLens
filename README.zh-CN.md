@@ -8,11 +8,6 @@
   </p>
 
   <p>
-    用 GDB 命令读一个正在运行的 Linux 内核：页表、SLUB 缓存与 freelist、
-    <code>struct page</code>、符号、KASLR。纯 Python，x86_64。
-  </p>
-
-  <p>
     <a href="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml"><img src="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml/badge.svg" alt="CI 状态"></a>
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="https://binracer.github.io/KernLens/zh-CN/"><img src="https://img.shields.io/badge/docs-site-4a9eff.svg" alt="文档站"></a>
@@ -29,10 +24,8 @@ KernLens 给 GDB 增加 **30 个命令**，用来读一个正在运行的 Linux 
 
 给内核 pwn、模块与驱动调试、以及在 GDB 里做内存取证的人用。它只注册
 `kernlens-*` 与 `kl-*` 两类名字，所以能和 pwndbg 装在同一个会话里，
-两边的命令都不撞。
-
-`core/` 与 `output/` 是纯 Python，完全不依赖 GDB；只有 `gdb/` 需要
-调试目标。
+两边的命令都不撞。`core/` 与 `output/` 是纯 Python，完全不依赖 GDB；
+只有 `gdb/` 需要调试目标，且解码器只针对 x86_64 写。
 
 ## 看它跑一遍
 

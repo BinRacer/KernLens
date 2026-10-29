@@ -13,11 +13,6 @@ hide:
   
 
   <p>
-    GDB commands for reading a live Linux kernel: page tables, SLUB caches
-    and freelists, <code>struct page</code>, symbols and KASLR. Pure Python, x86_64.
-  </p>
-
-  <p>
     <a href="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml"><img src="https://github.com/BinRacer/KernLens/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="https://binracer.github.io/KernLens/"><img src="https://img.shields.io/badge/docs-site-4a9eff.svg" alt="Documentation site"></a>
@@ -35,7 +30,9 @@ came from -- so a wrong result looks wrong instead of looking plausible.
 It is for kernel pwn, module and driver debugging, and memory forensics,
 and registers only `kernlens-*` and `kl-*` names so it loads beside pwndbg
 without either tool shadowing the other. `core/` and `output/` are pure
-Python and run without GDB at all; only the `gdb/` package needs a debuggee.
+Python and run without GDB at all; only the `gdb/` package needs a
+debuggee, and x86_64 is the only architecture the decoders are written
+against.
 
 ## See it run
 
