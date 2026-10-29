@@ -115,13 +115,25 @@ nav:
   - Compatibility: compatibility.md
   - Releasing: releasing.md
   - Naming: naming.md
-  # 中文页面各自成目录，与英文分开；只翻译了这两页，其余页面没有中文版，
-  # 语言按钮落在中文首页而不是一个 404。
-  - 简体中文:
-      - 首页: zh-CN/index.md
-      - Python API: zh-CN/api.md
   # Outside the site directory, so these stay on GitHub rather than
   # becoming a second copy that drifts.
   - Contributing: https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md
   - Security: https://github.com/BinRacer/KernLens/blob/main/SECURITY.md
   - Changelog: https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md
+
+# The Chinese pages are published but deliberately not in the nav.
+#
+# Choosing a language is the header switcher's job (`extra.alternate`
+# above), and it is on every page.  Listing the same language a second
+# time as a nav section made it look like a table of contents entry, so
+# the sidebar showed "简体中文" as though it were a chapter of the
+# documentation -- two controls for one decision, one of them in the
+# wrong place.
+#
+# `not_in_nav` is how mkdocs says "this file is published on purpose and
+# its absence from the nav is not an oversight".  Without it, `--strict`
+# treats the omission as a warning and the build fails; that warning is
+# otherwise exactly right, which is why the entries are declared rather
+# than the check being relaxed.
+not_in_nav: |
+  zh-CN/*.md

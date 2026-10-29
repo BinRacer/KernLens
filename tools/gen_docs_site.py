@@ -105,6 +105,20 @@ PAGE_NOTES: dict[str, str] = {
     "naming.md": "command, example, and filename conventions",
 }
 
+#: Pages that are published but not linked from the nav, with the title
+#: ``llms.txt`` lists them under.
+#:
+#: The Chinese pages are here because choosing a language is the header
+#: switcher's job, and repeating it as a nav section made it look like a
+#: chapter of the documentation.  They still have to appear in
+#: ``llms.txt``: that file is an index of what is *published*, not a
+#: mirror of the sidebar, and an assistant reading it would otherwise
+#: believe the Chinese pages do not exist.
+OFF_NAV: tuple[tuple[str, str], ...] = (
+    ("首页", "zh-CN/index.md"),
+    ("Python API", "zh-CN/api.md"),
+)
+
 _MARKDOWN_LINK = re.compile(r"\]\(([^)\s]+)\)")
 _HTML_LINK = re.compile(r'(?P<name>href|src)="(?P<target>[^"]+)"')
 _NAV = re.compile(r"^\s*-\s+(?P<title>[^:]+):\s+(?P<target>\S+)\s*$")
@@ -122,10 +136,10 @@ _README_SWITCHER = re.compile(
 )
 
 #: Front matter prepended to a generated page the site should not add a
-#: title to.  Both front pages open with the banner image, so a nav-title
-#: heading above it reads as a caption for the wrong thing.  ``title`` is
-#: the key that hides the heading; ``navigation`` hides the sidebar, which
-#: these pages still want.
+#: title heading to.  Both front pages open with the banner image, so a
+#: nav-title heading above it reads as a caption for the wrong thing.
+#: ``title`` is the key that hides the heading; ``navigation`` hides the
+#: sidebar, which these pages still want.
 HIDE_NAV_TITLE = "---\nhide:\n  - title\n---\n"
 
 
@@ -257,7 +271,13 @@ def page_url(target: str) -> str:
 
 
 def render_llms(nav: Sequence[tuple[str, str]]) -> str:
-    """Render ``llms.txt`` from the nav and :data:`PAGE_NOTES`."""
+    """Render ``llms.txt`` from the nav, :data:`OFF_NAV`, and the notes.
+
+    ``OFF_NAV`` comes after the nav and under its own heading, so the
+    file says both things a reader needs: which pages the site links to,
+    and which pages exist anyway.  Folding them into one list would lose
+    the distinction that made them worth separating.
+    """
     lines = [
         "# KernLens",
         "",
@@ -283,6 +303,25 @@ def render_llms(nav: Sequence[tuple[str, str]]) -> str:
         lines.append(
             f"- [{title}]({page_url(target)}): {PAGE_NOTES[target]}"
         )
+    if OFF_NAV:
+        lines += [
+            "",
+            "## Not in the sidebar",
+            "",
+            "Reached from the language switcher in the site header, which",
+            "applies to every page; listing them in the nav as well would",
+            "present a language choice as a chapter of the documentation.",
+            "",
+        ]
+        for title, target in OFF_NAV:
+            if target not in PAGE_NOTES:
+                raise SystemExit(
+                    f"off-nav page {target!r} has no description; add one "
+                    "to PAGE_NOTES in tools/gen_docs_site.py"
+                )
+            lines.append(
+                f"- [{title}]({page_url(target)}): {PAGE_NOTES[target]}"
+            )
     lines.append("")
     return "\n".join(lines)
 
