@@ -18,8 +18,15 @@
 - [Compatibility](https://binracer.github.io/KernLens/compatibility/): which environments were measured, which are expected, and which are not claimed
 - [Releasing](https://binracer.github.io/KernLens/releasing/): what has to agree before a tag, and what the tag does
 - [Naming](https://binracer.github.io/KernLens/naming/): command, example, and filename conventions
-- [首页](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
-- [Python API](https://binracer.github.io/KernLens/zh-CN/api/): the same API reference in Chinese
 - [Contributing](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md)
 - [Security](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md)
 - [Changelog](https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md)
+
+## Not in the sidebar
+
+Reached from the language switcher in the site header, which
+applies to every page; listing them in the nav as well would
+present a language choice as a chapter of the documentation.
+
+- [首页](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
+- [Python API](https://binracer.github.io/KernLens/zh-CN/api/): the same API reference in Chinese

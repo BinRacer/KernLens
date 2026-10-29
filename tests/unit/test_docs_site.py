@@ -208,14 +208,21 @@ class NavigationTests(unittest.TestCase):
     def test_every_page_is_reachable(self) -> None:
         """A page nobody links to is a page nobody reads.
 
-        The 40 tutorial pages are reached from the generated index
-        instead of being 40 nav entries, so that index is checked to name
-        each of them.
+        Three kinds of page are not nav entries, and each has a different
+        reason, so each is checked differently:
+
+        - the 40 tutorial pages are reached from the generated index, so
+          that index has to name them;
+        - the Chinese pages are reached from the header switcher, which is
+          the same control on every page -- so they are checked to be
+          published (built into the site) and listed in ``llms.txt``;
+        - anything else has no excuse and fails.
         """
         nav = {target for _, target in _nav()}
         tutorial = (DOCS / "tutorial" / "README.md").read_text(
             encoding="utf-8",
         )
+        llms = (DOCS / "llms.txt").read_text(encoding="utf-8")
         for path in sorted(DOCS.rglob("*")):
             if not path.is_file() or path.suffix != ".md":
                 continue
@@ -225,7 +232,27 @@ class NavigationTests(unittest.TestCase):
             if relative.startswith("tutorial/"):
                 self.assertIn(path.name, tutorial, relative)
                 continue
+            if relative.startswith("zh-CN/"):
+                # Not in the sidebar by design: the header switcher is
+                # the control for choosing a language, and a nav section
+                # listing it made the same choice twice.
+                self.assertIn(
+                    gen_docs_site.page_url(relative), llms, relative,
+                )
+                continue
             self.fail(f"{relative} is not in the nav")
+
+    def test_the_chinese_pages_declare_themselves_not_in_the_nav(self) -> None:
+        """`not_in_nav` is how the build is told the omission is intended.
+
+        Without it, ``mkdocs build --strict`` treats a published page that
+        the nav does not mention as a warning and fails -- which is the
+        right default, and the reason the exception is written down rather
+        than the check being relaxed.
+        """
+        text = _mkdocs()
+        self.assertIn("not_in_nav:", text)
+        self.assertIn("zh-CN/*.md", text)
 
     def test_every_nav_page_has_an_llms_note(self) -> None:
         for title, target in _nav():
@@ -273,17 +300,41 @@ class LanguageLayoutTests(unittest.TestCase):
         self.assertTrue((DOCS / "index.md").is_file())
         self.assertTrue((DOCS / "api.md").is_file())
 
-    def test_the_nav_keeps_the_languages_apart(self) -> None:
-        """One section per language, and only the Chinese one is nested."""
-        nav = _nav()
-        targets = [target for _, target in nav]
+    def test_the_nav_lists_only_the_default_language(self) -> None:
+        """English is the default, so English is what the sidebar shows.
+
+        The Chinese pages used to be a nav section, which put a language
+        choice in the place a reader looks for the table of contents --
+        while the header carried a switcher for the same purpose.  Two
+        controls for one decision, one of them in the wrong place.
+
+        Nothing about this makes the Chinese pages less published; it
+        moves the way you reach them.  The test below covers that.
+        """
+        targets = [target for _, target in _nav()]
         self.assertIn("index.md", targets)
-        self.assertIn("zh-CN/index.md", targets)
+        self.assertNotIn("zh-CN/index.md", targets)
+        self.assertNotIn("zh-CN/api.md", targets)
         self.assertNotIn("zh-CN.md", targets)
-        # English pages do not live under a language directory.
+        # English pages do not live under a language directory either.
         self.assertFalse(
             [t for t in targets if t.startswith("en/")], targets,
         )
+
+    def test_the_off_nav_pages_are_still_published(self) -> None:
+        """Not in the sidebar is not the same as not published.
+
+        `not_in_nav` keeps the build quiet about the omission, so the
+        pages would still be built -- but nothing would notice if they
+        stopped being listed anywhere.  `OFF_NAV` is the list the
+        generator uses for ``llms.txt``, and every entry has to name a
+        file that exists.
+        """
+        self.assertTrue(gen_docs_site.OFF_NAV)
+        for _, target in gen_docs_site.OFF_NAV:
+            with self.subTest(page=target):
+                self.assertTrue((DOCS / target).is_file(), target)
+                self.assertIn(target, gen_docs_site.PAGE_NOTES)
 
     def test_the_chinese_pages_declare_themselves_chinese(self) -> None:
         """``<html lang>`` is per page, and the theme has one value.
@@ -319,6 +370,39 @@ class LanguageLayoutTests(unittest.TestCase):
             language.on_post_page(rendered, page=english, config=config),
             rendered,
         )
+
+    def test_the_chinese_front_page_gets_a_document_title(self) -> None:
+        """Off-nav pages are named after their file, which is not a title.
+
+        ``docs/zh-CN/index.md`` is neither the homepage nor a nav entry,
+        so ``<title>`` came out as ``Index - KernLens``.  Fixing it in
+        front matter would not work: the theme appends ``- site_name`` to
+        any ``meta.title``, and ``KernLens - KernLens`` is worse than the
+        filename.  So the hook writes the tag.
+        """
+        import language
+
+        config = type("Config", (), {"docs_dir": str(DOCS)})()
+        source = "zh-CN/index.md"
+        page = type(
+            "Page", (), {"file": type("File", (), {"src_uri": source})()},
+        )()
+        rendered = '<html lang="en"><head><title>Index - KernLens</title>'
+        out = language.on_post_page(rendered, page=page, config=config)
+        self.assertIn(f"<title>{language.TITLES[source]}</title>", out)
+        self.assertNotIn("Index - KernLens", out)
+
+    def test_a_title_is_only_written_for_the_pages_that_need_one(self) -> None:
+        # The rest of the Chinese tree keeps whatever the theme worked
+        # out; a blanket title would flatten the API page's real heading.
+        import language
+
+        for source in ("zh-CN/api.md", "zh-CN/index.md"):
+            with self.subTest(source=source):
+                self.assertEqual(
+                    source in language.TITLES,
+                    source == "zh-CN/index.md",
+                )
 
     def test_the_language_hook_is_configured(self) -> None:
         self.assertIn("hooks/language.py", _mkdocs())
