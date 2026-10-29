@@ -120,6 +120,27 @@ merge 提交唯一的代价是：`git bisect` 可能落到一个有两个父提�
 提交信息说清为什么、不要在一个 merge 提交里夹带未经评审的内容。本小节
 关于落地方式的全部内容都是偏好；这一条才是要求。
 
+### 改写历史之后的清理
+
+强推只替换提交，不会替换指向它们的记录，所以 Actions 页面会继续列出
+那些谁都取不到的 SHA 对应的运行。`tools/clean_github.py` 负责找出它们：
+一个运行是陈旧的，当它的 `head_sha` 从所有 ref 都不可达——这个问题只有
+对象库能回答，所以它调用 `git rev-list --all`。
+
+```console
+uv run python tools/clean_github.py --repo BinRacer/KernLens          # 只报告
+uv run python tools/clean_github.py --repo BinRacer/KernLens --apply  # 真正删除
+```
+
+默认是干跑；删除必须加 `--apply`，因为一个会删记录的工具不能同时又是
+一个你不敢用来查看它会删什么的工具。有两件事它只报告、不执行：
+
+* **已合并的 PR 无法删除。** GitHub 没有对应端点。删掉分支、让 PR 保持
+  关闭状态，或者改写 PR 正文，让它不再描述一个已经不存在的状态。
+* **删除 workflow run 需要 `Actions: write`。** 只有 `Contents: write`
+  的 fine-grained PAT 会被 403 拒绝，工具会点名这个权限而不是静默失败。
+  workflow 日志本身也会过期，所以放着不管的陈旧 run 不会永久存在。
+
 ### 结构体布局：DWARF → BTF → 验证过的兜底表
 
 所有结构体字段偏移都在首次使用时按三级链解析，因此检查器始终跟随

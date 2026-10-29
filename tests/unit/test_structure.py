@@ -468,6 +468,30 @@ class ToolsLayoutTests(unittest.TestCase):
         package = SRC / "kernlens"
         self.assertFalse((package / "abi_ranges.py").exists())
 
+    def test_repo_cleaner_lives_under_tools(self) -> None:
+        self.assertTrue((ROOT / "tools" / "clean_github.py").is_file())
+        package = SRC / "kernlens"
+        self.assertFalse((package / "clean_github.py").exists())
+
+    def test_repo_cleaner_is_dry_by_default(self) -> None:
+        """A destructive tool must need an explicit flag.
+
+        The tool deletes GitHub records that a force-push orphaned.  If a
+        bare invocation were enough to do that, running it to see what it
+        would remove would be the same as removing it, and the safe half
+        of the interface would be unusable.
+        """
+        text = (ROOT / "tools" / "clean_github.py").read_text(encoding="utf-8")
+        self.assertIn('"--apply"', text)
+        self.assertIn("with --apply", text)
+        # Reachability is answered by the object database, so it must ask
+        # git rather than assume every listed SHA is orphaned.
+        self.assertIn("rev-list", text)
+        self.assertIn("--all", text)
+        # A merged PR cannot be deleted through the API; the tool has to
+        # say so instead of appearing to clean one.
+        self.assertIn("merged pull request cannot be deleted", text)
+
     def test_range_deriver_reuses_the_registry(self) -> None:
         text = (ROOT / "tools" / "abi_ranges.py").read_text(encoding="utf-8")
         # It reads the registry to report which rows are missing, and it
