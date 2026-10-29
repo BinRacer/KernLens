@@ -62,7 +62,7 @@ def _pick(cases: list[dict[str, Any]]) -> list[tuple[str, str]]:
     walk = next(
         (
             case for case in cases
-            if case["invocation"].startswith("kernlens-walk ")
+            if case["invocation"].startswith("kl-walk ")
             and "huge leaf" in case["output"]
         ),
         None,
@@ -70,7 +70,7 @@ def _pick(cases: list[dict[str, Any]]) -> list[tuple[str, str]]:
     slab = next(
         (
             case for case in cases
-            if case["invocation"].startswith("kernlens-slab details ")
+            if case["invocation"].startswith("kl-slab details ")
         ),
         None,
     )

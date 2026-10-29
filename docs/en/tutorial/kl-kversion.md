@@ -1,10 +1,10 @@
-# `kernlens-kversion`
+# `kl-kversion`
 
 Kernel version
 
-**Alias:** `kl-kversion`  
+**Canonical:** `kernlens-kversion`  
 **Category:** kernel metadata  
-**Synopsis:** `kernlens-kversion [-h]`
+**Synopsis:** `kl-kversion [-h]`
 
 Prints the full version banner and the release string KernLens parses out of it.  The release is what the layout registry's version bands are keyed on, so it is worth checking when an offset looks wrong.
 
@@ -13,7 +13,7 @@ Prints the full version banner and the release string KernLens parses out of it.
 ### Invocation
 
 ```gdb
-kernlens-kversion
+kl-kversion
 ```
 
 ### Output

@@ -1,10 +1,10 @@
-# `kernlens-kdmabuf`
+# `kl-kdmabuf`
 
 dma-buf objects
 
-**Alias:** `kl-kdmabuf`  
+**Canonical:** `kernlens-kdmabuf`  
 **Category:** memory & symbols  
-**Synopsis:** `kernlens-kdmabuf [-h]`
+**Synopsis:** `kl-kdmabuf [-h]`
 
 Walks the dma-buf export list and prints each buffer with its attachment chain.  dma-bufs are a common cross-device use-after-free surface, so enumerating them is usually the first step.
 
@@ -13,7 +13,7 @@ Walks the dma-buf export list and prints each buffer with its attachment chain. 
 ### Invocation
 
 ```gdb
-kernlens-kdmabuf
+kl-kdmabuf
 ```
 
 ### Output

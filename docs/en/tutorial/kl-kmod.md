@@ -1,10 +1,10 @@
-# `kernlens-kmod`
+# `kl-kmod`
 
 Loaded modules
 
-**Alias:** `kl-kmod`  
+**Canonical:** `kernlens-kmod`  
 **Category:** kernel metadata  
-**Synopsis:** `kernlens-kmod [-h] [-l PATH] [module_name]`
+**Synopsis:** `kl-kmod [-h] [-l PATH] [module_name]`
 
 Walks the `modules` list and prints each loaded module with its address range and size.
 
@@ -20,7 +20,7 @@ Walks the `modules` list and prints each loaded module with its address range an
 ### Invocation
 
 ```gdb
-kernlens-kmod
+kl-kmod
 ```
 
 ### Output
@@ -38,7 +38,7 @@ One row per module: name, base, size, and state.  The base is in the module regi
 ### Invocation
 
 ```gdb
-kernlens-kmod nonexistent
+kl-kmod nonexistent
 ```
 
 ### Output

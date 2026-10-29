@@ -1,10 +1,10 @@
-# `kernlens-read-field`
+# `kl-read-field`
 
 Read a struct field
 
-**Alias:** `kl-read-field`  
+**Canonical:** `kernlens-read-field`  
 **Category:** memory & symbols  
-**Synopsis:** `kernlens-read-field [-h] address type path`
+**Synopsis:** `kl-read-field [-h] address type path`
 
 Reads one field out of a struct at a given address, following a dotted path into nested members.  This is the command to use when you can compute an address but not read the struct in one go.
 
@@ -21,13 +21,13 @@ Reads one field out of a struct at a given address, following a dotted path into
 ### Invocation
 
 ```gdb
-kernlens-read-field 0xffffd66f00010000 'struct page' _refcount.counter
+kl-read-field 0xffffd4fe00010000 'struct page' _refcount.counter
 ```
 
 ### Output
 
 ```text
-field: ((struct page *)0xffffd66f00010000)->_refcount.counter
+field: ((struct page *)0xffffd4fe00010000)->_refcount.counter
 value: 0x0
 ```
 

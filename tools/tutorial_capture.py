@@ -133,114 +133,114 @@ def _cases(ctx: dict) -> list[tuple[str, list[str]]]:
     names = [c.name for c in kdbg.slab_caches()]
     small = "dentry" if "dentry" in names else names[0]
     return [
-        ("kernlens-help", [
-            "kernlens-help", "kernlens-help kl-walk",
-            "kernlens-help kernlens-slab", "kernlens-help kl-buddy",
+        ("kl-help", [
+            "kl-help", "kl-help kl-walk",
+            "kl-help kernlens-slab", "kl-help kl-buddy",
         ]),
-        ("kernlens-status", ["kernlens-status"]),
-        ("kernlens-color", [
-            "kernlens-color", "kernlens-color toggle",
-            "kernlens-color on", "kernlens-color off",
+        ("kl-status", ["kl-status"]),
+        ("kl-color", [
+            "kl-color", "kl-color toggle",
+            "kl-color on", "kl-color off",
         ]),
-        ("kernlens-base", [
-            "kernlens-base", "kernlens-base show", "kernlens-base -v",
-            "kernlens-base idt 4", "kernlens-base rebase",
-            f"kernlens-base text {ctx['text']:#x}",
-            f"kernlens-base {ctx['text']:#x}",
-            f"kernlens-base offset {slide}",
+        ("kl-base", [
+            "kl-base", "kl-base show", "kl-base -v",
+            "kl-base idt 4", "kl-base rebase",
+            f"kl-base text {ctx['text']:#x}",
+            f"kl-base {ctx['text']:#x}",
+            f"kl-base offset {slide}",
         ]),
-        ("kernlens-kcmdline", ["kernlens-kcmdline"]),
-        ("kernlens-kversion", ["kernlens-kversion"]),
-        ("kernlens-kconfig", [
-            "kernlens-kconfig RANDOMIZE_BASE", "kernlens-kconfig",
-            "kernlens-kconfig --check",
+        ("kl-kcmdline", ["kl-kcmdline"]),
+        ("kl-kversion", ["kl-kversion"]),
+        ("kl-kconfig", [
+            "kl-kconfig RANDOMIZE_BASE", "kl-kconfig",
+            "kl-kconfig --check",
         ]),
-        ("kernlens-kmod", ["kernlens-kmod", "kernlens-kmod nonexistent"]),
-        ("kernlens-ksyscalls", [
-            "kernlens-ksyscalls", "kernlens-ksyscalls read",
-            "kernlens-ksyscalls 0",
+        ("kl-kmod", ["kl-kmod", "kl-kmod nonexistent"]),
+        ("kl-ksyscalls", [
+            "kl-ksyscalls", "kl-ksyscalls read",
+            "kl-ksyscalls 0",
         ]),
-        ("kernlens-kdmesg", ["kernlens-kdmesg", "kernlens-kdmesg --ctime"]),
-        ("kernlens-cpu", ["kernlens-cpu", "kernlens-cpu 0"]),
-        ("kernlens-percpu", [
-            "kernlens-percpu current_task", "kernlens-percpu current_task 1",
+        ("kl-kdmesg", ["kl-kdmesg", "kl-kdmesg --ctime"]),
+        ("kl-cpu", ["kl-cpu", "kl-cpu 0"]),
+        ("kl-percpu", [
+            "kl-percpu current_task", "kl-percpu current_task 1",
         ]),
-        ("kernlens-msr", [
-            "kernlens-msr -l", "kernlens-msr 0xc0000082",
-            "kernlens-msr MSR_LSTAR",
-            "kernlens-msr --range 0xc0000080-0xc0000084",
+        ("kl-msr", [
+            "kl-msr -l", "kl-msr 0xc0000082",
+            "kl-msr MSR_LSTAR",
+            "kl-msr --range 0xc0000080-0xc0000084",
         ]),
-        ("kernlens-addr", [
-            f"kernlens-addr {direct}", f"kernlens-addr {text_addr}",
-            "kernlens-addr 0xffff888000001234", "kernlens-addr 0x5",
-            f"kernlens-addr {direct} 0xfff",
-            f"kernlens-addr {direct} --brief",
-            f"kernlens-addr {vmemmap_page} --brief",
+        ("kl-addr", [
+            f"kl-addr {direct}", f"kl-addr {text_addr}",
+            "kl-addr 0xffff888000001234", "kl-addr 0x5",
+            f"kl-addr {direct} 0xfff",
+            f"kl-addr {direct} --brief",
+            f"kl-addr {vmemmap_page} --brief",
         ]),
-        ("kernlens-pt", [
-            f"kernlens-pt {direct}", f"kernlens-pt {text_addr}",
-            "kernlens-pt 0xffff888000001234",
-            "kernlens-pt --entry 0x8000000000120063",
-            f"kernlens-pt --entry 0x8000000000120063 {direct}",
+        ("kl-pt", [
+            f"kl-pt {direct}", f"kl-pt {text_addr}",
+            "kl-pt 0xffff888000001234",
+            "kl-pt --entry 0x8000000000120063",
+            f"kl-pt --entry 0x8000000000120063 {direct}",
         ]),
-        ("kernlens-walk", [
-            f"kernlens-walk {direct}", f"kernlens-walk {direct} 5",
-            f"kernlens-walk {direct} --style pwndbg",
+        ("kl-walk", [
+            f"kl-walk {direct}", f"kl-walk {direct} 5",
+            f"kl-walk {direct} --style pwndbg",
         ]),
-        ("kernlens-pageinfo", [f"kernlens-pageinfo {vmemmap_page}"]),
-        ("kernlens-p2v", [f"kernlens-p2v {FREE_PHYS:#x}"]),
-        ("kernlens-v2p", [f"kernlens-v2p {direct}"]),
-        ("kernlens-sym", [
-            f"kernlens-sym {ctx['text_sym']:#x}",
-            f"kernlens-sym {direct}",
-            "kernlens-sym --find commit_creds",
-            "kernlens-sym --find page_offset_base",
+        ("kl-pageinfo", [f"kl-pageinfo {vmemmap_page}"]),
+        ("kl-p2v", [f"kl-p2v {FREE_PHYS:#x}"]),
+        ("kl-v2p", [f"kl-v2p {direct}"]),
+        ("kl-sym", [
+            f"kl-sym {ctx['text_sym']:#x}",
+            f"kl-sym {direct}",
+            "kl-sym --find commit_creds",
+            "kl-sym --find page_offset_base",
         ]),
-        ("kernlens-bt", [
-            "kernlens-bt", "kernlens-bt 4",
-            "kernlens-bt --chain", "kernlens-bt 12 --chain",
+        ("kl-bt", [
+            "kl-bt", "kl-bt 4",
+            "kl-bt --chain", "kl-bt 12 --chain",
         ]),
-        ("kernlens-read", [
-            f"kernlens-read {direct}", f"kernlens-read {direct} 16 -m ascii",
+        ("kl-read", [
+            f"kl-read {direct}", f"kl-read {direct} 16 -m ascii",
         ]),
-        ("kernlens-kvar", [
-            "kernlens-kvar page_offset_base", "kernlens-kvar vmemmap_base",
-            "kernlens-kvar nr_online_nodes",
+        ("kl-kvar", [
+            "kl-kvar page_offset_base", "kl-kvar vmemmap_base",
+            "kl-kvar nr_online_nodes",
         ]),
-        ("kernlens-read-field", [
-            f"kernlens-read-field {vmemmap_page} 'struct page' "
+        ("kl-read-field", [
+            f"kl-read-field {vmemmap_page} 'struct page' "
             "_refcount.counter",
         ]),
-        ("kernlens-slab", [
-            "kernlens-slab list", "kernlens-slab list kmalloc",
-            "kernlens-slab list dentry", f"kernlens-slab info {small}",
-            f"kernlens-slab info {small} -i -r --reclaim --ctor",
-            f"kernlens-slab info {small} -p", f"kernlens-slab info {small} -a",
-            "kernlens-slab info kmalloc-1k", f"kernlens-slab contains {obj}",
-            f"kernlens-slab details {obj}",
+        ("kl-slab", [
+            "kl-slab list", "kl-slab list kmalloc",
+            "kl-slab list dentry", f"kl-slab info {small}",
+            f"kl-slab info {small} -i -r --reclaim --ctor",
+            f"kl-slab info {small} -p", f"kl-slab info {small} -a",
+            "kl-slab info kmalloc-1k", f"kl-slab contains {obj}",
+            f"kl-slab details {obj}",
         ]),
-        ("kernlens-buddy", [
-            "kernlens-buddy list", "kernlens-buddy list -z DMA",
-            "kernlens-buddy info pfn:1024", f"kernlens-buddy info {direct}",
-            "kernlens-buddy info pfn:1024 -v",
-            "kernlens-buddy freelist -z DMA -o 10 -m Movable",
-            "kernlens-buddy freelist -z DMA -o 10 -m Movable -v",
-            "kernlens-buddy freelist -z DMA -o 10 -m Unmovable -v",
-            "kernlens-buddy dump", "kernlens-buddy dump -z DMA",
-            "kernlens-buddy dump -z DMA -o 10",
-            f"kernlens-buddy dump -f {direct}",
-            "kernlens-buddy dump --MIGRATE_TYPES 5",
+        ("kl-buddy", [
+            "kl-buddy list", "kl-buddy list -z DMA",
+            "kl-buddy info pfn:1024", f"kl-buddy info {direct}",
+            "kl-buddy info pfn:1024 -v",
+            "kl-buddy freelist -z DMA -o 10 -m Movable",
+            "kl-buddy freelist -z DMA -o 10 -m Movable -v",
+            "kl-buddy freelist -z DMA -o 10 -m Unmovable -v",
+            "kl-buddy dump", "kl-buddy dump -z DMA",
+            "kl-buddy dump -z DMA -o 10",
+            f"kl-buddy dump -f {direct}",
+            "kl-buddy dump --MIGRATE_TYPES 5",
         ]),
-        ("kernlens-kbpf", [
-            "kernlens-kbpf", "kernlens-kbpf -p", "kernlens-kbpf -m",
+        ("kl-kbpf", [
+            "kl-kbpf", "kl-kbpf -p", "kl-kbpf -m",
         ]),
-        ("kernlens-kdmabuf", ["kernlens-kdmabuf"]),
-        ("kernlens-bits", [
-            "kernlens-bits 0xff 3", f"kernlens-bits {text_addr}",
+        ("kl-kdmabuf", ["kl-kdmabuf"]),
+        ("kl-bits", [
+            "kl-bits 0xff 3", f"kl-bits {text_addr}",
         ]),
-        ("kernlens-int", [
-            "kernlens-int 0xff", "kernlens-int 0xff 8", "kernlens-int -1 32",
-            "kernlens-int 0x1234 16",
+        ("kl-int", [
+            "kl-int 0xff", "kl-int 0xff 8", "kl-int -1 32",
+            "kl-int 0x1234 16",
         ]),
     ]
 

@@ -14,9 +14,16 @@ by a linter.
 
 - Canonical commands are `kernlens-<verb>`; the suffix is one or two
   words: `kernlens-slab`, `kernlens-kaslr-offset`.
-- Every canonical command has a `kl-<verb>` alias.  Aliases are the
-  intended interactive form; canonical names are used in scripts and
-  documentation.
+- Every canonical command has a `kl-<verb>` alias.  The alias is the
+  **only** spelling a user-facing surface shows: `kl-help`, the usage
+  line, an error message, and the tutorial all name the command
+  `kl-<verb>`, and `kernlens-<verb>` is stated once as the canonical
+  name.  Thirty commands in two spellings is thirty pairs to remember;
+  printing both everywhere would buy nothing but habits, so the help
+  picks the one a user types.
+- Canonical names are what the registry holds and what a script should
+  call.  They are the registered `gdb.Command` names, so they survive a
+  rename of the aliases.
 - Commands are **not** renamed when the Python API changes.  The
   command layer is a stable user interface; the Python layer is the
   implementation.

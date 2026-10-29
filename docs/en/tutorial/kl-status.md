@@ -1,10 +1,10 @@
-# `kernlens-status`
+# `kl-status`
 
 Session status
 
-**Alias:** `kl-status`  
+**Canonical:** `kernlens-status`  
 **Category:** overview  
-**Synopsis:** `kernlens-status [-h] [--doctor]`
+**Synopsis:** `kl-status [-h] [--doctor]`
 
 One-screen check that KernLens is attached to a kernel it can read, and what it currently believes about that kernel.  Run it first when a command behaves unexpectedly.
 
@@ -19,17 +19,17 @@ One-screen check that KernLens is attached to a kernel it can read, and what it 
 ### Invocation
 
 ```gdb
-kernlens-status
+kl-status
 ```
 
 ### Output
 
 ```text
 KernLens 0.3.0 — color: off
-    KASLR slide: +0x26600000
-    _text: link=0xffffffff81000000 runtime=0xffffffffa7600000
-    page_offset: 0xffff8c3640000000
-    vmemmap: 0xffffd66f00000000
+    KASLR slide: +0x19200000
+    _text: link=0xffffffff81000000 runtime=0xffffffff9a200000
+    page_offset: 0xffff9762c0000000
+    vmemmap: 0xffffd4fe00000000
     topology: nr_cpus=4 nr_nodes=1
 
 kl-help lists every command, kl-help kl-<command> explains one

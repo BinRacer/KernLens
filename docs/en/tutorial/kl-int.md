@@ -1,10 +1,10 @@
-# `kernlens-int`
+# `kl-int`
 
 Integer view
 
-**Alias:** `kl-int`  
+**Canonical:** `kernlens-int`  
 **Category:** bit & integer primitives  
-**Synopsis:** `kernlens-int [-h] value [width]`
+**Synopsis:** `kl-int [-h] value [width]`
 
 Shows one value as signed and unsigned at 8/16/32/64 bits, reports which widths it fits in, and dumps its little- and big-endian byte layouts.
 
@@ -20,7 +20,7 @@ Shows one value as signed and unsigned at 8/16/32/64 bits, reports which widths 
 ### Invocation
 
 ```gdb
-kernlens-int 0xff
+kl-int 0xff
 ```
 
 ### Output
@@ -42,7 +42,7 @@ BE bytes: 00 00 00 00 00 00 00 ff
 ### Invocation
 
 ```gdb
-kernlens-int 0x1234 16
+kl-int 0x1234 16
 ```
 
 ### Output
@@ -64,7 +64,7 @@ The second argument restricts the analysis to that width, so the signed/unsigned
 ### Invocation
 
 ```gdb
-kernlens-int -1 32
+kl-int -1 32
 ```
 
 ### Output

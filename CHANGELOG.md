@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Every user-facing surface now names a command `kl-*`, not
+  `kernlens-*`.**  `kl-help` used to list thirty `kernlens-` names and
+  mention the `kl-` alias underneath; the usage line, the guard
+  messages, and the tutorial pages did the same.  The alias is what a
+  user types, so the surfaces that a user reads now print it, and the
+  canonical name is stated once — as `Canonical: kernlens-slab` in
+  `--help`, in the second column of the command reference, and in each
+  tutorial page's header.  Two spellings of thirty commands is thirty
+  pairs to remember for no benefit; the canonical form stays because it
+  is the registered `gdb.Command` name a script should call.
+
 - **The command surface is 30 commands instead of 40.**  Ten commands were
   not ten ideas; they were seven ideas spelled several ways, and the
   duplicates were costing more in `kl-help` scan time than they returned.
@@ -57,6 +68,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   merged surface.
 
 ### Fixed
+
+- **`tools/tutorial_meta.json` is generated instead of hand-refreshed.**
+  It is the dump every tutorial page and the whole command reference are
+  rendered from, and nothing compared it with the parsers it described.
+  It had already drifted: `kl-buddy --MIGRATE_TYPES` existed in the
+  parser but in neither the recorded `usage` nor the recorded options, so
+  the tutorial documented a command without the flag.  The new
+  `tools/gen_tutorial_meta.py` writes the dump from the live registry,
+  and `tests/integration/test_gdbinit.py` compares the two, which is what
+  makes the drift detectable without a GDB on the CI runner.
 
 - **`kl-base rebase` now drops the copy the previous rebase added.**
   `add-symbol-file` only ever adds, so every `rebase` stacked another

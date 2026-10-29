@@ -51,8 +51,9 @@ CATEGORY_ORDER: tuple[str, ...] = (
 ZH: dict[str, Any] = {
     "title": "# 命令参考",
     "intro": [
-        "全部命令，顺序与 `kl-help` 打印的一致。`kl-` 形式是在提示符下敲的；"
-        "规范的 `kernlens-` 形式用于脚本和生成的教程。两者始终都能用。",
+        "全部命令，顺序与 `kl-help` 打印的一致。`kl-` 形式是你在提示符下敲的，"
+        "也是本表和教程展示的形式；规范的 `kernlens-` 形式是注册名，"
+        "脚本可以用它，第二列也列出它，以防将来别名被改名。两者始终都能用。",
         "",
         "本页由 `tools/gen_commands.py` 从 `tools/tutorial_meta.json` 生成；"
         "要改就改命令的 parser 描述，不要改这张表。每个命令在 "
@@ -64,13 +65,34 @@ ZH: dict[str, Any] = {
         "响应的名字。",
         "",
     ],
-    "columns": ("| 命令 | 别名 | 作用 |", "| --- | --- | --- |"),
+    "columns": ("| 命令 | 规范名 | 作用 |", "| --- | --- | --- |"),
 }
 
 
 def _cell(text: str) -> str:
     """Make *text* safe inside a Markdown table cell."""
     return text.replace("|", "\\|").strip()
+
+
+#: Prefix every registered command carries.
+CANONICAL_PREFIX = "kernlens-"
+
+#: Prefix a reader types at the prompt.
+INTERACTIVE_PREFIX = "kl-"
+
+
+def interactive(name: str) -> str:
+    """The spelling a reader types, given the registered name.
+
+    The table used to lead with ``kernlens-*`` and print the alias
+    underneath, so the column a reader scans was the one spelling they
+    never type.  The registry keeps the canonical names because that is
+    what ``@Command`` derives; the *page* names them the way they are
+    used, and keeps the canonical form beside it for scripts.
+    """
+    if name.startswith(CANONICAL_PREFIX):
+        return INTERACTIVE_PREFIX + name[len(CANONICAL_PREFIX):]
+    return name
 
 
 def render(meta: list[dict[str, Any]], locale: str = "en") -> str:
@@ -98,15 +120,17 @@ def render(meta: list[dict[str, Any]], locale: str = "en") -> str:
             "# Command reference",
             "",
             "Every command, in the order `kl-help` prints it.  The `kl-` form is",
-            "what you type at the prompt; the canonical `kernlens-` form is what",
-            "scripts and the generated tutorial use.  Both always work.",
+            "what you type at the prompt, and what this table and the tutorial",
+            "show.  The canonical `kernlens-` form is the registered name: a",
+            "script may use it, and it is listed in the second column so it stays",
+            "reachable if the aliases are ever renamed.  Both always work.",
             "",
             "This page is generated from `tools/tutorial_meta.json` by",
             "`tools/gen_commands.py`; edit the command's parser description, not",
             "this table.  Each command has a page in [`tutorial/`](tutorial/README.md)",
             "with captured output and a note on how to read it.",
             "",
-        ], ("| Command | Aliases | What it does |", "| --- | --- | --- |")
+        ], ("| Command | Canonical | What it does |", "| --- | --- | --- |")
 
     lines = list(header)
     for category in CATEGORY_ORDER:
@@ -118,9 +142,17 @@ def render(meta: list[dict[str, Any]], locale: str = "en") -> str:
         lines.append(columns[0])
         lines.append(columns[1])
         for entry in entries:
-            aliases = ", ".join(f"`{alias}`" for alias in entry["aliases"])
+            # The first column is the spelling a reader types; the
+            # canonical name follows it so the registered name stays
+            # reachable without becoming the one the table teaches.
+            primary = interactive(entry["name"])
+            others = [a for a in entry["aliases"] if a != primary]
+            extras = ", ".join(f"`{a}`" for a in others)
+            canonical = f"`{entry['name']}`"
+            if extras:
+                canonical += f" ({extras})"
             lines.append(
-                f"| `{entry['name']}` | {aliases} | {_cell(entry['summary'])} |"
+                f"| `{primary}` | {canonical} | {_cell(entry['summary'])} |"
             )
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"

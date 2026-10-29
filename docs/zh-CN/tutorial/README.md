@@ -13,14 +13,14 @@
 | 内核 | `6.1.134` (x86_64, DWARF debug info) |
 | CPU 数 | 4 |
 | SLUB 缓存数 | 170 |
-| KASLR 偏移 | `0x26600000` |
+| KASLR 偏移 | `0x19200000` |
 | `_text`（链接时） | `0xffffffff81000000` |
-| `_text`（运行时） | `0xffffffffa7600000` |
-| `page_offset_base` | `0xffff8c3640000000` |
-| `vmemmap_base` | `0xffffd66f00000000` |
+| `_text`（运行时） | `0xffffffff9a200000` |
+| `page_offset_base` | `0xffff9762c0000000` |
+| `vmemmap_base` | `0xffffd4fe00000000` |
 | 一个空闲页（物理） | `0x400000` |
-| 它的直接映射别名 | `0xffff8c3640400000` |
-| 它的 `struct page` | `0xffffd66f00010000` |
+| 它的直接映射别名 | `0xffff9762c0400000` |
+| 它的 `struct page` | `0xffffd4fe00010000` |
 
 `page_offset_base` 与 `vmemmap_base` 是启动代码填进去的内核**变量**，所以每次启动都会变，偏移也随之变化。这里其余的（结构体偏移、zone 列表、缓存名、符号名）对本次构建是稳定的。凡是与启动相关的，KernLens 都在运行时重新推导而不是假定，这就是命令显示这些数字而不是某个常量的原因。
 

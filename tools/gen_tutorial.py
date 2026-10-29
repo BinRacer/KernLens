@@ -60,6 +60,27 @@ EM_DASH = "\N{EM DASH}"
 _SGR = re.compile(r"\x1b\[[0-9;]*m")
 
 
+#: Prefix every registered command carries.
+CANONICAL_PREFIX = "kernlens-"
+
+#: Prefix a reader types at the prompt.
+INTERACTIVE_PREFIX = "kl-"
+
+
+def interactive(name: str) -> str:
+    """The spelling a reader types, given the registered name.
+
+    The registry is keyed by ``kernlens-*`` because that is what
+    ``@Command`` derives from the function name.  A page that is read at
+    the prompt should name the command the way it is typed, or it teaches
+    a name the reader has to translate -- thirty of them -- for no reason
+    beyond where the string came from.
+    """
+    if name.startswith(CANONICAL_PREFIX):
+        return INTERACTIVE_PREFIX + name[len(CANONICAL_PREFIX):]
+    return name
+
+
 def _code_block(text: str, language: str = "text") -> str:
     """Return *text* as a fenced block, crate-style."""
     body = _SGR.sub("", text).rstrip("\n")
@@ -109,15 +130,26 @@ def render_page(
         return fill_context(value, context, name)
 
     title = prose.get("title", meta["summary"])
-    alias = ", ".join(f"`{a}`" for a in meta["aliases"]) or "(none)"
+    primary = interactive(name)
+    # The page is titled with one spelling, so listing that same spelling
+    # again as an "alias" is noise.  What belongs here is the *other*
+    # aliases -- the legacy spellings a reader may still have in a script.
+    others = [a for a in meta["aliases"] if a != primary]
+    alias = ", ".join(f"`{a}`" for a in others)
     lines: list[str] = []
 
-    lines.append(f"# `{name}`\n")
+    # The page is titled with the spelling a reader types.  It used to be
+    # titled with the canonical name and then print the alias underneath,
+    # which taught the name nobody uses at the prompt and mentioned the
+    # one they do as an afterthought.  The canonical name is still stated,
+    # because it is the registered name a script should call.
+    lines.append(f"# `{primary}`\n")
     lines.append(f"{title}\n")
     lines.append(
-        f"**Alias:** {alias}  \n"
-        f"**Category:** {meta['category']}  \n"
-        f"**Synopsis:** `{meta['usage']}`\n"
+        f"**Canonical:** `{name}`  \n"
+        + (f"**Aliases:** {alias}  \n" if others else "")
+        + f"**Category:** {meta['category']}  \n"
+        + f"**Synopsis:** `{meta['usage']}`\n"
     )
 
     if prose.get("intro"):

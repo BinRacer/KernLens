@@ -1,10 +1,10 @@
-# `kernlens-pageinfo`
+# `kl-pageinfo`
 
 Describe a struct page
 
-**Alias:** `kl-pageinfo`  
+**Canonical:** `kernlens-pageinfo`  
 **Category:** addresses & page tables  
-**Synopsis:** `kernlens-pageinfo [-h] page`
+**Synopsis:** `kl-pageinfo [-h] page`
 
 The reverse direction: given a `struct page` pointer, prints the virtual address it backs, the physical address, the pfn, and what the page currently is.
 
@@ -19,15 +19,15 @@ The reverse direction: given a `struct page` pointer, prints the virtual address
 ### Invocation
 
 ```gdb
-kernlens-pageinfo 0xffffd66f00010000
+kl-pageinfo 0xffffd4fe00010000
 ```
 
 ### Output
 
 ```text
-Virtual: 0xffff8c3640400000
+Virtual: 0xffff9762c0400000
 Physical: 0x400000
-page: 0xffffd66f00010000
+page: 0xffffd4fe00010000
 PFN: 1024  type: buddy
 refcount: 0
 ```

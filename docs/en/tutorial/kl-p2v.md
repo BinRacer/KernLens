@@ -1,10 +1,10 @@
-# `kernlens-p2v`
+# `kl-p2v`
 
 Physical to virtual
 
-**Alias:** `kl-p2v`  
+**Canonical:** `kernlens-p2v`  
 **Category:** addresses & page tables  
-**Synopsis:** `kernlens-p2v [-h] paddr`
+**Synopsis:** `kl-p2v [-h] paddr`
 
 Translates a physical address to its direct-map virtual address and prints the `struct page` and type, the same three facts as `kl-pageinfo`.
 
@@ -19,15 +19,15 @@ Translates a physical address to its direct-map virtual address and prints the `
 ### Invocation
 
 ```gdb
-kernlens-p2v 0x400000
+kl-p2v 0x400000
 ```
 
 ### Output
 
 ```text
 Physical: 0x400000
-Virtual: 0xffff8c3640400000
-page: 0xffffd66f00010000
+Virtual: 0xffff9762c0400000
+page: 0xffffd4fe00010000
 PFN: 1024  type: buddy
 refcount: 0
 ```

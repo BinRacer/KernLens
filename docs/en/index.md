@@ -200,9 +200,11 @@ built rather than downloaded, is in
 ## The 30 commands
 
 Grouped as `kl-help` groups them. The `kl-` form is what you type at the
-prompt; the canonical `kernlens-` form is what scripts and the generated
-tutorial use. Both always work. Every command, every alias, and a
-one-line description is in [`docs/en/commands.md`](commands.md).
+prompt, and it is also what `kl-help`, the tutorial, and every usage line
+show. The canonical `kernlens-` form is the registered name: scripts may
+use it, and it is stated once per page in case the aliases are ever
+renamed. Both always work. Every command, every alias, and a one-line
+description is in [`docs/en/commands.md`](commands.md).
 
 | Category | Commands |
 | --- | --- |

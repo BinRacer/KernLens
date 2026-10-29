@@ -43,19 +43,20 @@ PAGES["kernlens-help"] = {
     "sections": [
         {
             "heading": "Listing every command",
-            "invocation": "kernlens-help",
+            "invocation": "kl-help",
             "reading": (
                 "Commands are grouped by the category the decorator "
                 "declared.  The usage column is the command's own "
                 "`argparse` usage string, so it always matches what the "
-                "parser accepts.  Only `kernlens-` names are listed: the "
-                "`kl-` aliases are one-to-one and would double the "
-                "output."
+                "parser accepts.  Each row shows the `kl-` name, which is "
+                "the one you type; the `kernlens-` spelling still works "
+                "and is what a script should call, because it is the "
+                "registered name and an alias could be renamed."
             ),
         },
         {
             "heading": "Explaining one command",
-            "invocation": "kernlens-help kl-walk",
+            "invocation": "kl-help kl-walk",
             "reading": (
                 "The argument must be namespaced.  `kl-help walk` is "
                 "rejected with a hint to try `kl-walk`, because the bare "
@@ -66,7 +67,7 @@ PAGES["kernlens-help"] = {
         },
         {
             "heading": "A command with subcommands",
-            "invocation": "kernlens-help kernlens-slab",
+            "invocation": "kl-help kernlens-slab",
             "reading": (
                 "Subcommands appear in the positional argument's help "
                 "text rather than as argparse subparsers, because "
@@ -92,7 +93,7 @@ PAGES["kernlens-status"] = {
     "sections": [
         {
             "heading": "The status block",
-            "invocation": "kernlens-status",
+            "invocation": "kl-status",
             "reading": (
                 "`KASLR slide` is the value the **reader** is using, "
                 "derived from the live IDT if nothing has set it yet -- "
@@ -123,7 +124,7 @@ PAGES["kernlens-color"] = {
     "sections": [
         {
             "heading": "Querying the current state",
-            "invocation": "kernlens-color",
+            "invocation": "kl-color",
             "reading": (
                 "With no argument the command only reports.  The state "
                 "comes from the facade, which owns both the logger's and "
@@ -132,7 +133,7 @@ PAGES["kernlens-color"] = {
         },
         {
             "heading": "Toggling",
-            "invocation": "kernlens-color toggle",
+            "invocation": "kl-color toggle",
             "reading": (
                 "`toggle` flips whatever the current state is, which is "
                 "what makes it safe to bind to a key: it never has to know "
@@ -141,7 +142,7 @@ PAGES["kernlens-color"] = {
         },
         {
             "heading": "Turning it on explicitly",
-            "invocation": "kernlens-color on",
+            "invocation": "kl-color on",
             "reading": (
                 "`on`/`off` are idempotent, so scripts can assert the "
                 "state they need without checking first."
@@ -171,7 +172,7 @@ PAGES["kernlens-base"] = {
     "sections": [
         {
             "heading": "The report",
-            "invocation": "kernlens-base",
+            "invocation": "kl-base",
             "reading": (
                 "`kernel base` is the runtime `_text`; `KASLR offset` is "
                 "the difference from the link-time address.  `method` "
@@ -183,7 +184,7 @@ PAGES["kernlens-base"] = {
         },
         {
             "heading": "Reading the method",
-            "invocation": "kernlens-base show",
+            "invocation": "kl-base show",
             "reading": (
                 "When `_text` does not resolve, the fallback reads the IDT "
                 "and takes the first handler's address, subtracting the "
@@ -198,7 +199,7 @@ PAGES["kernlens-base"] = {
         },
         {
             "heading": "Showing the physical address",
-            "invocation": "kernlens-base -v",
+            "invocation": "kl-base -v",
             "reading": (
                 "`-v` adds the physical address the text is loaded at, "
                 "which is what a bootloader or QEMU command line refers "
@@ -208,7 +209,7 @@ PAGES["kernlens-base"] = {
         },
         {
             "heading": "Dumping the IDT",
-            "invocation": "kernlens-base idt 4",
+            "invocation": "kl-base idt 4",
             "reading": (
                 "`idt N` prints the first N gate descriptors: offset, "
                 "segment selector, gate type, IST index, DPL, and whether "
@@ -219,7 +220,7 @@ PAGES["kernlens-base"] = {
         },
         {
             "heading": "Rebasing the symbol file",
-            "invocation": "kernlens-base rebase",
+            "invocation": "kl-base rebase",
             "reading": (
                 "`rebase` runs `add-symbol-file` for the loaded object at "
                 "the recovered base, so GDB's own symbol lookups (and "
@@ -241,7 +242,7 @@ PAGES["kernlens-base"] = {
         },
         {
             "heading": "Setting the slide directly",
-            "invocation": "kernlens-base offset {slide}",
+            "invocation": "kl-base offset {slide}",
             "reading": (
                 "`offset` applies a slide you were given, with no "
                 "derivation and no verification; `0` means a non-KASLR "
@@ -255,7 +256,7 @@ PAGES["kernlens-base"] = {
         },
         {
             "heading": "Computing a slide from a known address",
-            "invocation": "kernlens-base text {text}",
+            "invocation": "kl-base text {text}",
             "reading": (
                 "`text` takes a runtime `_text` -- from a leak, from `%pK` "
                 "output, or from the monitor -- and derives the slide from "
@@ -291,7 +292,7 @@ PAGES["kernlens-kcmdline"] = {
     "sections": [
         {
             "heading": "Reading the command line",
-            "invocation": "kernlens-kcmdline",
+            "invocation": "kl-kcmdline",
             "reading": (
                 "The line is read from `saved_command_line`, so it is what "
                 "the kernel saved at boot rather than what is in this "
@@ -319,7 +320,7 @@ PAGES["kernlens-kversion"] = {
     "sections": [
         {
             "heading": "Banner and parsed release",
-            "invocation": "kernlens-kversion",
+            "invocation": "kl-kversion",
             "reading": (
                 "The first line is `linux_banner` verbatim, including the "
                 "compiler and build timestamp.  The `release:` line is the "
@@ -348,7 +349,7 @@ PAGES["kernlens-kconfig"] = {
     "sections": [
         {
             "heading": "One option",
-            "invocation": "kernlens-kconfig RANDOMIZE_BASE",
+            "invocation": "kl-kconfig RANDOMIZE_BASE",
             "output_lines": 6,
             "reading": (
                 "The image stores a compressed `IKCFG` blob; KernLens "
@@ -360,7 +361,7 @@ PAGES["kernlens-kconfig"] = {
         },
         {
             "heading": "The hardening audit",
-            "invocation": "kernlens-kconfig --check",
+            "invocation": "kl-kconfig --check",
             "output_lines": 20,
             "reading": (
                 "Three states appear: `= y` (enabled), `= m` (module), and "
@@ -392,7 +393,7 @@ PAGES["kernlens-kmod"] = {
     "sections": [
         {
             "heading": "Listing modules",
-            "invocation": "kernlens-kmod",
+            "invocation": "kl-kmod",
             "reading": (
                 "One row per module: name, base, size, and state.  The base "
                 "is in the module region, not the direct map, so it is "
@@ -401,7 +402,7 @@ PAGES["kernlens-kmod"] = {
         },
         {
             "heading": "Filtering",
-            "invocation": "kernlens-kmod nonexistent",
+            "invocation": "kl-kmod nonexistent",
             "reading": (
                 "A name that matches nothing is reported as such rather "
                 "than printing an empty table -- an empty result and a "
@@ -428,7 +429,7 @@ PAGES["kernlens-ksyscalls"] = {
     "sections": [
         {
             "heading": "The whole table",
-            "invocation": "kernlens-ksyscalls",
+            "invocation": "kl-ksyscalls",
             "output_lines": 20,
             "reading": (
                 "The header gives the table's address and length; the "
@@ -441,7 +442,7 @@ PAGES["kernlens-ksyscalls"] = {
         },
         {
             "heading": "Filtering by name",
-            "invocation": "kernlens-ksyscalls read",
+            "invocation": "kl-ksyscalls read",
             "reading": (
                 "A substring filter.  The match is against the symbol name, "
                 "so `read` finds `read`, `pread64`, `readv`, `readlink`, "
@@ -451,7 +452,7 @@ PAGES["kernlens-ksyscalls"] = {
         },
         {
             "heading": "Filtering by number",
-            "invocation": "kernlens-ksyscalls 0",
+            "invocation": "kl-ksyscalls 0",
             "reading": (
                 "A name that is not in the table is reported as an "
                 "unreadable table, which is the honest answer when the "
@@ -476,7 +477,7 @@ PAGES["kernlens-kdmesg"] = {
     "sections": [
         {
             "heading": "The ring buffer",
-            "invocation": "kernlens-kdmesg",
+            "invocation": "kl-kdmesg",
             "output_lines": 24,
             "reading": (
                 "Each line is `[seconds.microseconds] message`, matching "
@@ -490,7 +491,7 @@ PAGES["kernlens-kdmesg"] = {
         },
         {
             "heading": "Wall-clock timestamps",
-            "invocation": "kernlens-kdmesg --ctime",
+            "invocation": "kl-kdmesg --ctime",
             "reading": (
                 "`--ctime` converts the monotonic timestamps to wall-clock "
                 "form using the boot time the kernel recorded.  It is "
@@ -520,7 +521,7 @@ PAGES["kernlens-cpu"] = {
     "sections": [
         {
             "heading": "The topology summary",
-            "invocation": "kernlens-cpu",
+            "invocation": "kl-cpu",
             "reading": (
                 "`nr_cpus` is the configured count and `nr_nodes` the NUMA "
                 "node count.  `Online` is compacted into ranges "
@@ -531,7 +532,7 @@ PAGES["kernlens-cpu"] = {
         },
         {
             "heading": "One CPU in detail",
-            "invocation": "kernlens-cpu 0",
+            "invocation": "kl-cpu 0",
             "reading": (
                 "The per-CPU offset is the base that a per-CPU symbol's "
                 "section offset is added to.  It differs between CPUs, "
@@ -558,7 +559,7 @@ PAGES["kernlens-percpu"] = {
     "sections": [
         {
             "heading": "The current CPU",
-            "invocation": "kernlens-percpu current_task",
+            "invocation": "kl-percpu current_task",
             "reading": (
                 "The bare value of a per-CPU symbol *is* its offset within "
                 "the per-CPU section, zero-based, so the runtime address is "
@@ -568,7 +569,7 @@ PAGES["kernlens-percpu"] = {
         },
         {
             "heading": "Another CPU",
-            "invocation": "kernlens-percpu current_task 1",
+            "invocation": "kl-percpu current_task 1",
             "reading": (
                 "Different CPU, different base, same offset.  Comparing two "
                 "CPUs' output is the quickest way to confirm the offsets "
@@ -593,7 +594,7 @@ PAGES["kernlens-msr"] = {
     "sections": [
         {
             "heading": "Known registers",
-            "invocation": "kernlens-msr -l",
+            "invocation": "kl-msr -l",
             "reading": (
                 "The built-in table of names to numbers.  Using the name "
                 "instead of the number makes a script self-documenting, and "
@@ -602,7 +603,7 @@ PAGES["kernlens-msr"] = {
         },
         {
             "heading": "Reading a register",
-            "invocation": "kernlens-msr 0xc0000082",
+            "invocation": "kl-msr 0xc0000082",
             "reading": (
                 "This is `MSR_LSTAR`, the syscall entry point.  On this "
                 "target the read fails, and the message says exactly why: "
@@ -639,7 +640,7 @@ PAGES["kernlens-addr"] = {
     "sections": [
         {
             "heading": "The full analysis",
-            "invocation": "kernlens-addr {direct}",
+            "invocation": "kl-addr {direct}",
             "reading": (
                 "`Canonical` checks both widths, because a 57-bit kernel "
                 "accepts addresses a 48-bit one would reject as "
@@ -651,7 +652,7 @@ PAGES["kernlens-addr"] = {
         },
         {
             "heading": "Pointer tags",
-            "invocation": "kernlens-addr {direct} 0xfff",
+            "invocation": "kl-addr {direct} 0xfff",
             "reading": (
                 "The optional mask separates a tagged pointer from the "
                 "address inside it -- the last step, for a value that "
@@ -660,7 +661,7 @@ PAGES["kernlens-addr"] = {
         },
         {
             "heading": "The brief form",
-            "invocation": "kernlens-addr {direct} --brief",
+            "invocation": "kl-addr {direct} --brief",
             "reading": (
                 "`Class` is the region set, `Physical` and `page` follow "
                 "from the direct map and the vmemmap, and `bases:` prints "
@@ -694,7 +695,7 @@ PAGES["kernlens-pt"] = {
     "sections": [
         {
             "heading": "A direct-map address",
-            "invocation": "kernlens-pt {direct}",
+            "invocation": "kl-pt {direct}",
             "reading": (
                 "The 4-level row shows five entries (pgd/pud/pmd/pte/off) "
                 "and the 5-level row six (with p4d), which is the whole "
@@ -708,7 +709,7 @@ PAGES["kernlens-pt"] = {
         },
         {
             "heading": "A text address",
-            "invocation": "kernlens-pt {text_addr}",
+            "invocation": "kl-pt {text_addr}",
             "reading": (
                 "The upper-half indices are near their maximum "
                 "(`pgd=511`, `pud=510`) because the kernel image sits at "
@@ -719,7 +720,7 @@ PAGES["kernlens-pt"] = {
         },
         {
             "heading": "Decoding an entry",
-            "invocation": "kernlens-pt --entry 0x8000000000120063",
+            "invocation": "kl-pt --entry 0x8000000000120063",
             "reading": (
                 "`present=True` comes from bit 0.  The flag list names each "
                 "set bit: `P` present, `RW` writable, `US` user, `A` "
@@ -735,7 +736,7 @@ PAGES["kernlens-pt"] = {
         },
         {
             "heading": "An entry with an address for context",
-            "invocation": "kernlens-pt --entry 0x8000000000120063 {direct}",
+            "invocation": "kl-pt --entry 0x8000000000120063 {direct}",
             "reading": (
                 "Giving the address lets the command label the three leaf "
                 "interpretations of the same bits: what the value would "
@@ -765,7 +766,7 @@ PAGES["kernlens-walk"] = {
     "sections": [
         {
             "heading": "A 2 MiB huge-page mapping",
-            "invocation": "kernlens-walk {direct}",
+            "invocation": "kl-walk {direct}",
             "reading": (
                 "Each level row is `name: idx= entry= value=`, so the "
                 "entry's address and content are both visible.  The walk "
@@ -780,7 +781,7 @@ PAGES["kernlens-walk"] = {
         },
         {
             "heading": "Forcing 5-level paging",
-            "invocation": "kernlens-walk {direct} 5",
+            "invocation": "kl-walk {direct} 5",
             "reading": (
                 "The optional second argument forces the mode.  Here the "
                 "walk reports an absent `p4d` entry, which is the correct "
@@ -791,7 +792,7 @@ PAGES["kernlens-walk"] = {
         },
         {
             "heading": "The pwndbg layout",
-            "invocation": "kernlens-walk {direct} --style pwndbg",
+            "invocation": "kl-walk {direct} --style pwndbg",
             "reading": (
                 "The order is reversed relative to the default view -- the "
                 "leaf is printed first -- because that is what pwndbg's "
@@ -820,7 +821,7 @@ PAGES["kernlens-pageinfo"] = {
     "sections": [
         {
             "heading": "From struct page to address",
-            "invocation": "kernlens-pageinfo {vmemmap_page}",
+            "invocation": "kl-pageinfo {vmemmap_page}",
             "reading": (
                 "`type: buddy` is the most useful field: it says the page "
                 "is on a buddy free list, which is what you expect for a "
@@ -850,7 +851,7 @@ PAGES["kernlens-p2v"] = {
     "sections": [
         {
             "heading": "A free page",
-            "invocation": "kernlens-p2v 0x400000",
+            "invocation": "kl-p2v 0x400000",
             "reading": (
                 "`Virtual` is `page_offset_base + phys` exactly, because "
                 "that is what the direct map is.  The `struct page` and "
@@ -878,7 +879,7 @@ PAGES["kernlens-v2p"] = {
     "sections": [
         {
             "heading": "A direct-map address",
-            "invocation": "kernlens-v2p {direct}",
+            "invocation": "kl-v2p {direct}",
             "reading": (
                 "The result matches `kl-p2v 0x400000` in reverse, which is "
                 "the check that matters.  Because a direct-map address's "
@@ -910,7 +911,7 @@ PAGES["kernlens-sym"] = {
     "sections": [
         {
             "heading": "A text address",
-            "invocation": "kernlens-sym {text_sym}",
+            "invocation": "kl-sym {text_sym}",
             "reading": (
                 "The symbol, its section, and `file:line` -- the line comes "
                 "from DWARF, so it is exact for this build.  The address "
@@ -922,7 +923,7 @@ PAGES["kernlens-sym"] = {
         },
         {
             "heading": "A data address",
-            "invocation": "kernlens-sym {direct}",
+            "invocation": "kl-sym {direct}",
             "reading": (
                 "`?? at ??` means nothing covers the address.  For a "
                 "direct-map address that is the correct answer -- the "
@@ -933,7 +934,7 @@ PAGES["kernlens-sym"] = {
         },
         {
             "heading": "Searching kallsyms for a function",
-            "invocation": "kernlens-sym --find commit_creds",
+            "invocation": "kl-sym --find commit_creds",
             "reading": (
                 "Two rows appear for a function: the function itself "
                 "(`T` for a global text symbol) and its `__ksymtab_` entry "
@@ -945,7 +946,7 @@ PAGES["kernlens-sym"] = {
         },
         {
             "heading": "Searching kallsyms for a variable",
-            "invocation": "kernlens-sym --find page_offset_base",
+            "invocation": "kl-sym --find page_offset_base",
             "reading": (
                 "`D` marks an initialised data symbol.  The address shown "
                 "is where the variable lives, not its value -- use "
@@ -977,7 +978,7 @@ PAGES["kernlens-bt"] = {
     "sections": [
         {
             "heading": "The whole stack",
-            "invocation": "kernlens-bt",
+            "invocation": "kl-bt",
             "reading": (
                 "Frames are printed `#N address symbol at file:line`.  "
                 "Frames 1 and 2 being the same symbol "
@@ -989,7 +990,7 @@ PAGES["kernlens-bt"] = {
         },
         {
             "heading": "Limiting the depth",
-            "invocation": "kernlens-bt 4",
+            "invocation": "kl-bt 4",
             "reading": (
                 "A depth limit keeps the output readable on a deep stack.  "
                 "The inner frames are the same, so the limit is applied "
@@ -999,7 +1000,7 @@ PAGES["kernlens-bt"] = {
         },
         {
             "heading": "The chain form",
-            "invocation": "kernlens-bt --chain",
+            "invocation": "kl-bt --chain",
             "reading": (
                 "Innermost first, joined by `<-`, symbol names only -- no "
                 "addresses, no source lines -- which is what makes it fit "
@@ -1029,7 +1030,7 @@ PAGES["kernlens-read"] = {
     "sections": [
         {
             "heading": "Words",
-            "invocation": "kernlens-read {direct}",
+            "invocation": "kl-read {direct}",
             "reading": (
                 "Each row is `address: value symbol`.  The values here are "
                 "the contents of a free page, so they are leftover data -- "
@@ -1041,7 +1042,7 @@ PAGES["kernlens-read"] = {
         },
         {
             "heading": "Hex and ASCII",
-            "invocation": "kernlens-read {direct} 16 -m ascii",
+            "invocation": "kl-read {direct} 16 -m ascii",
             "reading": (
                 "`-m ascii` switches to the `hexdump -C` style: eight "
                 "bytes of hex, then the printable rendering, with "
@@ -1068,7 +1069,7 @@ PAGES["kernlens-kvar"] = {
     "sections": [
         {
             "heading": "A base variable",
-            "invocation": "kernlens-kvar page_offset_base",
+            "invocation": "kl-kvar page_offset_base",
             "reading": (
                 "Three rows: the symbol name, the runtime address it lives "
                 "at, and its value.  The distinction is the whole point -- "
@@ -1080,7 +1081,7 @@ PAGES["kernlens-kvar"] = {
         },
         {
             "heading": "A numeric variable",
-            "invocation": "kernlens-kvar nr_online_nodes",
+            "invocation": "kl-kvar nr_online_nodes",
             "reading": (
                 "For an `int` the value is read at its natural width, not "
                 "as eight bytes: reading a 4-byte variable as 8 bytes picks "
@@ -1108,7 +1109,7 @@ PAGES["kernlens-read-field"] = {
         {
             "heading": "A nested path",
             "invocation": (
-                "kernlens-read-field {vmemmap_page} 'struct page' "
+                "kl-read-field {vmemmap_page} 'struct page' "
                 "_refcount.counter"
             ),
             "reading": (
@@ -1144,7 +1145,7 @@ PAGES["kernlens-slab"] = {
     "sections": [
         {
             "heading": "Every cache",
-            "invocation": "kernlens-slab list",
+            "invocation": "kl-slab list",
             "output_lines": 20,
             "reading": (
                 "One row per cache: name, object count, pages per slab "
@@ -1156,7 +1157,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "Filtering caches",
-            "invocation": "kernlens-slab list kmalloc",
+            "invocation": "kl-slab list kmalloc",
             "output_lines": 20,
             "reading": (
                 "A filter is a substring match, so `kmalloc` catches all "
@@ -1168,7 +1169,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "One cache in full",
-            "invocation": "kernlens-slab info dentry",
+            "invocation": "kl-slab info dentry",
             "reading": (
                 "`Offset` is the freelist pointer's offset inside the "
                 "object; `Size (including metadata)` is the stride the "
@@ -1184,7 +1185,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "Cache internals",
-            "invocation": "kernlens-slab info dentry -i -r --reclaim --ctor",
+            "invocation": "kl-slab info dentry -i -r --reclaim --ctor",
             "reading": (
                 "Four opt-in rows, none of which changes the default output: "
                 "`inuse` is the object stride including metadata, `random` is "
@@ -1197,7 +1198,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "Partial slabs only",
-            "invocation": "kernlens-slab info dentry -p",
+            "invocation": "kl-slab info dentry -p",
             "reading": (
                 "Restricts the per-CPU rows and shows the node's partial "
                 "list head instead.  `nr_partial=0x17/ min_partial=0x5` is "
@@ -1210,7 +1211,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "Active slabs only",
-            "invocation": "kernlens-slab info dentry -a",
+            "invocation": "kl-slab info dentry -a",
             "reading": (
                 "Just the per-CPU active slab and freelist.  `active` is a "
                 "`struct page` pointer; `freelist` is the next free object in "
@@ -1219,7 +1220,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "Which cache owns an object",
-            "invocation": "kernlens-slab contains {slab_object}",
+            "invocation": "kl-slab contains {slab_object}",
             "reading": (
                 "Given an object address, reports the cache it belongs to and "
                 "the cache's object and slab sizes.  This is the fastest way "
@@ -1231,7 +1232,7 @@ PAGES["kernlens-slab"] = {
         },
         {
             "heading": "One slab in detail",
-            "invocation": "kernlens-slab details {slab_object}",
+            "invocation": "kl-slab details {slab_object}",
             "reading": (
                 "`Slab @` is the `struct page` for the slab (the argument is "
                 "an object inside it).  `freeptr: offset=96` is where the "
@@ -1265,7 +1266,7 @@ PAGES["kernlens-buddy"] = {
     "sections": [
         {
             "heading": "Free blocks, per order",
-            "invocation": "kernlens-buddy list",
+            "invocation": "kl-buddy list",
             "reading": (
                 "One row per non-empty order per zone.  `nr_free` is the "
                 "kernel's per-ORDER counter, so it counts *blocks* of "
@@ -1278,7 +1279,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "One zone",
-            "invocation": "kernlens-buddy list -z DMA",
+            "invocation": "kl-buddy list -z DMA",
             "reading": (
                 "Same table, filtered.  The DMA zone on this machine has no "
                 "order-8 block, which the list shows by omission rather than "
@@ -1287,7 +1288,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "By pfn",
-            "invocation": "kernlens-buddy info pfn:1024",
+            "invocation": "kl-buddy info pfn:1024",
             "reading": (
                 "`Zone` gives the containing span and the node; `Status: "
                 "free` means the head page is on a buddy free list.  "
@@ -1301,7 +1302,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "By virtual address",
-            "invocation": "kernlens-buddy info {direct}",
+            "invocation": "kl-buddy info {direct}",
             "reading": (
                 "A direct-map address is translated exactly once and gives "
                 "the same answer as `pfn:1024`.  `virt:`, `phys:`, `page:` "
@@ -1315,7 +1316,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "Verbose",
-            "invocation": "kernlens-buddy info pfn:1024 -v",
+            "invocation": "kl-buddy info pfn:1024 -v",
             "reading": (
                 "Adds the block's span, its buddy, and the zone's page "
                 "counts.  `Buddy: pfn=0x0 ... (or merged into a larger "
@@ -1327,7 +1328,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "One free list",
-            "invocation": "kernlens-buddy freelist -z DMA -o 10 -m Movable",
+            "invocation": "kl-buddy freelist -z DMA -o 10 -m Movable",
             "reading": (
                 "A per-migratetype view, which is what `list` cannot give: "
                 "this walks the actual `free_list[mtype]`.  It needs all "
@@ -1337,7 +1338,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "Free list contents",
-            "invocation": "kernlens-buddy freelist -z DMA -o 10 -m Movable -v",
+            "invocation": "kl-buddy freelist -z DMA -o 10 -m Movable -v",
             "reading": (
                 "Each block's pfn, physical address and direct-map alias.  "
                 "`nr_free=3` matches the three blocks listed, which is the "
@@ -1348,7 +1349,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "An empty list",
-            "invocation": "kernlens-buddy freelist -z DMA -o 10 -m Unmovable -v",
+            "invocation": "kl-buddy freelist -z DMA -o 10 -m Unmovable -v",
             "reading": (
                 "Empty is reported as empty, and the header still shows the "
                 "per-order total so the relationship between the two "
@@ -1358,7 +1359,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "Every free page, in list order",
-            "invocation": "kernlens-buddy dump",
+            "invocation": "kl-buddy dump",
             "output_lines": 18,
             "reading": (
                 "pwndbg's `buddydump` view, kept as a subcommand because it "
@@ -1372,7 +1373,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "Restricting the dump",
-            "invocation": "kernlens-buddy dump -z DMA",
+            "invocation": "kl-buddy dump -z DMA",
             "reading": (
                 "The same filters as `list` (`-z`, `-o`, `-m`, `-n`) apply.  "
                 "The DMA zone here is small and its blocks are the largest "
@@ -1382,7 +1383,7 @@ PAGES["kernlens-buddy"] = {
         },
         {
             "heading": "Searching for an address",
-            "invocation": "kernlens-buddy dump -f {direct}",
+            "invocation": "kl-buddy dump -f {direct}",
             "reading": (
                 "`-f/--find` matches against the virtual address, the "
                 "physical address, or the `struct page`, so any of the three "
@@ -1413,7 +1414,7 @@ PAGES["kernlens-kbpf"] = {
     "sections": [
         {
             "heading": "The default view",
-            "invocation": "kernlens-kbpf",
+            "invocation": "kl-kbpf",
             "reading": (
                 "Two summary lines when nothing is loaded.  The counts come "
                 "from the `prog_idr`/`map_idr` IDR structures, so they are "
@@ -1422,7 +1423,7 @@ PAGES["kernlens-kbpf"] = {
         },
         {
             "heading": "Programs only",
-            "invocation": "kernlens-kbpf -p",
+            "invocation": "kl-kbpf -p",
             "reading": (
                 "`-p` restricts the output to programs, which is what you "
                 "want when looking for a hook: each row carries the program "
@@ -1431,7 +1432,7 @@ PAGES["kernlens-kbpf"] = {
         },
         {
             "heading": "Maps only",
-            "invocation": "kernlens-kbpf -m",
+            "invocation": "kl-kbpf -m",
             "reading": (
                 "`-m` restricts to maps.  `--values` additionally dumps each "
                 "map's contents, which is how a BPF-based keylogger or "
@@ -1458,7 +1459,7 @@ PAGES["kernlens-kdmabuf"] = {
     "sections": [
         {
             "heading": "The list",
-            "invocation": "kernlens-kdmabuf",
+            "invocation": "kl-kdmabuf",
             "reading": (
                 "One row per exported buffer: size, the exporter's name, and "
                 "the attachment count.  When there are none, the message "
@@ -1489,7 +1490,7 @@ PAGES["kernlens-bits"] = {
     "sections": [
         {
             "heading": "With a bit to test",
-            "invocation": "kernlens-bits 0xff 3",
+            "invocation": "kl-bits 0xff 3",
             "reading": (
                 "The `value:` row pairs the hex form with a 64-bit binary "
                 "rendering, so the bit positions can be counted directly.  "
@@ -1503,7 +1504,7 @@ PAGES["kernlens-bits"] = {
         },
         {
             "heading": "An address",
-            "invocation": "kernlens-bits {text_addr}",
+            "invocation": "kl-bits {text_addr}",
             "reading": (
                 "`trailing_zeros=20` is the page offset of this address "
                 "(2 MiB aligned), which is the kind of fact that jumps out "
@@ -1531,7 +1532,7 @@ PAGES["kernlens-int"] = {
     "sections": [
         {
             "heading": "Default width",
-            "invocation": "kernlens-int 0xff",
+            "invocation": "kl-int 0xff",
             "reading": (
                 "`view:` gives the unsigned and signed readings plus "
                 "`in_u`/`in_i`, which say whether the value fits the width "
@@ -1544,7 +1545,7 @@ PAGES["kernlens-int"] = {
         },
         {
             "heading": "A specific width",
-            "invocation": "kernlens-int 0x1234 16",
+            "invocation": "kl-int 0x1234 16",
             "reading": (
                 "The second argument restricts the analysis to that width, so "
                 "the signed/unsigned split and the `range:` line describe "
@@ -1553,7 +1554,7 @@ PAGES["kernlens-int"] = {
         },
         {
             "heading": "A negative value",
-            "invocation": "kernlens-int -1 32",
+            "invocation": "kl-int -1 32",
             "reading": (
                 "A negative value is interpreted as two's complement and "
                 "masked to the width, so `-1` at 32 bits is `0xffffffff`, "

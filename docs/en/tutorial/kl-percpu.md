@@ -1,10 +1,10 @@
-# `kernlens-percpu`
+# `kl-percpu`
 
 Per-CPU symbol address
 
-**Alias:** `kl-percpu`  
+**Canonical:** `kernlens-percpu`  
 **Category:** CPU topology  
-**Synopsis:** `kernlens-percpu [-h] symbol [cpu]`
+**Synopsis:** `kl-percpu [-h] symbol [cpu]`
 
 Resolves a per-CPU symbol to the address the given CPU actually uses.  This is the fix for the classic mistake of taking `&current_task` and getting a section offset that is not any CPU's copy.
 
@@ -20,15 +20,15 @@ Resolves a per-CPU symbol to the address the given CPU actually uses.  This is t
 ### Invocation
 
 ```gdb
-kernlens-percpu current_task
+kl-percpu current_task
 ```
 
 ### Output
 
 ```text
 Symbol: current_task (cpu 0)
-Address: 0xffff8c3647a1fb80
-percpu_off: 0xffff8c3647a00000
+Address: 0xffff9762c7a1fb80
+percpu_off: 0xffff9762c7a00000
 ```
 
 ### Reading it
@@ -40,15 +40,15 @@ The bare value of a per-CPU symbol *is* its offset within the per-CPU section, z
 ### Invocation
 
 ```gdb
-kernlens-percpu current_task 1
+kl-percpu current_task 1
 ```
 
 ### Output
 
 ```text
 Symbol: current_task (cpu 1)
-Address: 0xffff8c3647a9fb80
-percpu_off: 0xffff8c3647a80000
+Address: 0xffff9762c7a9fb80
+percpu_off: 0xffff9762c7a80000
 ```
 
 ### Reading it

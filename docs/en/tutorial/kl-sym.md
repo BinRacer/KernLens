@@ -1,10 +1,10 @@
-# `kernlens-sym`
+# `kl-sym`
 
 Symbol lookup
 
-**Alias:** `kl-sym`  
+**Canonical:** `kernlens-sym`  
 **Category:** memory & symbols  
-**Synopsis:** `kernlens-sym [-h] [-f] [-a] [query]`
+**Synopsis:** `kl-sym [-h] [-f] [-a] [query]`
 
 Answers "which symbol is this?" from both tables a session has: an address resolves through the loaded debug info, and `--find` searches the kernel's own kallsyms table by name or address.  The second half was `kl-klookup`.
 
@@ -21,13 +21,13 @@ Answers "which symbol is this?" from both tables a session has: an address resol
 ### Invocation
 
 ```gdb
-kernlens-sym 0xffffffffa7600100
+kl-sym 0xffffffff9a200100
 ```
 
 ### Output
 
 ```text
-0xffffffffa7600100  secondary_startup_64 at arch/x86/kernel/head_64.S:282
+0xffffffff9a200100  secondary_startup_64 at arch/x86/kernel/head_64.S:282
 ```
 
 ### Reading it
@@ -39,13 +39,13 @@ The symbol, its section, and `file:line` -- the line comes from DWARF, so it is 
 ### Invocation
 
 ```gdb
-kernlens-sym 0xffff8c3640400000
+kl-sym 0xffff9762c0400000
 ```
 
 ### Output
 
 ```text
-0xffff8c3640400000  ?? at ??
+0xffff9762c0400000  ?? at ??
 ```
 
 ### Reading it
@@ -57,14 +57,14 @@ kernlens-sym 0xffff8c3640400000
 ### Invocation
 
 ```gdb
-kernlens-sym --find commit_creds
+kl-sym --find commit_creds
 ```
 
 ### Output
 
 ```text
-0xffffffffa77dd800 T commit_creds
-0xffffffffa93e942c r __ksymtab_commit_creds
+0xffffffff9a3dd800 T commit_creds
+0xffffffff9bfe942c r __ksymtab_commit_creds
 2 symbol(s) found
 ```
 
@@ -77,14 +77,14 @@ Two rows appear for a function: the function itself (`T` for a global text symbo
 ### Invocation
 
 ```gdb
-kernlens-sym --find page_offset_base
+kl-sym --find page_offset_base
 ```
 
 ### Output
 
 ```text
-0xffffffffa93893a8 D page_offset_base
-0xffffffffa93f0620 r __ksymtab_page_offset_base
+0xffffffff9bf893a8 D page_offset_base
+0xffffffff9bff0620 r __ksymtab_page_offset_base
 2 symbol(s) found
 ```
 

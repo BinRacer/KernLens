@@ -1,10 +1,10 @@
-# `kernlens-kcmdline`
+# `kl-kcmdline`
 
 Boot command line
 
-**Alias:** `kl-kcmdline`  
+**Canonical:** `kernlens-kcmdline`  
 **Category:** kernel metadata  
-**Synopsis:** `kernlens-kcmdline [-h]`
+**Synopsis:** `kl-kcmdline [-h]`
 
 The kernel's own record of how it was started.  Worth reading before interpreting almost anything else: `nokaslr`, `pti`, `no5lvl` and the zone layout all come from here.
 
@@ -13,7 +13,7 @@ The kernel's own record of how it was started.  Worth reading before interpretin
 ### Invocation
 
 ```gdb
-kernlens-kcmdline
+kl-kcmdline
 ```
 
 ### Output

@@ -1,10 +1,10 @@
-# `kernlens-kconfig`
+# `kl-kconfig`
 
 Kernel configuration
 
-**Alias:** `kl-kconfig`  
+**Canonical:** `kernlens-kconfig`  
 **Category:** kernel metadata  
-**Synopsis:** `kernlens-kconfig [-h] [-l FILE_PATH] [-c] [config_name]`
+**Synopsis:** `kl-kconfig [-h] [-l FILE_PATH] [-c] [config_name]`
 
 Reads the `CONFIG_*` options out of the kernel image itself -- no `/boot/config-$(uname -r)` needed, so this works on a target whose headers you do not have.  `--check` narrows the same lookup to the hardening options; that audit was `kl-kchecksec`.
 
@@ -21,7 +21,7 @@ Reads the `CONFIG_*` options out of the kernel image itself -- no `/boot/config-
 ### Invocation
 
 ```gdb
-kernlens-kconfig RANDOMIZE_BASE
+kl-kconfig RANDOMIZE_BASE
 ```
 
 ### Output
@@ -39,7 +39,7 @@ The image stores a compressed `IKCFG` blob; KernLens inflates it and answers fro
 ### Invocation
 
 ```gdb
-kernlens-kconfig --check
+kl-kconfig --check
 ```
 
 ### Output

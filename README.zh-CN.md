@@ -181,9 +181,10 @@ docker run --rm -it kernlens-demo kl-slab info dentry
 
 ## 30 个命令
 
-分组与 `kl-help` 完全一致。`kl-` 形式是你在提示符下敲的；规范的
-`kernlens-` 形式是脚本和生成式教程用的。两者始终都能用。每个命令的
-全部别名和一句话说明在 [`docs/en/commands.md`](docs/en/commands.md)。
+分组与 `kl-help` 完全一致。`kl-` 形式是你在提示符下敲的，也是
+`kl-help`、教程和所有 usage 行展示的形式。规范的 `kernlens-` 形式是注册名：
+脚本可以用它，每页也只在头部陈述一次，以防将来别名被改名。两者始终都能用。
+每个命令的全部别名和一句话说明在 [`docs/en/commands.md`](docs/en/commands.md)。
 
 | 分类 | 命令 |
 | --- | --- |

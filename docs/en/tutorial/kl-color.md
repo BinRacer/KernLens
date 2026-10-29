@@ -1,10 +1,10 @@
-# `kernlens-color`
+# `kl-color`
 
 Colour control
 
-**Alias:** `kl-color`  
+**Canonical:** `kernlens-color`  
 **Category:** output  
-**Synopsis:** `kernlens-color [-h] [{on,off,toggle}]`
+**Synopsis:** `kl-color [-h] [{on,off,toggle}]`
 
 Turns ANSI colour on, off, or toggles it, and reports the resulting state either way.  Colour is one switch affecting the logger and the styler together, so a command cannot end up half coloured.
 
@@ -19,7 +19,7 @@ Turns ANSI colour on, off, or toggles it, and reports the resulting state either
 ### Invocation
 
 ```gdb
-kernlens-color
+kl-color
 ```
 
 ### Output
@@ -37,7 +37,7 @@ With no argument the command only reports.  The state comes from the facade, whi
 ### Invocation
 
 ```gdb
-kernlens-color toggle
+kl-color toggle
 ```
 
 ### Output
@@ -55,7 +55,7 @@ KernLens color: on
 ### Invocation
 
 ```gdb
-kernlens-color on
+kl-color on
 ```
 
 ### Output

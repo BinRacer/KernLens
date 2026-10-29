@@ -1,10 +1,10 @@
-# `kernlens-kbpf`
+# `kl-kbpf`
 
 BPF programs and maps
 
-**Alias:** `kl-kbpf`  
+**Canonical:** `kernlens-kbpf`  
 **Category:** memory & symbols  
-**Synopsis:** `kernlens-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]`
+**Synopsis:** `kl-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]`
 
 Walks the BPF object lists and prints each program and map.  Root-only in a normal kernel, but readable through a debugger regardless of credentials.
 
@@ -23,7 +23,7 @@ Walks the BPF object lists and prints each program and map.  Root-only in a norm
 ### Invocation
 
 ```gdb
-kernlens-kbpf
+kl-kbpf
 ```
 
 ### Output
@@ -42,7 +42,7 @@ Two summary lines when nothing is loaded.  The counts come from the `prog_idr`/`
 ### Invocation
 
 ```gdb
-kernlens-kbpf -p
+kl-kbpf -p
 ```
 
 ### Output
@@ -60,7 +60,7 @@ bpf progs: 0
 ### Invocation
 
 ```gdb
-kernlens-kbpf -m
+kl-kbpf -m
 ```
 
 ### Output

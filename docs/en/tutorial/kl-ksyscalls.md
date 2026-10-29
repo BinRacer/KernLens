@@ -1,10 +1,10 @@
-# `kernlens-ksyscalls`
+# `kl-ksyscalls`
 
 Syscall table
 
-**Alias:** `kl-ksyscalls`  
+**Canonical:** `kernlens-ksyscalls`  
 **Category:** kernel metadata  
-**Synopsis:** `kernlens-ksyscalls [-h] [syscall_name]`
+**Synopsis:** `kl-ksyscalls [-h] [syscall_name]`
 
 Decodes `sys_call_table` and resolves each entry to a symbol.  Useful for finding where a syscall is really implemented, and for spotting hooks: an entry that points outside `__x64_sys_*` is worth a second look.
 
@@ -19,32 +19,32 @@ Decodes `sys_call_table` and resolves each entry to a symbol.  Useful for findin
 ### Invocation
 
 ```gdb
-kernlens-ksyscalls
+kl-ksyscalls
 ```
 
 ### Output
 
 ```text
-Syscall table address with 451 entries found at 0xffffffffa8e00300.
+Syscall table address with 451 entries found at 0xffffffff9ba00300.
 
                 Address Symbol
-   0 0xffffffffa7aee280 __x64_sys_read
-   1 0xffffffffa7aee3e0 __x64_sys_write
-   2 0xffffffffa7ae9d30 __x64_sys_open
-   3 0xffffffffa7ae7030 __x64_sys_close
-   4 0xffffffffa7af52a0 __x64_sys_newstat
-   5 0xffffffffa7af4fa0 __x64_sys_newfstat
-   6 0xffffffffa7af54f0 __x64_sys_newlstat
-   7 0xffffffffa7b0d660 __x64_sys_poll
-   8 0xffffffffa7aeaa20 __x64_sys_lseek
-   9 0xffffffffa7652960 __x64_sys_mmap
-  10 0xffffffffa7a50510 __x64_sys_mprotect
-  11 0xffffffffa7a4aa90 __x64_sys_munmap
-  12 0xffffffffa7a4ba90 __x64_sys_brk
-  13 0xffffffffa77c1ca0 __x64_sys_rt_sigaction
-  14 0xffffffffa77baeb0 __x64_sys_rt_sigprocmask
-  15 0xffffffffa764a580 __x64_sys_rt_sigreturn
-  16 0xffffffffa7b09c10 __x64_sys_ioctl
+   0 0xffffffff9a6ee280 __x64_sys_read
+   1 0xffffffff9a6ee3e0 __x64_sys_write
+   2 0xffffffff9a6e9d30 __x64_sys_open
+   3 0xffffffff9a6e7030 __x64_sys_close
+   4 0xffffffff9a6f52a0 __x64_sys_newstat
+   5 0xffffffff9a6f4fa0 __x64_sys_newfstat
+   6 0xffffffff9a6f54f0 __x64_sys_newlstat
+   7 0xffffffff9a70d660 __x64_sys_poll
+   8 0xffffffff9a6eaa20 __x64_sys_lseek
+   9 0xffffffff9a252960 __x64_sys_mmap
+  10 0xffffffff9a650510 __x64_sys_mprotect
+  11 0xffffffff9a64aa90 __x64_sys_munmap
+  12 0xffffffff9a64ba90 __x64_sys_brk
+  13 0xffffffff9a3c1ca0 __x64_sys_rt_sigaction
+  14 0xffffffff9a3baeb0 __x64_sys_rt_sigprocmask
+  15 0xffffffff9a24a580 __x64_sys_rt_sigreturn
+  16 0xffffffff9a709c10 __x64_sys_ioctl
 ... (434 more line(s), 454 total)
 ```
 
@@ -59,24 +59,24 @@ The header gives the table's address and length; the length is discovered by wal
 ### Invocation
 
 ```gdb
-kernlens-ksyscalls read
+kl-ksyscalls read
 ```
 
 ### Output
 
 ```text
-Syscall table address with 451 entries found at 0xffffffffa8e00300.
+Syscall table address with 451 entries found at 0xffffffff9ba00300.
 
                 Address Symbol
-   0 0xffffffffa7aee280 __x64_sys_read
-  17 0xffffffffa7aed5d0 __x64_sys_pread64
-  19 0xffffffffa7aeb320 __x64_sys_readv
-  89 0xffffffffa7af4820 __x64_sys_readlink
- 187 0xffffffffa79f2e30 __x64_sys_readahead
- 267 0xffffffffa7af47c0 __x64_sys_readlinkat
- 295 0xffffffffa7aeb720 __x64_sys_preadv
- 310 0xffffffffa7a629b0 __x64_sys_process_vm_readv
- 327 0xffffffffa7aeb540 __x64_sys_preadv2
+   0 0xffffffff9a6ee280 __x64_sys_read
+  17 0xffffffff9a6ed5d0 __x64_sys_pread64
+  19 0xffffffff9a6eb320 __x64_sys_readv
+  89 0xffffffff9a6f4820 __x64_sys_readlink
+ 187 0xffffffff9a5f2e30 __x64_sys_readahead
+ 267 0xffffffff9a6f47c0 __x64_sys_readlinkat
+ 295 0xffffffff9a6eb720 __x64_sys_preadv
+ 310 0xffffffff9a6629b0 __x64_sys_process_vm_readv
+ 327 0xffffffff9a6eb540 __x64_sys_preadv2
 ```
 
 ### Reading it
@@ -88,7 +88,7 @@ A substring filter.  The match is against the symbol name, so `read` finds `read
 ### Invocation
 
 ```gdb
-kernlens-ksyscalls 0
+kl-ksyscalls 0
 ```
 
 ### Output

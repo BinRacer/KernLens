@@ -1,10 +1,10 @@
-# `kernlens-cpu`
+# `kl-cpu`
 
 CPU topology
 
-**Alias:** `kl-cpu`  
+**Canonical:** `kernlens-cpu`  
 **Category:** CPU topology  
-**Synopsis:** `kernlens-cpu [-h] [cpu]`
+**Synopsis:** `kl-cpu [-h] [cpu]`
 
 Reports how many CPUs the kernel has, which are online, and the per-CPU offset each one's data is based at.
 
@@ -19,7 +19,7 @@ Reports how many CPUs the kernel has, which are online, and the per-CPU offset e
 ### Invocation
 
 ```gdb
-kernlens-cpu
+kl-cpu
 ```
 
 ### Output
@@ -29,7 +29,7 @@ Topology: nr_cpus=4 nr_nodes=1 current=0
 Online: 0-3 (4/4)
     cpu 0
     online: True
-    percpu_off: 0xffff8c3647a00000
+    percpu_off: 0xffff9762c7a00000
 ```
 
 ### Reading it
@@ -41,7 +41,7 @@ Online: 0-3 (4/4)
 ### Invocation
 
 ```gdb
-kernlens-cpu 0
+kl-cpu 0
 ```
 
 ### Output
@@ -51,7 +51,7 @@ Topology: nr_cpus=4 nr_nodes=1 current=0
 Online: 0-3 (4/4)
     cpu 0
     online: True
-    percpu_off: 0xffff8c3647a00000
+    percpu_off: 0xffff9762c7a00000
 ```
 
 ### Reading it

@@ -207,6 +207,32 @@ def func_name(function: Callable[..., Any]) -> str:
     return function.__name__.replace("_", "-")
 
 
+#: Prefix every registered command carries.
+CANONICAL_PREFIX = "kernlens-"
+
+#: Prefix a user is expected to type.
+INTERACTIVE_PREFIX = "kl-"
+
+
+def interactive_name(name: str) -> str:
+    """The spelling a user should type, given either spelling.
+
+    ``kernlens-`` is what the registry holds and what a script calls;
+    ``kl-`` is what a person types.  Every message printed at the prompt
+    goes through this, because a message that answers ``kl-kmod`` with
+    ``kernlens-kmod:`` asks the reader to translate a name they never
+    typed -- and there are thirty of them to remember.
+
+    A name that already carries ``kl-``, or one outside both namespaces,
+    comes back unchanged: this is a spelling preference, not a lookup,
+    and inventing a ``kl-`` name for something unknown would send the
+    reader to a command that does not exist.
+    """
+    if name.startswith(CANONICAL_PREFIX):
+        return INTERACTIVE_PREFIX + name[len(CANONICAL_PREFIX):]
+    return name
+
+
 # =========================================================================
 # Guards (pwndbg's Only* decorators)
 # =========================================================================
@@ -240,7 +266,9 @@ def _guard(
         def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R | None:
             if predicate():
                 return function(*args, **kwargs)
-            print(message.error(failure(func_name(function))))
+            # The alias, not the canonical name: the reader typed the
+            # command, so the message has to answer with what they typed.
+            print(message.error(failure(interactive_name(func_name(function)))))
             return None
 
         return wrapper
@@ -361,8 +389,12 @@ class CommandDefinition:
         self.aliases = aliases
         self.examples = examples.strip()
         self.notes = notes.strip()
-        # ``prog`` drives the usage line; use the canonical command name.
-        self.parser.prog = self.command_name
+        # ``prog`` drives the usage line, so it is the spelling a user
+        # types.  Leaving it canonical made ``kl-help`` a table of thirty
+        # ``kernlens-`` names that nobody types at the prompt: the alias
+        # was printed in the epilog as an afterthought, so the one name
+        # the reader had to remember was the one they never used.
+        self.parser.prog = self.prog
         # argparse's ``error()`` ends in ``sys.exit``, which would close
         # the GDB shell.  Every failure has to go through ``usage_error``
         # instead, so it is replaced on this parser instance.
@@ -406,7 +438,14 @@ class CommandDefinition:
             parts.append(message.notice("Examples:") + "\n" + self.examples)
         if self.notes:
             parts.append(message.notice("Notes:") + "\n" + self.notes)
+        # The canonical name used to be the ``prog`` and the aliases were
+        # listed here.  Now that ``prog`` is the alias, the relationship
+        # has to be stated the other way round, or the help page stops
+        # naming the spelling a script has to call.
         if self.aliases:
+            parts.append(
+                message.notice("Canonical:") + " " + self.command_name
+            )
             label = "Alias:" if len(self.aliases) == 1 else "Aliases:"
             parts.append(message.notice(label) + " " + ", ".join(self.aliases))
         # Reset rather than leave the previous text: a definition whose

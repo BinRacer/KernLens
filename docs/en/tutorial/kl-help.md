@@ -1,10 +1,10 @@
-# `kernlens-help`
+# `kl-help`
 
 Command reference
 
-**Alias:** `kl-help`  
+**Canonical:** `kernlens-help`  
 **Category:** help  
-**Synopsis:** `kernlens-help [-h] [COMMAND]`
+**Synopsis:** `kl-help [-h] [COMMAND]`
 
 `kl-help` is the only command that needs no debuggee: it reads the command registry that `@Command` decorated functions populate.  A bare invocation lists every command grouped by category; giving a name prints that command's full help.
 
@@ -19,7 +19,7 @@ Command reference
 ### Invocation
 
 ```gdb
-kernlens-help
+kl-help
 ```
 
 ### Output
@@ -29,75 +29,75 @@ KernLens 0.3.0 — command reference
   type kl-help kl-<command> for usage, options, and examples
 
 overview
-  kernlens-status [-h] [--doctor]     Shows the KernLens version, color mode, KASLR slide, and layout.
+  kl-status [-h] [--doctor]           Shows the KernLens version, color mode, KASLR slide, and layout.
 
 kernel base & KASLR
-  kernlens-base [-h] [-v] [-r] [command ...]  Reports the runtime kernel text base and KASLR slide.
+  kl-base [-h] [-v] [-r] [command ...]  Reports the runtime kernel text base and KASLR slide.
 
 kernel metadata
-  kernlens-kcmdline [-h]              Return the kernel command line (/proc/cmdline).
-  kernlens-kversion [-h]              Outputs the kernel version (/proc/version).
-  kernlens-kconfig [-h] [-l FILE_PATH] [-c] [config_name]  Outputs the kernel config (/proc/config.gz).
-  kernlens-kmod [-h] [-l PATH] [module_name]  Displays the loaded Linux kernel modules.
-  kernlens-ksyscalls [-h] [syscall_name]  Displays the Linux syscall table, including names and addresses of syscalls.
-  kernlens-kdmesg [-h] [-T]           Displays the kernel ring buffer (dmesg) contents.
+  kl-kcmdline [-h]                    Return the kernel command line (/proc/cmdline).
+  kl-kversion [-h]                    Outputs the kernel version (/proc/version).
+  kl-kconfig [-h] [-l FILE_PATH] [-c] [config_name]  Outputs the kernel config (/proc/config.gz).
+  kl-kmod [-h] [-l PATH] [module_name]  Displays the loaded Linux kernel modules.
+  kl-ksyscalls [-h] [syscall_name]    Displays the Linux syscall table, including names and addresses of syscalls.
+  kl-kdmesg [-h] [-T]                 Displays the kernel ring buffer (dmesg) contents.
 
 addresses & page tables
-  kernlens-addr [-h] [-b] address [tag_mask]  Classifies an address and reports where it maps.
-  kernlens-pt [-h] [-e] [--paging {4,5}] [VALUE ...]  Splits a virtual address into page-table indices, or decodes a page-table entry.
-  kernlens-walk [-h] [-p ROOT] [-s {levels,pwndbg}] va [{4,5}]  Walks the live page tables and decodes every level.
-  kernlens-p2v [-h] paddr             Translates a physical address to virtual + struct page.
-  kernlens-v2p [-h] vaddr             Translates a virtual address (live page tables) to physical.
-  kernlens-pageinfo [-h] page         Translates a struct page to virtual and physical addresses.
+  kl-addr [-h] [-b] address [tag_mask]  Classifies an address and reports where it maps.
+  kl-pt [-h] [-e] [--paging {4,5}] [VALUE ...]  Splits a virtual address into page-table indices, or decodes a page-table entry.
+  kl-walk [-h] [-p ROOT] [-s {levels,pwndbg}] va [{4,5}]  Walks the live page tables and decodes every level.
+  kl-p2v [-h] paddr                   Translates a physical address to virtual + struct page.
+  kl-v2p [-h] vaddr                   Translates a virtual address (live page tables) to physical.
+  kl-pageinfo [-h] page               Translates a struct page to virtual and physical addresses.
 
 memory & symbols
-  kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]
-                      [--limit LIMIT] [-p] [-c CPU] [-f FIND]
-                      [--MIGRATE_TYPES COUNT]
-                      [command ...]  Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.
-  kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r]
-                     [--reclaim] [--ctor]
-                     [command ...]  Prints information about the linux kernel's slab allocator SLUB.
-  kernlens-sym [-h] [-f] [-a] [query]  Resolves an address to a symbol, or finds symbols by name.
-  kernlens-bt [-h] [--chain] [depth]  Prints a formatted kernel backtrace.
-  kernlens-read [-h] [-m {ascii}] address [count]  Dumps kernel memory as 64-bit words with symbol annotations.
-  kernlens-kvar [-h] symbol           Reads a KASLR-aware kernel global variable.
-  kernlens-read-field [-h] address type path  Reads a struct field (including nested paths) as an integer.
-  kernlens-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]  Prints information about the linux kernel bpf progs and maps.
-  kernlens-kdmabuf [-h]               Prints DMA buf info.
+  kl-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]
+                [--limit LIMIT] [-p] [-c CPU] [-f FIND]
+                [--MIGRATE_TYPES COUNT]
+                [command ...]  Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.
+  kl-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r] [--reclaim]
+               [--ctor]
+               [command ...]  Prints information about the linux kernel's slab allocator SLUB.
+  kl-sym [-h] [-f] [-a] [query]       Resolves an address to a symbol, or finds symbols by name.
+  kl-bt [-h] [--chain] [depth]        Prints a formatted kernel backtrace.
+  kl-read [-h] [-m {ascii}] address [count]  Dumps kernel memory as 64-bit words with symbol annotations.
+  kl-kvar [-h] symbol                 Reads a KASLR-aware kernel global variable.
+  kl-read-field [-h] address type path  Reads a struct field (including nested paths) as an integer.
+  kl-kbpf [-h] [-v] [-b NTH] [-p] [-m] [--values]  Prints information about the linux kernel bpf progs and maps.
+  kl-kdmabuf [-h]                     Prints DMA buf info.
 
 CPU topology
-  kernlens-cpu [-h] [cpu]             Displays CPU topology, the online mask, and per-CPU offsets.
-  kernlens-percpu [-h] symbol [cpu]   Resolves a per-CPU symbol to its runtime address for a CPU.
-  kernlens-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]  Reads or writes x86_64 model-specific registers (via GDB).
+  kl-cpu [-h] [cpu]                   Displays CPU topology, the online mask, and per-CPU offsets.
+  kl-percpu [-h] symbol [cpu]         Resolves a per-CPU symbol to its runtime address for a CPU.
+  kl-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]  Reads or writes x86_64 model-specific registers (via GDB).
 
 bit & integer primitives
-  kernlens-bits [-h] value [bit]      Inspects a 64-bit value; optionally test/set/clear a bit.
-  kernlens-int [-h] value [width]     Shows signed/unsigned and LE/BE integer views.
+  kl-bits [-h] value [bit]            Inspects a 64-bit value; optionally test/set/clear a bit.
+  kl-int [-h] value [width]           Shows signed/unsigned and LE/BE integer views.
 
 output
-  kernlens-color [-h] [{on,off,toggle}]  Enable, disable, or toggle ANSI color output.
+  kl-color [-h] [{on,off,toggle}]     Enable, disable, or toggle ANSI color output.
 
 help
-  kernlens-help [-h] [COMMAND]        Lists every KernLens command, or explains one in detail.
+  kl-help [-h] [COMMAND]              Lists every KernLens command, or explains one in detail.
 ```
 
 ### Reading it
 
-Commands are grouped by the category the decorator declared.  The usage column is the command's own `argparse` usage string, so it always matches what the parser accepts.  Only `kernlens-` names are listed: the `kl-` aliases are one-to-one and would double the output.
+Commands are grouped by the category the decorator declared.  The usage column is the command's own `argparse` usage string, so it always matches what the parser accepts.  Each row shows the `kl-` name, which is the one you type; the `kernlens-` spelling still works and is what a script should call, because it is the registered name and an alias could be renamed.
 
 ## Explaining one command
 
 ### Invocation
 
 ```gdb
-kernlens-help kl-walk
+kl-help kl-walk
 ```
 
 ### Output
 
 ```text
-usage: kernlens-walk [-h] [-p ROOT] [-s {levels,pwndbg}] va [{4,5}]
+usage: kl-walk [-h] [-p ROOT] [-s {levels,pwndbg}] va [{4,5}]
 
 Walks the live page tables and decodes every level.
 
@@ -124,9 +124,11 @@ foreign root, so a page table of another task can be followed
 without switching to it.
 
 ``-s/--style pwndbg`` prints the deepest level first, in
-``kl-pagewalk``'s layout; ``levels`` (the default) prints one row
-per level from the top down.  It is one walk either way, so it
-is one command.
+pwndbg's ``vmmap``-style layout; ``levels`` (the default) prints
+one row per level from the top down.  It is one walk either way,
+so it is one command.
+
+Canonical: kernlens-walk
 
 Alias: kl-walk
 ```
@@ -140,15 +142,15 @@ The argument must be namespaced.  `kl-help walk` is rejected with a hint to try 
 ### Invocation
 
 ```gdb
-kernlens-help kernlens-slab
+kl-help kernlens-slab
 ```
 
 ### Output
 
 ```text
-usage: kernlens-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r]
-                     [--reclaim] [--ctor]
-                     [command ...]
+usage: kl-slab [-h] [-v] [-c CPU] [-n NODE] [-p] [-a] [-i] [-r] [--reclaim]
+               [--ctor]
+               [command ...]
 
 Prints information about the linux kernel's slab allocator SLUB.
 
@@ -177,6 +179,8 @@ kl-slab info kmalloc-1k -v
 kl-slab contains 0xffff8880032a1c40
 kl-slab details 0xffff8880032a1c40 -c 0
 kl-slab 0xffff8880032a1c40            # legacy bare-address form
+
+Canonical: kernlens-slab
 
 Aliases: kl-slab, kl-slabs
 ```

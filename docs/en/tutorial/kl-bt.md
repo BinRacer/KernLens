@@ -1,10 +1,10 @@
-# `kernlens-bt`
+# `kl-bt`
 
 Backtrace
 
-**Alias:** `kl-bt`  
+**Canonical:** `kernlens-bt`  
 **Category:** memory & symbols  
-**Synopsis:** `kernlens-bt [-h] [--chain] [depth]`
+**Synopsis:** `kl-bt [-h] [--chain] [depth]`
 
 A kernel-aware backtrace: each frame's return address resolved to a symbol and source line, with the noise of the interrupted context handled.  `--chain` collapses the same stack to one line, which is the form `kl-chain` used to print.
 
@@ -20,21 +20,21 @@ A kernel-aware backtrace: each frame's return address resolved to a symbol and s
 ### Invocation
 
 ```gdb
-kernlens-bt
+kl-bt
 ```
 
 ### Output
 
 ```text
 bt:
-                   #0  0xffffffffa881263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
-                   #1  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #2  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #3  0xffffffffa765a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
-                   #4  0xffffffffa88127aa  default_idle_call  at ./arch/x86/include/asm/paravirt.h:699
-                   #5  0xffffffffa78119bf  do_idle  at kernel/sched/idle.c:192
-                   #6  0xffffffffa78119bf  do_idle  at kernel/sched/idle.c:192
-                   #7  0xffffffffa7811c1a  cpu_startup_entry  at kernel/sched/idle.c:400
+                   #0  0xffffffff9b41263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
+                   #1  0xffffffff9b41248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #2  0xffffffff9b41248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #3  0xffffffff9a25a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
+                   #4  0xffffffff9b4127aa  default_idle_call  at ./arch/x86/include/asm/paravirt.h:699
+                   #5  0xffffffff9a4119bf  do_idle  at kernel/sched/idle.c:192
+                   #6  0xffffffff9a4119bf  do_idle  at kernel/sched/idle.c:192
+                   #7  0xffffffff9a411c1a  cpu_startup_entry  at kernel/sched/idle.c:400
 ```
 
 ### Reading it
@@ -46,17 +46,17 @@ Frames are printed `#N address symbol at file:line`.  Frames 1 and 2 being the s
 ### Invocation
 
 ```gdb
-kernlens-bt 4
+kl-bt 4
 ```
 
 ### Output
 
 ```text
 bt:
-                   #0  0xffffffffa881263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
-                   #1  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #2  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #3  0xffffffffa765a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
+                   #0  0xffffffff9b41263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
+                   #1  0xffffffff9b41248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #2  0xffffffff9b41248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #3  0xffffffff9a25a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
 ```
 
 ### Reading it
@@ -68,7 +68,7 @@ A depth limit keeps the output readable on a deep stack.  The inner frames are t
 ### Invocation
 
 ```gdb
-kernlens-bt --chain
+kl-bt --chain
 ```
 
 ### Output

@@ -1,10 +1,10 @@
-# `kernlens-v2p`
+# `kl-v2p`
 
 Virtual to physical
 
-**Alias:** `kl-v2p`  
+**Canonical:** `kernlens-v2p`  
 **Category:** addresses & page tables  
-**Synopsis:** `kernlens-v2p [-h] vaddr`
+**Synopsis:** `kl-v2p [-h] vaddr`
 
 Translates a virtual address to physical by consulting the live page tables, falling back to the direct-map arithmetic when the address is in the direct map.
 
@@ -19,15 +19,15 @@ Translates a virtual address to physical by consulting the live page tables, fal
 ### Invocation
 
 ```gdb
-kernlens-v2p 0xffff8c3640400000
+kl-v2p 0xffff9762c0400000
 ```
 
 ### Output
 
 ```text
-Virtual: 0xffff8c3640400000
+Virtual: 0xffff9762c0400000
 Physical: 0x400000
-page: 0xffffd66f00010000
+page: 0xffffd4fe00010000
 PFN: 1024  type: buddy
 refcount: 0
 ```

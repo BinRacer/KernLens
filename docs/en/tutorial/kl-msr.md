@@ -1,10 +1,10 @@
-# `kernlens-msr`
+# `kl-msr`
 
 Model-specific registers
 
-**Alias:** `kl-msr`  
+**Canonical:** `kernlens-msr`  
 **Category:** CPU topology  
-**Synopsis:** `kernlens-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]`
+**Synopsis:** `kl-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]`
 
 Reads or writes x86_64 MSRs through GDB's register interface.  On a QEMU gdbstub only a few are exposed, and the command says which ones rather than guessing.
 
@@ -22,7 +22,7 @@ Reads or writes x86_64 MSRs through GDB's register interface.  On a QEMU gdbstub
 ### Invocation
 
 ```gdb
-kernlens-msr -l
+kl-msr -l
 ```
 
 ### Output
@@ -48,7 +48,7 @@ The built-in table of names to numbers.  Using the name instead of the number ma
 ### Invocation
 
 ```gdb
-kernlens-msr 0xc0000082
+kl-msr 0xc0000082
 ```
 
 ### Output

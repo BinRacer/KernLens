@@ -108,6 +108,12 @@ jobs:
           # same capture/metadata.  A hand edit to either asset fails here.
           uv run --frozen python tools/gen_demo.py --check
           uv run --frozen python tools/gen_commands.py --check
+          # ``tools/gen_tutorial_meta.py`` is not checked here: it reads
+          # the live command registry, which imports ``gdb``, and this
+          # runner has no GDB.  ``tests/integration/test_gdbinit.py``
+          # compares the checked-in metadata against the registry through
+          # the fake ``gdb`` it already installs, which is the same check
+          # without the dependency.
 
       - name: Verify the examples match their manifest
         run: |

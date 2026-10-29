@@ -1,12 +1,13 @@
-# `kernlens-buddy`
+# `kl-buddy`
 
 Locate an address in the buddy allocator
 
-**Alias:** `kl-buddy`  
+**Canonical:** `kernlens-buddy`  
 **Category:** memory & symbols  
-**Synopsis:** `kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]
-                      [--limit LIMIT] [-p] [-c CPU] [-f FIND]
-                      [command ...]`
+**Synopsis:** `kl-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]
+                [--limit LIMIT] [-p] [-c CPU] [-f FIND]
+                [--MIGRATE_TYPES COUNT]
+                [command ...]`
 
 Answers 'what is this page' for the page allocator: which zone it belongs to, whether it is free, and if so which free block it is part of and where inside that block.
 
@@ -24,13 +25,14 @@ Answers 'what is this page' for the page allocator: which zone it belongs to, wh
 | `-p`, `--pcp-only` | — | displays/searches only PCP lists. |
 | `-c`, `--cpu` | — | CPU number for searching PCP. |
 | `-f`, `--find` | — | an address to search for in the page free lists. |
+| `--MIGRATE_TYPES` | COUNT | ignored; the migratetype count is read from the image |
 
 ## Free blocks, per order
 
 ### Invocation
 
 ```gdb
-kernlens-buddy list
+kl-buddy list
 ```
 
 ### Output
@@ -44,12 +46,12 @@ DMA    0     6      1        64
 DMA    0     7      1        128
 DMA    0     9      1        512
 DMA    0     10     3        3072
-DMA32  0     0      72       72
-DMA32  0     1      34       68
-DMA32  0     2      8        32
-DMA32  0     3      4        32
-DMA32  0     5      2        64
-DMA32  0     7      2        256
+DMA32  0     0      92       92
+DMA32  0     1      32       64
+DMA32  0     2      7        28
+DMA32  0     3      10       80
+DMA32  0     5      1        32
+DMA32  0     7      1        128
 DMA32  0     8      1        256
 DMA32  0     9      3        1536
 DMA32  0     10     1        1024
@@ -65,7 +67,7 @@ One row per non-empty order per zone.  `nr_free` is the kernel's per-ORDER count
 ### Invocation
 
 ```gdb
-kernlens-buddy list -z DMA
+kl-buddy list -z DMA
 ```
 
 ### Output
@@ -91,7 +93,7 @@ Same table, filtered.  The DMA zone on this machine has no order-8 block, which 
 ### Invocation
 
 ```gdb
-kernlens-buddy info pfn:1024
+kl-buddy info pfn:1024
 ```
 
 ### Output
@@ -99,11 +101,11 @@ kernlens-buddy info pfn:1024
 ```text
 Input: pfn:1024
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd66f00010000
+Page: 0xffffd4fe00010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd66f00010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffd4fe00010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 ```
@@ -117,19 +119,19 @@ Own block head: order 10  (this pfn is aligned to its own block)
 ### Invocation
 
 ```gdb
-kernlens-buddy info 0xffff8c3640400000
+kl-buddy info 0xffff9762c0400000
 ```
 
 ### Output
 
 ```text
-Input: 0xffff8c3640400000
+Input: 0xffff9762c0400000
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd66f00010000
+Page: 0xffffd4fe00010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd66f00010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffd4fe00010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 ```
@@ -143,7 +145,7 @@ A direct-map address is translated exactly once and gives the same answer as `pf
 ### Invocation
 
 ```gdb
-kernlens-buddy info pfn:1024 -v
+kl-buddy info pfn:1024 -v
 ```
 
 ### Output
@@ -151,11 +153,11 @@ kernlens-buddy info pfn:1024 -v
 ```text
 Input: pfn:1024
 Physical: 0x400000  pfn=0x400
-Page: 0xffffd66f00010000
+Page: 0xffffd4fe00010000
 Zone: DMA  node=0  start_pfn=0x1  end_pfn=0x1000
 Status: free  (on a buddy free list)
 Order: 10      1024 pages  4096 KiB  4 MiB
-Block base: order 10  page 0xffffd66f00010000  pfn=0x400  phys=0x400000
+Block base: order 10  page 0xffffd4fe00010000  pfn=0x400  phys=0x400000
 Position: 0 / 1024 pages  (block head)
 Own block head: order 10  (this pfn is aligned to its own block)
 Block span: pfn 0x400-0x7ff  phys 0x400000-0x7fffff
@@ -172,7 +174,7 @@ Adds the block's span, its buddy, and the zone's page counts.  `Buddy: pfn=0x0 .
 ### Invocation
 
 ```gdb
-kernlens-buddy freelist -z DMA -o 10 -m Movable
+kl-buddy freelist -z DMA -o 10 -m Movable
 ```
 
 ### Output
@@ -194,16 +196,16 @@ A per-migratetype view, which is what `list` cannot give: this walks the actual 
 ### Invocation
 
 ```gdb
-kernlens-buddy freelist -z DMA -o 10 -m Movable -v
+kl-buddy freelist -z DMA -o 10 -m Movable -v
 ```
 
 ### Output
 
 ```text
 free_area[order 10]  mtype=Movable  zone=DMA  node=0  nr_free=3  pages=3072
-    - #0 pfn=0x400 phys=0x400000 virt=0xffff8c3640400000
-    - #1 pfn=0x800 phys=0x800000 virt=0xffff8c3640800000
-    - #2 pfn=0xc00 phys=0xc00000 virt=0xffff8c3640c00000
+    - #0 pfn=0x400 phys=0x400000 virt=0xffff9762c0400000
+    - #1 pfn=0x800 phys=0x800000 virt=0xffff9762c0800000
+    - #2 pfn=0xc00 phys=0xc00000 virt=0xffff9762c0c00000
 ```
 
 ### Reading it
@@ -215,7 +217,7 @@ Each block's pfn, physical address and direct-map alias.  `nr_free=3` matches th
 ### Invocation
 
 ```gdb
-kernlens-buddy freelist -z DMA -o 10 -m Unmovable -v
+kl-buddy freelist -z DMA -o 10 -m Unmovable -v
 ```
 
 ### Output
@@ -235,30 +237,30 @@ Empty is reported as empty, and the header still shows the per-order total so th
 ### Invocation
 
 ```gdb
-kernlens-buddy dump
+kl-buddy dump
 ```
 
 ### Output
 
 ```text
 zone: all order=None mtype=all
-    - [0x00] 0xffff8c3640120000 [page: 0xffffd66f00004800, phys: 0x120000]
-    - [0x01] 0xffff8c3640140000 [page: 0xffffd66f00005000, phys: 0x140000]
-    - [0x02] 0xffff8c3640180000 [page: 0xffffd66f00006000, phys: 0x180000]
-    - [0x03] 0xffff8c3640200000 [page: 0xffffd66f00008000, phys: 0x200000]
-    - [0x04] 0xffff8c3640400000 [page: 0xffffd66f00010000, phys: 0x400000]
-    - [0x05] 0xffff8c3640800000 [page: 0xffffd66f00020000, phys: 0x800000]
-    - [0x06] 0xffff8c3640c00000 [page: 0xffffd66f00030000, phys: 0xc00000]
-    - [0x07] 0xffff8c3647123000 [page: 0xffffd66f001c48c0, phys: 0x7123000]
-    - [0x08] 0xffff8c3646a47000 [page: 0xffffd66f001a91c0, phys: 0x6a47000]
-    - [0x09] 0xffff8c3647168000 [page: 0xffffd66f001c5a00, phys: 0x7168000]
-    - [0x0a] 0xffff8c364716a000 [page: 0xffffd66f001c5a80, phys: 0x716a000]
-    - [0x0b] 0xffff8c3647170000 [page: 0xffffd66f001c5c00, phys: 0x7170000]
-    - [0x0c] 0xffff8c3646b9c000 [page: 0xffffd66f001ae700, phys: 0x6b9c000]
-    - [0x0d] 0xffff8c3646937000 [page: 0xffffd66f001a4dc0, phys: 0x6937000]
-    - [0x0e] 0xffff8c36470c1000 [page: 0xffffd66f001c3040, phys: 0x70c1000]
-    - [0x0f] 0xffff8c3647026000 [page: 0xffffd66f001c0980, phys: 0x7026000]
-... (truncated, 134 page(s) total)
+    - [0x00] 0xffff9762c0120000 [page: 0xffffd4fe00004800, phys: 0x120000]
+    - [0x01] 0xffff9762c0140000 [page: 0xffffd4fe00005000, phys: 0x140000]
+    - [0x02] 0xffff9762c0180000 [page: 0xffffd4fe00006000, phys: 0x180000]
+    - [0x03] 0xffff9762c0200000 [page: 0xffffd4fe00008000, phys: 0x200000]
+    - [0x04] 0xffff9762c0400000 [page: 0xffffd4fe00010000, phys: 0x400000]
+    - [0x05] 0xffff9762c0800000 [page: 0xffffd4fe00020000, phys: 0x800000]
+    - [0x06] 0xffff9762c0c00000 [page: 0xffffd4fe00030000, phys: 0xc00000]
+    - [0x07] 0xffff9762c7004000 [page: 0xffffd4fe001c0100, phys: 0x7004000]
+    - [0x08] 0xffff9762c7039000 [page: 0xffffd4fe001c0e40, phys: 0x7039000]
+    - [0x09] 0xffff9762c6b79000 [page: 0xffffd4fe001ade40, phys: 0x6b79000]
+    - [0x0a] 0xffff9762c6b7c000 [page: 0xffffd4fe001adf00, phys: 0x6b7c000]
+    - [0x0b] 0xffff9762c7002000 [page: 0xffffd4fe001c0080, phys: 0x7002000]
+    - [0x0c] 0xffff9762c6b64000 [page: 0xffffd4fe001ad900, phys: 0x6b64000]
+    - [0x0d] 0xffff9762c6675000 [page: 0xffffd4fe00199d40, phys: 0x6675000]
+    - [0x0e] 0xffff9762c70f4000 [page: 0xffffd4fe001c3d00, phys: 0x70f4000]
+    - [0x0f] 0xffff9762c70dd000 [page: 0xffffd4fe001c3740, phys: 0x70dd000]
+... (truncated, 155 page(s) total)
 ... (1 more line(s), 19 total)
 ```
 
@@ -273,20 +275,20 @@ pwndbg's `buddydump` view, kept as a subcommand because it reports the same `fre
 ### Invocation
 
 ```gdb
-kernlens-buddy dump -z DMA
+kl-buddy dump -z DMA
 ```
 
 ### Output
 
 ```text
 zone: DMA order=None mtype=all
-    - [0x00] 0xffff8c3640120000 [page: 0xffffd66f00004800, phys: 0x120000]
-    - [0x01] 0xffff8c3640140000 [page: 0xffffd66f00005000, phys: 0x140000]
-    - [0x02] 0xffff8c3640180000 [page: 0xffffd66f00006000, phys: 0x180000]
-    - [0x03] 0xffff8c3640200000 [page: 0xffffd66f00008000, phys: 0x200000]
-    - [0x04] 0xffff8c3640400000 [page: 0xffffd66f00010000, phys: 0x400000]
-    - [0x05] 0xffff8c3640800000 [page: 0xffffd66f00020000, phys: 0x800000]
-    - [0x06] 0xffff8c3640c00000 [page: 0xffffd66f00030000, phys: 0xc00000]
+    - [0x00] 0xffff9762c0120000 [page: 0xffffd4fe00004800, phys: 0x120000]
+    - [0x01] 0xffff9762c0140000 [page: 0xffffd4fe00005000, phys: 0x140000]
+    - [0x02] 0xffff9762c0180000 [page: 0xffffd4fe00006000, phys: 0x180000]
+    - [0x03] 0xffff9762c0200000 [page: 0xffffd4fe00008000, phys: 0x200000]
+    - [0x04] 0xffff9762c0400000 [page: 0xffffd4fe00010000, phys: 0x400000]
+    - [0x05] 0xffff9762c0800000 [page: 0xffffd4fe00020000, phys: 0x800000]
+    - [0x06] 0xffff9762c0c00000 [page: 0xffffd4fe00030000, phys: 0xc00000]
 7 free page(s)
 ```
 
@@ -299,14 +301,14 @@ The same filters as `list` (`-z`, `-o`, `-m`, `-n`) apply.  The DMA zone here is
 ### Invocation
 
 ```gdb
-kernlens-buddy dump -f 0xffff8c3640400000
+kl-buddy dump -f 0xffff9762c0400000
 ```
 
 ### Output
 
 ```text
 zone: all order=None mtype=all
-    - [0x04] 0xffff8c3640400000 [page: 0xffffd66f00010000, phys: 0x400000]
+    - [0x04] 0xffff9762c0400000 [page: 0xffffd4fe00010000, phys: 0x400000]
 1 free page(s)
 ```
 

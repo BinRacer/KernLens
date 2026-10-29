@@ -1,8 +1,10 @@
 # Command reference
 
 Every command, in the order `kl-help` prints it.  The `kl-` form is
-what you type at the prompt; the canonical `kernlens-` form is what
-scripts and the generated tutorial use.  Both always work.
+what you type at the prompt, and what this table and the tutorial
+show.  The canonical `kernlens-` form is the registered name: a
+script may use it, and it is listed in the second column so it stays
+reachable if the aliases are ever renamed.  Both always work.
 
 This page is generated from `tools/tutorial_meta.json` by
 `tools/gen_commands.py`; edit the command's parser description, not
@@ -11,75 +13,75 @@ with captured output and a note on how to read it.
 
 ## overview (1)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-status` | `kl-status` | Shows the KernLens version, color mode, KASLR slide, and layout. |
+| `kl-status` | `kernlens-status` | Shows the KernLens version, color mode, KASLR slide, and layout. |
 
 ## kernel base & KASLR (1)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-base` | `kl-base` | Reports the runtime kernel text base and KASLR slide. |
+| `kl-base` | `kernlens-base` | Reports the runtime kernel text base and KASLR slide. |
 
 ## kernel metadata (6)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-kcmdline` | `kl-kcmdline` | Return the kernel command line (/proc/cmdline). |
-| `kernlens-kversion` | `kl-kversion` | Outputs the kernel version (/proc/version). |
-| `kernlens-kconfig` | `kl-kconfig` | Outputs the kernel config (/proc/config.gz). |
-| `kernlens-kmod` | `kl-kmod` | Displays the loaded Linux kernel modules. |
-| `kernlens-ksyscalls` | `kl-ksyscalls` | Displays the Linux syscall table, including names and addresses of syscalls. |
-| `kernlens-kdmesg` | `kl-kdmesg` | Displays the kernel ring buffer (dmesg) contents. |
+| `kl-kcmdline` | `kernlens-kcmdline` | Return the kernel command line (/proc/cmdline). |
+| `kl-kversion` | `kernlens-kversion` | Outputs the kernel version (/proc/version). |
+| `kl-kconfig` | `kernlens-kconfig` | Outputs the kernel config (/proc/config.gz). |
+| `kl-kmod` | `kernlens-kmod` | Displays the loaded Linux kernel modules. |
+| `kl-ksyscalls` | `kernlens-ksyscalls` | Displays the Linux syscall table, including names and addresses of syscalls. |
+| `kl-kdmesg` | `kernlens-kdmesg` | Displays the kernel ring buffer (dmesg) contents. |
 
 ## addresses & page tables (6)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-addr` | `kl-addr` | Classifies an address and reports where it maps. |
-| `kernlens-pt` | `kl-pt` | Splits a virtual address into page-table indices, or decodes a page-table entry. |
-| `kernlens-walk` | `kl-walk` | Walks the live page tables and decodes every level. |
-| `kernlens-p2v` | `kl-p2v` | Translates a physical address to virtual + struct page. |
-| `kernlens-v2p` | `kl-v2p` | Translates a virtual address (live page tables) to physical. |
-| `kernlens-pageinfo` | `kl-pageinfo` | Translates a struct page to virtual and physical addresses. |
+| `kl-addr` | `kernlens-addr` | Classifies an address and reports where it maps. |
+| `kl-pt` | `kernlens-pt` | Splits a virtual address into page-table indices, or decodes a page-table entry. |
+| `kl-walk` | `kernlens-walk` | Walks the live page tables and decodes every level. |
+| `kl-p2v` | `kernlens-p2v` | Translates a physical address to virtual + struct page. |
+| `kl-v2p` | `kernlens-v2p` | Translates a virtual address (live page tables) to physical. |
+| `kl-pageinfo` | `kernlens-pageinfo` | Translates a struct page to virtual and physical addresses. |
 
 ## memory & symbols (9)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-buddy` | `kl-buddy` | Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block. |
-| `kernlens-slab` | `kl-slab`, `kl-slabs` | Prints information about the linux kernel's slab allocator SLUB. |
-| `kernlens-sym` | `kl-sym` | Resolves an address to a symbol, or finds symbols by name. |
-| `kernlens-bt` | `kl-bt` | Prints a formatted kernel backtrace. |
-| `kernlens-read` | `kl-read` | Dumps kernel memory as 64-bit words with symbol annotations. |
-| `kernlens-kvar` | `kl-kvar` | Reads a KASLR-aware kernel global variable. |
-| `kernlens-read-field` | `kl-read-field` | Reads a struct field (including nested paths) as an integer. |
-| `kernlens-kbpf` | `kl-kbpf` | Prints information about the linux kernel bpf progs and maps. |
-| `kernlens-kdmabuf` | `kl-kdmabuf` | Prints DMA buf info. |
+| `kl-buddy` | `kernlens-buddy` | Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block. |
+| `kl-slab` | `kernlens-slab` (`kl-slabs`) | Prints information about the linux kernel's slab allocator SLUB. |
+| `kl-sym` | `kernlens-sym` | Resolves an address to a symbol, or finds symbols by name. |
+| `kl-bt` | `kernlens-bt` | Prints a formatted kernel backtrace. |
+| `kl-read` | `kernlens-read` | Dumps kernel memory as 64-bit words with symbol annotations. |
+| `kl-kvar` | `kernlens-kvar` | Reads a KASLR-aware kernel global variable. |
+| `kl-read-field` | `kernlens-read-field` | Reads a struct field (including nested paths) as an integer. |
+| `kl-kbpf` | `kernlens-kbpf` | Prints information about the linux kernel bpf progs and maps. |
+| `kl-kdmabuf` | `kernlens-kdmabuf` | Prints DMA buf info. |
 
 ## CPU topology (3)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-cpu` | `kl-cpu` | Displays CPU topology, the online mask, and per-CPU offsets. |
-| `kernlens-percpu` | `kl-percpu` | Resolves a per-CPU symbol to its runtime address for a CPU. |
-| `kernlens-msr` | `kl-msr` | Reads or writes x86_64 model-specific registers (via GDB). |
+| `kl-cpu` | `kernlens-cpu` | Displays CPU topology, the online mask, and per-CPU offsets. |
+| `kl-percpu` | `kernlens-percpu` | Resolves a per-CPU symbol to its runtime address for a CPU. |
+| `kl-msr` | `kernlens-msr` | Reads or writes x86_64 model-specific registers (via GDB). |
 
 ## bit & integer primitives (2)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-bits` | `kl-bits` | Inspects a 64-bit value; optionally test/set/clear a bit. |
-| `kernlens-int` | `kl-int` | Shows signed/unsigned and LE/BE integer views. |
+| `kl-bits` | `kernlens-bits` | Inspects a 64-bit value; optionally test/set/clear a bit. |
+| `kl-int` | `kernlens-int` | Shows signed/unsigned and LE/BE integer views. |
 
 ## output (1)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-color` | `kl-color` | Enable, disable, or toggle ANSI color output. |
+| `kl-color` | `kernlens-color` | Enable, disable, or toggle ANSI color output. |
 
 ## help (1)
 
-| Command | Aliases | What it does |
+| Command | Canonical | What it does |
 | --- | --- | --- |
-| `kernlens-help` | `kl-help` | Lists every KernLens command, or explains one in detail. |
+| `kl-help` | `kernlens-help` | Lists every KernLens command, or explains one in detail. |

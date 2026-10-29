@@ -2436,7 +2436,7 @@ class HelpTests(GdbinitTestBase):
         out = self.invoke("kl-help")
         self.assertIn("KernLens", out)
         self.assertIn("kernel metadata", out)
-        self.assertIn("kernlens-status", out)
+        self.assertIn("kl-status", out)
 
     def test_help_lists_every_category(self) -> None:
         out = self.invoke("kl-help")
@@ -2445,10 +2445,18 @@ class HelpTests(GdbinitTestBase):
                 self.assertIn(definition.category.value, out)
 
     def test_help_lists_every_command(self) -> None:
+        """The overview names each command the way a user types it.
+
+        It used to list thirty ``kernlens-`` names, so the one thing the
+        overview taught was a spelling nobody uses at the prompt.  The
+        alias is now what the table shows, and the canonical name is one
+        ``kl-help <name>`` away.
+        """
         out = self.invoke("kl-help")
         for name in CANONICAL_COMMANDS:
             with self.subTest(command=name):
-                self.assertIn(name, out)
+                self.assertIn(framework.interactive_name(name), out)
+                self.assertNotIn(name, out)
 
 
 class ContractTests(GdbinitTestBase):
@@ -2590,6 +2598,27 @@ class FrameworkHelperTests(GdbinitTestBase):
         epilog = plain(definition.parser.epilog)
         self.assertIn("Examples:", epilog)
         self.assertIn("kl-help", epilog)
+
+    def test_epilog_names_the_canonical_spelling(self) -> None:
+        """``prog`` is the alias now, so the canonical form needs a line.
+
+        ``kernlens-*`` is what a script calls and what ``tutorial_meta``
+        records; dropping it from the help page would hide the only
+        spelling that is guaranteed to keep working if the aliases are
+        ever renamed.
+        """
+        definition = help_module.resolve_command("kernlens-slab")
+        epilog = plain(definition.parser.epilog)
+        self.assertIn("Canonical: kernlens-slab", epilog)
+        self.assertIn("Aliases: kl-slab, kl-slabs", epilog)
+
+    def test_definition_prog_is_the_short_alias(self) -> None:
+        for definition in framework.registry():
+            if not definition.aliases:
+                continue
+            with self.subTest(command=definition.command_name):
+                self.assertEqual(definition.parser.prog, definition.aliases[0])
+                self.assertTrue(definition.usage.startswith(definition.aliases[0]))
 
     def test_single_alias_uses_the_singular_label(self) -> None:
         parser = argparse.ArgumentParser(description="stub")
@@ -2909,7 +2938,7 @@ class GuardTests(GdbinitTestBase):
         fake_kdbg.link_text_value = None
         out = self.invoke("kl-kmod")
         self.assertIn("needs kernel symbols", out)
-        self.assertIn("kernlens-kmod", out)
+        self.assertIn("kl-kmod", out)
 
     def test_kernel_symbol_guard_passes_with_symbols(self) -> None:
         fake_kdbg.link_text_value = 0xFFFFFFFF81000000
@@ -2939,12 +2968,19 @@ class GuardTests(GdbinitTestBase):
             with self.subTest(command=command):
                 out = self.invoke(command, argument)
                 self.assertIn("needs kernel", out)
-                self.assertIn("kernlens-", out)
+                self.assertIn("kl-", out)
 
-    def test_guard_reports_the_canonical_name_not_the_alias(self) -> None:
+    def test_guard_reports_the_alias_not_the_canonical_name(self) -> None:
+        """The message answers with the name the reader typed.
+
+        It said ``kernlens-kmod:`` after ``kl-kmod``, asking the reader
+        to translate between two spellings of the same command — one of
+        thirty, for a message about a mistake they already made.
+        """
         fake_kdbg.link_text_value = None
         out = self.invoke("kl-kmod")
-        self.assertIn("kernlens-kmod:", out)
+        self.assertIn("kl-kmod:", out)
+        self.assertNotIn("kernlens-kmod:", out)
 
 
 class FrameworkInvokeTests(GdbinitTestBase):
@@ -3097,7 +3133,20 @@ class HelpDispatchTests(GdbinitTestBase):
     def test_help_with_a_command_shows_its_parser(self) -> None:
         out = self.invoke("kl-help", "kl-slab")
         self.assertIn("usage:", out)
-        self.assertIn("kernlens-slab", out)
+        self.assertIn("kl-slab", out)
+
+    def test_help_shows_the_alias_in_the_synopsis(self) -> None:
+        """``usage:`` is the line a reader copies, so it is the short form.
+
+        Asking for ``kl-slab`` and being shown ``usage: kernlens-slab``
+        means the answer to a question is a different name from the one
+        asked about.  The canonical spelling is still printed — under
+        ``Canonical:`` — which is what a script needs.
+        """
+        out = self.invoke("kl-help", "kl-slab")
+        self.assertIn("usage: kl-slab", out)
+        self.assertIn("Canonical: kernlens-slab", out)
+        self.assertNotIn("usage: kernlens-slab", out)
 
     def test_help_accepts_a_canonical_name(self) -> None:
         self.assertIn("usage:", self.invoke("kl-help", "kernlens-walk"))
@@ -3131,7 +3180,7 @@ class HelpDispatchTests(GdbinitTestBase):
         self.assertIn("no command matches", out)
 
     def test_help_lists_the_help_command_itself(self) -> None:
-        self.assertIn("kernlens-help", self.invoke("kl-help"))
+        self.assertIn("kl-help", self.invoke("kl-help"))
 
     def test_resolve_command_returns_none_for_empty(self) -> None:
         self.assertIsNone(help_module.resolve_command(""))
@@ -3285,6 +3334,41 @@ class TutorialTests(unittest.TestCase):
                 self.assertNotIn(
                     "SUPPRESS", page.read_text(encoding="utf-8"),
                 )
+
+    def test_the_metadata_matches_the_live_registry(self) -> None:
+        """The dump has to describe the parsers that exist right now.
+
+        ``tools/tutorial_meta.json`` is what every page and the command
+        reference are rendered from, and it used to be refreshed by hand.
+        It drifted: ``kl-buddy``'s ``--MIGRATE_TYPES`` was in the parser
+        but in neither the recorded ``usage`` nor the recorded options, so
+        the tutorial documented a command with no such flag and nothing
+        noticed.  ``tools/gen_tutorial_meta.py`` writes the dump from the
+        registry; this compares the two through the fake ``gdb`` the rest
+        of this module installs, because CI has no GDB of its own.
+        """
+        sys.path.insert(0, str(GDBINIT_PATH.parent))
+        # ``dump`` imports the framework by name, but the cache was
+        # cleaned after ``gdbinit.py`` ran, so a fresh import would need a
+        # ``gdb`` module.  Put the already-loaded one back instead: it is
+        # the same registry the commands were registered from.
+        saved = sys.modules.get("kernlens.commands.framework")
+        sys.modules["kernlens.commands.framework"] = framework
+        try:
+            generator = importlib.import_module("tools.gen_tutorial_meta")
+            expected = json.loads(generator.render(generator.dump()))
+        finally:
+            sys.path.pop(0)
+            if saved is None:
+                sys.modules.pop("kernlens.commands.framework", None)
+            else:
+                sys.modules["kernlens.commands.framework"] = saved
+        actual = json.loads(self.META.read_text(encoding="utf-8"))
+        self.assertEqual(
+            actual, expected,
+            "tools/tutorial_meta.json is stale; regenerate it with "
+            "tools/gen_tutorial_meta.py inside GDB",
+        )
 
     def test_tables_are_well_formed(self) -> None:
         # A help string containing a literal pipe would otherwise split a

@@ -47,8 +47,15 @@ class CommandReferenceTests(unittest.TestCase):
         )
         for entry in meta:
             with self.subTest(command=entry["name"]):
-                self.assertIn(f"| `{entry['name']}` |", text)
+                # The row leads with the spelling a reader types and
+                # names the registered spelling beside it; a table that
+                # led with the canonical name taught a name no reader
+                # types at the prompt.
+                primary = gen_commands.interactive(entry["name"])
+                self.assertIn(f"| `{primary}` | `{entry['name']}`", text)
                 for alias in entry["aliases"]:
+                    if alias == primary:
+                        continue
                     self.assertIn(f"`{alias}`", text)
 
     def test_both_languages_are_generated(self) -> None:
@@ -66,7 +73,7 @@ class CommandReferenceTests(unittest.TestCase):
         self.assertIn("# 命令参考", chinese)
         rows = [
             line for line in english.splitlines()
-            if line.startswith("| `kernlens-")
+            if line.startswith("| `kl-")
         ]
         self.assertEqual(len(rows), len(CANONICAL_COMMANDS))
         for row in rows:

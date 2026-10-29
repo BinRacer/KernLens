@@ -1,10 +1,10 @@
-# `kernlens-base`
+# `kl-base`
 
 Kernel base and KASLR slide
 
-**Alias:** `kl-base`  
+**Canonical:** `kernlens-base`  
 **Category:** kernel base & KASLR  
-**Synopsis:** `kernlens-base [-h] [-v] [-r] [command ...]`
+**Synopsis:** `kl-base [-h] [-v] [-r] [command ...]`
 
 Reports where the kernel text is loaded, and corrects the slide when the automatic answer is wrong.  These are four operations that used to be four commands (`kl-base`, `kl-kbase`, `kl-kaslr`, `kl-kaslr-offset`): there is one slide, so there is one command that reads and writes it.
 
@@ -21,14 +21,14 @@ Reports where the kernel text is loaded, and corrects the slide when the automat
 ### Invocation
 
 ```gdb
-kernlens-base
+kl-base
 ```
 
 ### Output
 
 ```text
-kernel base: 0xffffffffa7600000 (runtime)
-KASLR offset: +0x26600000
+kernel base: 0xffffffff9a200000 (runtime)
+KASLR offset: +0x19200000
 link _text: 0xffffffff81000000
 method: symbol
 status: kernel running
@@ -43,14 +43,14 @@ status: kernel running
 ### Invocation
 
 ```gdb
-kernlens-base show
+kl-base show
 ```
 
 ### Output
 
 ```text
-kernel base: 0xffffffffa7600000 (runtime)
-KASLR offset: +0x26600000
+kernel base: 0xffffffff9a200000 (runtime)
+KASLR offset: +0x19200000
 link _text: 0xffffffff81000000
 method: symbol
 status: kernel running
@@ -65,14 +65,14 @@ When `_text` does not resolve, the fallback reads the IDT and takes the first ha
 ### Invocation
 
 ```gdb
-kernlens-base -v
+kl-base -v
 ```
 
 ### Output
 
 ```text
-kernel base: 0xffffffffa7600000 (runtime)
-KASLR offset: +0x26600000
+kernel base: 0xffffffff9a200000 (runtime)
+KASLR offset: +0x19200000
 link _text: 0xffffffff81000000
 method: symbol
 Physical: 0x1000000
@@ -88,17 +88,17 @@ status: kernel running
 ### Invocation
 
 ```gdb
-kernlens-base idt 4
+kl-base idt 4
 ```
 
 ### Output
 
 ```text
 idt: base=0xfffffe0000000000 limit=0xfff count=256 source=monitor
-idt[0]: offset=0xffffffffa8a00990 sel=0x10 type=0xe ist=0 dpl=0 kernel
-idt[1]: offset=0xffffffffa8a00cd0 sel=0x10 type=0xe ist=3 dpl=0 kernel
-idt[2]: offset=0xffffffffa8a016f0 sel=0x10 type=0xe ist=2 dpl=0 kernel
-idt[3]: offset=0xffffffffa8a00ba0 sel=0x10 type=0xe ist=0 dpl=3 kernel
+idt[0]: offset=0xffffffff9b600990 sel=0x10 type=0xe ist=0 dpl=0 kernel
+idt[1]: offset=0xffffffff9b600cd0 sel=0x10 type=0xe ist=3 dpl=0 kernel
+idt[2]: offset=0xffffffff9b6016f0 sel=0x10 type=0xe ist=2 dpl=0 kernel
+idt[3]: offset=0xffffffff9b600ba0 sel=0x10 type=0xe ist=0 dpl=3 kernel
 ```
 
 ### Reading it
@@ -110,15 +110,15 @@ idt[3]: offset=0xffffffffa8a00ba0 sel=0x10 type=0xe ist=0 dpl=3 kernel
 ### Invocation
 
 ```gdb
-kernlens-base rebase
+kl-base rebase
 ```
 
 ### Output
 
 ```text
 add symbol table from file "/home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux" at
-	.text_addr = 0xffffffffa7600000
-rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xffffffffa7600000
+	.text_addr = 0xffffffff9a200000
+rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xffffffff9a200000
 ```
 
 ### Reading it
@@ -132,13 +132,13 @@ The path is whatever `file` loaded -- `rebase` never guesses one -- and a sessio
 ### Invocation
 
 ```gdb
-kernlens-base offset 0x26600000
+kl-base offset 0x19200000
 ```
 
 ### Output
 
 ```text
-KASLR offset: +0x26600000
+KASLR offset: +0x19200000
 status: applied
 ```
 
@@ -151,14 +151,14 @@ status: applied
 ### Invocation
 
 ```gdb
-kernlens-base text 0xffffffffa7600000
+kl-base text 0xffffffff9a200000
 ```
 
 ### Output
 
 ```text
-KASLR offset: +0x26600000
-link _text: 0xffffffff81000000 runtime _text: 0xffffffffa7600000
+KASLR offset: +0x19200000
+link _text: 0xffffffff81000000 runtime _text: 0xffffffff9a200000
 status: applied
 ```
 

@@ -1,10 +1,10 @@
-# `kernlens-pt`
+# `kl-pt`
 
 Page-table indices and entries
 
-**Alias:** `kl-pt`  
+**Canonical:** `kernlens-pt`  
 **Category:** addresses & page tables  
-**Synopsis:** `kernlens-pt [-h] [-e] [--paging {4,5}] [VALUE ...]`
+**Synopsis:** `kl-pt [-h] [-e] [--paging {4,5}] [VALUE ...]`
 
 Address arithmetic in both directions: a virtual address split into its per-level indices, or a raw page-table entry decoded into flags and a physical address.  `--entry` selects the second, which is what `kl-pte` did.  Nothing is read from the target -- the value is the argument.
 
@@ -21,18 +21,18 @@ Address arithmetic in both directions: a virtual address split into its per-leve
 ### Invocation
 
 ```gdb
-kernlens-pt 0xffff8c3640400000
+kl-pt 0xffff9762c0400000
 ```
 
 ### Output
 
 ```text
-VA: 0xffff8c3640400000
-4-level: pgd=280 pud=217 pmd=2 pte=0 off=0x0
-5-level: pgd=511 p4d=280 pud=217 pmd=2 pte=0 off=0x0
-huge: 2m_base=0xffff8c3640400000 1g_base=0xffff8c3640000000
+VA: 0xffff9762c0400000
+4-level: pgd=302 pud=395 pmd=2 pte=0 off=0x0
+5-level: pgd=511 p4d=302 pud=395 pmd=2 pte=0 off=0x0
+huge: 2m_base=0xffff9762c0400000 1g_base=0xffff9762c0000000
 aligned: 2m=True 1g=False page_offset=0x0
-canonical: 4-level=0xffff8c3640400000 5-level=0xffff8c3640400000
+canonical: 4-level=0xffff9762c0400000 5-level=0xffff9762c0400000
 ```
 
 ### Reading it
@@ -44,18 +44,18 @@ The 4-level row shows five entries (pgd/pud/pmd/pte/off) and the 5-level row six
 ### Invocation
 
 ```gdb
-kernlens-pt 0xffffffffa7700000
+kl-pt 0xffffffff9a300000
 ```
 
 ### Output
 
 ```text
-VA: 0xffffffffa7700000
-4-level: pgd=511 pud=510 pmd=315 pte=256 off=0x0
-5-level: pgd=511 p4d=511 pud=510 pmd=315 pte=256 off=0x0
-huge: 2m_base=0xffffffffa7600000 1g_base=0xffffffff80000000
+VA: 0xffffffff9a300000
+4-level: pgd=511 pud=510 pmd=209 pte=256 off=0x0
+5-level: pgd=511 p4d=511 pud=510 pmd=209 pte=256 off=0x0
+huge: 2m_base=0xffffffff9a200000 1g_base=0xffffffff80000000
 aligned: 2m=False 1g=False page_offset=0x0
-canonical: 4-level=0xffffffffa7700000 5-level=0xffffffffa7700000
+canonical: 4-level=0xffffffff9a300000 5-level=0xffffffff9a300000
 ```
 
 ### Reading it
@@ -67,7 +67,7 @@ The upper-half indices are near their maximum (`pgd=511`, `pud=510`) because the
 ### Invocation
 
 ```gdb
-kernlens-pt --entry 0x8000000000120063
+kl-pt --entry 0x8000000000120063
 ```
 
 ### Output
@@ -87,7 +87,7 @@ Physical: 0x120000  pfn=288
 ### Invocation
 
 ```gdb
-kernlens-pt --entry 0x8000000000120063 0xffff8c3640400000
+kl-pt --entry 0x8000000000120063 0xffff9762c0400000
 ```
 
 ### Output
@@ -96,7 +96,7 @@ kernlens-pt --entry 0x8000000000120063 0xffff8c3640400000
 PTE: 0x8000000000120063 present=True bit7=PS/PAT
 Flags: P RW A D NX
 Physical: 0x120000  pfn=288
-VA: 0xffff8c3640400000
+VA: 0xffff9762c0400000
 4k leaf: 0x120000
 2m leaf: 0x0
 1g leaf: 0x400000

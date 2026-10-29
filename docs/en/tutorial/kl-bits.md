@@ -1,10 +1,10 @@
-# `kernlens-bits`
+# `kl-bits`
 
 Bit-level view
 
-**Alias:** `kl-bits`  
+**Canonical:** `kernlens-bits`  
 **Category:** bit & integer primitives  
-**Synopsis:** `kernlens-bits [-h] value [bit]`
+**Synopsis:** `kl-bits [-h] value [bit]`
 
 Shows a 64-bit value in binary and reports the bit statistics that come up in exploit work: population count, leading and trailing zeros, highest and lowest set bit, and whether the value is a power of two.
 
@@ -20,7 +20,7 @@ Shows a 64-bit value in binary and reports the bit statistics that come up in ex
 ### Invocation
 
 ```gdb
-kernlens-bits 0xff 3
+kl-bits 0xff 3
 ```
 
 ### Output
@@ -41,14 +41,14 @@ The `value:` row pairs the hex form with a 64-bit binary rendering, so the bit p
 ### Invocation
 
 ```gdb
-kernlens-bits 0xffffffffa7700000
+kl-bits 0xffffffff9a300000
 ```
 
 ### Output
 
 ```text
-value: 0xffffffffa7700000  1111111111111111111111111111111110100111011100000000000000000000
-scan: popcount=40 leading_zeros=0 trailing_zeros=20 first_set=21 last_set=64
+value: 0xffffffff9a300000  1111111111111111111111111111111110011010001100000000000000000000
+scan: popcount=38 leading_zeros=0 trailing_zeros=20 first_set=21 last_set=64
 power: is_power_of_2=False  log2_floor=63  log2_ceil=64
 ```
 

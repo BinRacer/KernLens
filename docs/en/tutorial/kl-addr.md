@@ -1,10 +1,10 @@
-# `kernlens-addr`
+# `kl-addr`
 
 Analyse an address
 
-**Alias:** `kl-addr`  
+**Canonical:** `kernlens-addr`  
 **Category:** addresses & page tables  
-**Synopsis:** `kernlens-addr [-h] [-b] address [tag_mask]`
+**Synopsis:** `kl-addr [-h] [-b] address [tag_mask]`
 
 Every question KernLens can answer about a bare address: canonicality, the region it falls in, whether it is an `ERR_PTR`, how it aligns, its pointer tag, and -- for a direct-map address -- the physical address, pfn, and `struct page`.  `--brief` stops after the region and the translation, which is what `kl-page` printed.
 
@@ -21,19 +21,19 @@ Every question KernLens can answer about a bare address: canonicality, the regio
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffff8c3640400000
+kl-addr 0xffff9762c0400000
 ```
 
 ### Output
 
 ```text
-Address: 0xffff8c3640400000
+Address: 0xffff9762c0400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff8c3640400000 up=0xffff8c3640400000
+Alignment: down=0xffff9762c0400000 up=0xffff9762c0400000
 Physical: 0x400000  pfn=1024
-page: 0xffffd66f00010000
+page: 0xffffd4fe00010000
 ```
 
 ### Reading it
@@ -45,20 +45,20 @@ page: 0xffffd66f00010000
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffff8c3640400000 0xfff
+kl-addr 0xffff9762c0400000 0xfff
 ```
 
 ### Output
 
 ```text
-Address: 0xffff8c3640400000
+Address: 0xffff9762c0400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff8c3640400000 up=0xffff8c3640400000
-Tags: mask=0xfff tag=0x0 stripped=0xffff8c3640400000
+Alignment: down=0xffff9762c0400000 up=0xffff9762c0400000
+Tags: mask=0xfff tag=0x0 stripped=0xffff9762c0400000
 Physical: 0x400000  pfn=1024
-page: 0xffffd66f00010000
+page: 0xffffd4fe00010000
 ```
 
 ### Reading it
@@ -70,17 +70,17 @@ The optional mask separates a tagged pointer from the address inside it -- the l
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffff8c3640400000 --brief
+kl-addr 0xffff9762c0400000 --brief
 ```
 
 ### Output
 
 ```text
-Address: 0xffff8c3640400000
+Address: 0xffff9762c0400000
 Class: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 Physical: 0x400000  pfn=1024
-page: 0xffffd66f00010000
-bases: page_offset=0xffff8c3640000000 vmemmap=0xffffd66f00000000
+page: 0xffffd4fe00010000
+bases: page_offset=0xffff9762c0000000 vmemmap=0xffffd4fe00000000
 ```
 
 ### Reading it

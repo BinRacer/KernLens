@@ -1,10 +1,10 @@
-# `kernlens-kvar`
+# `kl-kvar`
 
 Read a kernel variable
 
-**Alias:** `kl-kvar`  
+**Canonical:** `kernlens-kvar`  
 **Category:** memory & symbols  
-**Synopsis:** `kernlens-kvar [-h] symbol`
+**Synopsis:** `kl-kvar [-h] symbol`
 
 Reads a named kernel global, applying the KASLR slide and re-deriving it if the read fails.  This is the command for `page_offset_base` and friends, where `&symbol` under KASLR reads nothing useful.
 
@@ -19,15 +19,15 @@ Reads a named kernel global, applying the KASLR slide and re-deriving it if the 
 ### Invocation
 
 ```gdb
-kernlens-kvar page_offset_base
+kl-kvar page_offset_base
 ```
 
 ### Output
 
 ```text
 symbol: page_offset_base
-address: 0xffffffffa93893a8
-value: 0xffff8c3640000000
+address: 0xffffffff9bf893a8
+value: 0xffff9762c0000000
 ```
 
 ### Reading it
@@ -39,14 +39,14 @@ Three rows: the symbol name, the runtime address it lives at, and its value.  Th
 ### Invocation
 
 ```gdb
-kernlens-kvar nr_online_nodes
+kl-kvar nr_online_nodes
 ```
 
 ### Output
 
 ```text
 symbol: nr_online_nodes
-address: 0xffffffffa9a68384
+address: 0xffffffff9c668384
 value: 0x100000001
 ```
 
