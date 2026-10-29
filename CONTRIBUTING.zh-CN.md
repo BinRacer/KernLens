@@ -22,7 +22,7 @@ KernLens 从同一棵树以两种方式分发。`install.sh` 克隆 checkout，�
 解释器里没有 `gdb` 模块。
 
 发布是 release 步骤，不是代码步骤。顺序、检查项与一次性的 trusted
-publishing 配置见 [`docs/releasing.md`](docs/releasing.md)。
+publishing 配置见 [`docs/en/releasing.md`](docs/en/releasing.md)。
 `tools/check_wheel.py` 是"构建出的 wheel 真的含有启动文件和控制台脚本"的
 闸门；在 CI 用它检查真实构建之前，测试全绿并不能说明包是好的。
 
@@ -60,9 +60,9 @@ uv run python -m unittest discover -s tests/integration
 `pythonpath = ["src"]`，裸 `pytest` 也能直接在 checkout 中运行。
 
 公共 API 地图、模块职责、SLUB 检查模型与 gdb 加载方式见
-[`docs/architecture.md`](docs/architecture.md)；命令与 Python 命名
-规范见 [`docs/naming.md`](docs/naming.md)。想按命令逐个上手、并看到
-真实内核的输出，从 [`docs/tutorial/`](docs/tutorial/README.md) 开始
+[`docs/en/architecture.md`](docs/en/architecture.md)；命令与 Python 命名
+规范见 [`docs/en/naming.md`](docs/en/naming.md)。想按命令逐个上手、并看到
+真实内核的输出，从 [`docs/en/tutorial/`](docs/en/tutorial/README.md) 开始
 ——每个命令一页。版本历史见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ### 文档站
@@ -77,7 +77,7 @@ uv run --group docs mkdocs build --strict
 ```
 
 `--strict` 就是 CI 用的闸门：内部链接坏掉、或有页面没进 nav，构建直接
-失败。`docs/index.md` 与 `docs/zh-CN/index.md` 由两份 README 生成，
+失败。`docs/en/index.md` 与 `docs/zh-CN/index.md` 由两份 README 生成，
 `docs/llms.txt` 由 `mkdocs.yml` 的 nav 生成——改源文件，然后运行
 `uv run python tools/gen_docs_site.py`。新增页面必须同时有 nav 条目和
 `PAGE_NOTES` 里的一行说明，否则 `--check` 会失败。

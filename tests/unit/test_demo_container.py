@@ -190,7 +190,7 @@ class PublishedImageTests(unittest.TestCase):
 
 class DocumentationTests(unittest.TestCase):
     def test_the_page_exists_and_is_reachable(self) -> None:
-        page = ROOT / "docs" / "demo-container.md"
+        page = ROOT / "docs" / "en" / "demo-container.md"
         self.assertTrue(page.is_file())
         mkdocs = _text(ROOT / "mkdocs.yml")
         self.assertIn("demo-container.md", mkdocs)

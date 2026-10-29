@@ -26,7 +26,7 @@ imports `kernlens.gdb`, because the host interpreter has no `gdb` module.
 
 Publishing is a release step, not a code step.  The order, the checks,
 and the one-time trusted-publishing setup are in
-[`docs/releasing.md`](docs/releasing.md).  `tools/check_wheel.py` is the
+[`docs/en/releasing.md`](docs/en/releasing.md).  `tools/check_wheel.py` is the
 gate that the built wheel actually contains the startup file and the
 console script; until it runs in CI against a real build, a green test
 suite says nothing about the package.
@@ -68,11 +68,11 @@ commands import the installed distribution rather than relying on
 `PYTHONPATH`; `pyproject.toml` also sets `pythonpath = ["src"]` so a
 bare `pytest` run works from a checkout.
 
-See [`docs/architecture.md`](docs/architecture.md) for the public API
+See [`docs/en/architecture.md`](docs/en/architecture.md) for the public API
 map, module responsibilities, the SLUB inspection model, and GDB
-loading details.  [`docs/naming.md`](docs/naming.md) defines the
+loading details.  [`docs/en/naming.md`](docs/en/naming.md) defines the
 command and Python naming rules.  For a guided tour with real output
-from a live kernel, start at [`docs/tutorial/`](docs/tutorial/README.md) --
+from a live kernel, start at [`docs/en/tutorial/`](docs/en/tutorial/README.md) --
 one page per command.  Release history lives in
 [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -89,7 +89,7 @@ uv run --group docs mkdocs build --strict
 ```
 
 `--strict` is the gate CI uses: a broken internal link or a page missing
-from the nav fails the build.  `docs/index.md` and `docs/zh-CN/index.md`
+from the nav fails the build.  `docs/en/index.md` and `docs/zh-CN/index.md`
 are generated from the two READMEs, and `docs/llms.txt` from the nav in
 `mkdocs.yml` -- edit those sources, then run
 `uv run python tools/gen_docs_site.py`.  A new page needs a nav entry and

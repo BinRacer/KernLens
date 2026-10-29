@@ -92,10 +92,18 @@ jobs:
           # which is the only way this can be verified without a debuggee.
           uv run --frozen python tools/gen_tutorial.py \
             --capture tools/tutorial_capture.json \
-            --meta tools/tutorial_meta.json --check
+            --meta tools/tutorial_meta.json \
+            --out docs/en/tutorial --check
+          # The command pages are English-only; each language still gets
+          # its own index frame, and both must agree with the capture.
           uv run --frozen python tools/gen_tutorial_index.py \
             --capture tools/tutorial_capture.json \
-            --meta tools/tutorial_meta.json --check
+            --meta tools/tutorial_meta.json \
+            --out docs/en/tutorial --locale en --check
+          uv run --frozen python tools/gen_tutorial_index.py \
+            --capture tools/tutorial_capture.json \
+            --meta tools/tutorial_meta.json \
+            --out docs/zh-CN/tutorial --locale zh-CN --check
           # The README demo and the command table are generated from the
           # same capture/metadata.  A hand edit to either asset fails here.
           uv run --frozen python tools/gen_demo.py --check

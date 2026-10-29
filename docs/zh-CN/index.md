@@ -175,13 +175,13 @@ docker run --rm -it kernlens-demo kl-slab info dentry
 
 内核在镜像里从源码编译，并去掉了 DWARF，所以这次会话同时也是对 BTF
 路径的检验。镜像里有什么、为什么选择编译而不是下载，见
-[`docs/demo-container.md`](../demo-container.md)。
+[`docs/en/demo-container.md`](demo-container.md)。
 
 ## 40 个命令
 
 分组与 `kl-help` 完全一致。`kl-` 形式是你在提示符下敲的；规范的
 `kernlens-` 形式是脚本和生成式教程用的。两者始终都能用。每个命令的
-全部别名和一句话说明在 [`docs/commands.md`](../commands.md)。
+全部别名和一句话说明在 [`docs/en/commands.md`](commands.md)。
 
 | 分类 | 命令 |
 | --- | --- |
@@ -195,7 +195,7 @@ docker run --rm -it kernlens-demo kl-slab info dentry
 | output (1) 输出 | `kl-color` |
 | help (1) 帮助 | `kl-help` |
 
-每个命令在 [`docs/tutorial/`](../tutorial/README.md) 都有一页：真实捕获的输出、
+每个命令在 [`docs/en/tutorial/`](tutorial/README.md) 都有一页：真实捕获的输出、
 全部选项，以及如何读这个结果。
 
 命令表看不出来的有两件事。一是 `kl-help <命令>` 给出用法和现成例子，
@@ -226,16 +226,16 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 ```
 
 算术那一半不需要调试器，这正是它能在宿主机上被测试的原因。完整参考见
-[`docs/zh-CN/api.md`](../zh-CN/api.md)。
+[`docs/zh-CN/api.md`](api.md)。
 
 ## 它凭什么不会说假话
 
 本仓库对自己做出的每一句断言都由机器校验，否则就只是"写下来那天正确"
 的散文：
 
-- `docs/tutorial/` 是**生成**的，来自在真实内核上的捕获；
+- `docs/en/tutorial/` 是**生成**的，来自在真实内核上的捕获；
   `gen_tutorial.py --check` 在页面与捕获不一致时失败。
-- README 的演示和 `docs/commands.md` 也是生成的：
+- README 的演示和 `docs/en/commands.md` 也是生成的：
   `tools/gen_demo.py --check` 比对动画与捕获，
   `tools/gen_commands.py --check` 比对命令表与注册的元数据。
 - 示例覆盖度在 `tools/example_manifest.py` 中声明，由
@@ -243,7 +243,7 @@ KAddr.is_direct_map(0xffff888000001234)  # True
   只在散文里提到却从未执行的命令同样会失败。
 - 不需要调试器的示例在 CI 里真跑；其余的在 GDB 下重放并记录，每次推送
   都把记录和源码比对。
-- `docs/architecture.md` 里的目录树、`examples/README.md` 里的数字，都
+- `docs/en/architecture.md` 里的目录树、`examples/README.md` 里的数字，都
   与实际树和实际测量比对，而不是手写。
 - wheel 是**检查过**的，不是假设的：CI 构建 wheel，缺少启动文件或控制台
   脚本时 `tools/check_wheel.py` 会失败 —— 这正是过去"仅源码分发"政策
@@ -255,14 +255,14 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 
 | 文档 | 内容 |
 | --- | --- |
-| [`docs/tutorial/`](../tutorial/README.md) | 每个命令一页，真实输出 |
-| [`docs/demo-container.md`](../demo-container.md) | QEMU 里的内核，从源码构建、开箱可连 |
-| [`docs/commands.md`](../commands.md) | 每个命令与别名，生成式 |
-| [`docs/zh-CN/api.md`](../zh-CN/api.md) | Python API 参考 |
-| [`docs/architecture.md`](../architecture.md) | 包结构、API 映射、设计说明 |
-| [`docs/compatibility.md`](../compatibility.md) | 实测过什么、预期可用什么、不承诺什么 |
+| [`docs/en/tutorial/`](tutorial/README.md) | 每个命令一页，真实输出 |
+| [`docs/en/demo-container.md`](demo-container.md) | QEMU 里的内核，从源码构建、开箱可连 |
+| [`docs/en/commands.md`](commands.md) | 每个命令与别名，生成式 |
+| [`docs/zh-CN/api.md`](api.md) | Python API 参考 |
+| [`docs/en/architecture.md`](architecture.md) | 包结构、API 映射、设计说明 |
+| [`docs/en/compatibility.md`](compatibility.md) | 实测过什么、预期可用什么、不承诺什么 |
 | [`examples/`](https://github.com/BinRacer/KernLens/blob/main/examples/README.md) | 可运行脚本，按意图分组 |
-| [`docs/naming.md`](../naming.md) | 命令与文件名约定 |
+| [`docs/en/naming.md`](naming.md) | 命令与文件名约定 |
 | [`CONTRIBUTING.zh-CN.md`](https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.zh-CN.md) | 环境搭建、测试、布局生成器 |
 | [`SECURITY.md`](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md) | 什么算漏洞，以及如何私下报告 |
 | [`CITATION.cff`](https://github.com/BinRacer/KernLens/blob/main/CITATION.cff) | 如何引用本项目，以及被引用的版本 |
@@ -275,7 +275,7 @@ Python 3.10+，以及一个用 Python 3.10+ 构建的 GDB。这是两个解释�
 看不到这个包"是最常见的一次性失败。仅支持 x86_64 内核 —— 页表与
 `struct page` 的解码是针对该架构写的。Python 3.12 以下唯一的运行时依赖
 是 `typing-extensions`。哪些组合真的跑过、哪些只是预期可用，见
-[`docs/compatibility.md`](../compatibility.md)。
+[`docs/en/compatibility.md`](compatibility.md)。
 
 尚未发布任何包。安装方式是上面的一条命令、`git clone`，或从这个 checkout
 构建 wheel，见[安装](#安装)。wheel 里带有启动文件，`kernlens path` 会打印
