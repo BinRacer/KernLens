@@ -6,7 +6,7 @@
 #
 """Render the tutorial pages from captured command output.
 
-The tutorial under ``docs/tutorial/`` must show what KernLens really
+The tutorial under ``docs/en/tutorial/`` must show what KernLens really
 prints, not what it was thought to print.  Copying output by hand rots
 the moment a command changes, so the pages are generated: this script
 reads a JSON capture (produced by running every command against a live
@@ -16,7 +16,7 @@ command.
 Usage::
 
     python3 tools/gen_tutorial.py --capture capture.json \
-        --prose tools/tutorial_prose.py --out docs/tutorial
+        --prose tools/tutorial_prose.py --out docs/en/tutorial
 
 The prose lives in a separate module so this renderer stays a pure
 formatter: it never decides what a command means, only how a page is
@@ -270,7 +270,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--meta", required=True, type=pathlib.Path)
     parser.add_argument("--prose", default="tools.tutorial_prose")
     parser.add_argument("--out", type=pathlib.Path, default=pathlib.Path(
-        "docs/tutorial",
+        "docs/en/tutorial",
     ))
     parser.add_argument(
         "--check", action="store_true",

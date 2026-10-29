@@ -182,14 +182,14 @@ docker run --rm -it kernlens-demo kl-slab info dentry
 The kernel is built from source in the image and stripped of DWARF, so
 the session is also a test of the BTF path. What is inside, and why it is
 built rather than downloaded, is in
-[`docs/demo-container.md`](docs/demo-container.md).
+[`docs/en/demo-container.md`](docs/en/demo-container.md).
 
 ## The 40 commands
 
 Grouped as `kl-help` groups them. The `kl-` form is what you type at the
 prompt; the canonical `kernlens-` form is what scripts and the generated
 tutorial use. Both always work. Every command, every alias, and a
-one-line description is in [`docs/commands.md`](docs/commands.md).
+one-line description is in [`docs/en/commands.md`](docs/en/commands.md).
 
 | Category | Commands |
 | --- | --- |
@@ -203,7 +203,7 @@ one-line description is in [`docs/commands.md`](docs/commands.md).
 | output (1) | `kl-color` |
 | help (1) | `kl-help` |
 
-Every command has a page in [`docs/tutorial/`](docs/tutorial/) with real
+Every command has a page in [`docs/en/tutorial/`](docs/en/tutorial/) with real
 captured output, its options, and a note on how to read the result.
 
 Two things the command list does not show. `kl-help <command>` gives usage
@@ -236,17 +236,17 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 ```
 
 The arithmetic half needs no debugger, which is what makes it testable on
-the host. The full reference is [`docs/api.md`](docs/api.md).
+the host. The full reference is [`docs/en/api.md`](docs/en/api.md).
 
 ## How it stays true
 
 Every claim this repository makes about itself is checked by a machine,
 because the alternative is prose that is correct on the day it is written:
 
-- `docs/tutorial/` is **generated** from a capture taken on a running
+- `docs/en/tutorial/` is **generated** from a capture taken on a running
   kernel; `gen_tutorial.py --check` fails when a page and the capture
   disagree.
-- The README demo and `docs/commands.md` are generated too:
+- The README demo and `docs/en/commands.md` are generated too:
   `tools/gen_demo.py --check` compares the animation with the capture,
   and `tools/gen_commands.py --check` compares the command table with the
   registered metadata.
@@ -256,7 +256,7 @@ because the alternative is prose that is correct on the day it is written:
 - The examples that can run without a debugger are executed in CI; the
   rest are replayed under GDB and recorded, and the record is compared
   against the source on every push.
-- The repository tree in `docs/architecture.md` and the numbers in
+- The repository tree in `docs/en/architecture.md` and the numbers in
   `examples/README.md` are checked against the real tree and the real
   measurement, not typed by hand.
 - The wheel is checked, not assumed: CI builds it and
@@ -271,14 +271,14 @@ registry by the test suite, so it cannot quietly become false.
 
 | Document | What is in it |
 | --- | --- |
-| [`docs/tutorial/`](docs/tutorial/) | one page per command, real output |
-| [`docs/demo-container.md`](docs/demo-container.md) | a kernel under QEMU, built from source and ready to attach |
-| [`docs/commands.md`](docs/commands.md) | every command and alias, generated |
-| [`docs/api.md`](docs/api.md) | the Python API reference |
-| [`docs/architecture.md`](docs/architecture.md) | package layout, API map, design notes |
-| [`docs/compatibility.md`](docs/compatibility.md) | what has been run, what is expected, what is not claimed |
+| [`docs/en/tutorial/`](docs/en/tutorial/) | one page per command, real output |
+| [`docs/en/demo-container.md`](docs/en/demo-container.md) | a kernel under QEMU, built from source and ready to attach |
+| [`docs/en/commands.md`](docs/en/commands.md) | every command and alias, generated |
+| [`docs/en/api.md`](docs/en/api.md) | the Python API reference |
+| [`docs/en/architecture.md`](docs/en/architecture.md) | package layout, API map, design notes |
+| [`docs/en/compatibility.md`](docs/en/compatibility.md) | what has been run, what is expected, what is not claimed |
 | [`examples/`](examples/README.md) | runnable scripts, grouped by intent |
-| [`docs/naming.md`](docs/naming.md) | command and filename conventions |
+| [`docs/en/naming.md`](docs/en/naming.md) | command and filename conventions |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | setup, tests, the layout generator |
 | [`SECURITY.md`](SECURITY.md) | what counts as a vulnerability, and how to report one privately |
 | [`CITATION.cff`](CITATION.cff) | how to cite the project, and the version being cited |
@@ -293,7 +293,7 @@ failure. x86_64 kernels only -- the page-table and `struct page` decoding
 are written against that architecture. On Python below 3.12 the only
 runtime dependency is `typing-extensions`. Which combinations have
 actually been run, and which are only expected, is in
-[`docs/compatibility.md`](docs/compatibility.md).
+[`docs/en/compatibility.md`](docs/en/compatibility.md).
 
 No package is published yet. Installation is the one-line installer, a
 `git clone`, or a wheel built from this checkout; see [Install](#install).

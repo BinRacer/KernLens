@@ -80,4 +80,4 @@ back-patched; the tool is a development aid, not a long-lived service.
 | older tags | no |
 
 The environments that have actually been exercised, and the ones that are
-only expected to work, are in [`docs/compatibility.md`](docs/compatibility.md).
+only expected to work, are in [`docs/en/compatibility.md`](docs/en/compatibility.md).

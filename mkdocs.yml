@@ -6,7 +6,13 @@
 # fails when a page exists but is not reachable from here (or from the
 # generated tutorial index).
 #
-# `docs/index.md` and `docs/index.zh-CN.md` are generated from the two
+# Two languages, one directory each.  `mkdocs-static-i18n` pairs
+# `docs/en/x.md` with `docs/zh-CN/x.md`, builds the default language on
+# the site root, and gives every other locale a `/<locale>/` prefix -- so
+# English keeps `/` and `/tutorial/`, and Chinese lives at `/zh-CN/`,
+# which is where the previous hand-rolled layout already put it.
+#
+# `docs/en/index.md` and `docs/zh-CN/index.md` are generated from the two
 # READMEs; do not edit them.
 
 site_name: KernLens
@@ -75,13 +81,15 @@ markdown_extensions:
 # `extra.alternate` renders `partials/alternate.html`: a translate icon in
 # the header, on the same row as the palette toggle and the search box.
 # That is the pattern a reader already knows, and it costs no custom
-# markup.  A button in the content area -- what this site had first --
-# reads as part of the page rather than as a site-wide control.
+# markup.  A button in the content area reads as part of the page rather
+# than as a site-wide control.
 #
 # The links are absolute because the switcher appears on pages at
-# different depths, and they point at the other language's front page
-# rather than a translation of the current one: only the front page and
-# the API reference exist in Chinese, so any other target would be a 404.
+# different depths.  They point at the other language's front page rather
+# than a translation of the current page: `mkdocs-static-i18n` can map
+# page to page, but only when the counterpart exists, and a nav entry that
+# silently lands on the wrong page is worse than one that lands on a
+# known page.
 extra:
   alternate:
     - name: English
@@ -100,40 +108,73 @@ validation:
   anchors: warn
 
 hooks:
-  # `theme.language` is one value for the whole site, so the Chinese pages
-  # would be served as `lang="en"` -- which also gives them an English
-  # search stemmer.  The hook rewrites the attribute per page.
+  # `theme.language` is the theme's own UI strings and one value per
+  # build, so the Chinese pages would declare themselves English; the
+  # hook rewrites `<html lang>` per page.
   - hooks/language.py
 
+plugins:
+  - i18n:
+      docs_structure: folder
+      # A Chinese page with no counterpart is still served under
+      # `/zh-CN/`, built from the English source.  `false` would make it
+      # a 404; `true` makes the URL work and the content be English,
+      # which the page itself says.  The alternative -- translating
+      # every command page -- is 40 pages of output that would rot the
+      # moment a command changed.
+      fallback_to_default: true
+      reconfigure_material: true
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+        - locale: zh-CN
+          name: 简体中文
+          build: true
+          theme:
+            # `theme.language` picks the Material translation file for the
+            # UI chrome (search placeholder, "Back to top", the table of
+            # contents label).  Material ships `zh`, not `zh-CN`, and the
+            # locale name is also the URL segment, which stays `zh-CN`.
+            language: zh
+          nav:
+            # A separate nav, not a translation of the English one.
+            # Material has no way to label the same page differently per
+            # locale, and the point of the Chinese site is that a reader
+            # who chose Chinese gets Chinese links that lead to Chinese
+            # pages.  Only the command reference is English-only, and it
+            # says so in its own heading.
+            - 首页: index.md
+            - 命令参考: commands.md
+            - 教程: tutorial/README.md
+            - 演示容器: demo-container.md
+            - Python API: api.md
+            - 架构: architecture.md
+            - 兼容性: compatibility.md
+            - 发布: releasing.md
+            - 命名约定: naming.md
+            - 参与贡献: https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.zh-CN.md
+            - 安全: https://github.com/BinRacer/KernLens/blob/main/SECURITY.md
+            - 变更日志: https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md
+  - search
+
+# English is the default language, so English is what the root nav shows.
+# Targets are relative to `docs/`, which is why they carry the `en/`
+# prefix: the plugin pairs `en/x.md` with `zh-CN/x.md`, and the default
+# language's prefix is dropped from the URL, not from the file path.
 nav:
-  - Overview: index.md
-  - Commands: commands.md
-  - Tutorial: tutorial/README.md
-  - Demo container: demo-container.md
-  - Python API: api.md
-  - Architecture: architecture.md
-  - Compatibility: compatibility.md
-  - Releasing: releasing.md
-  - Naming: naming.md
+  - Overview: en/index.md
+  - Commands: en/commands.md
+  - Tutorial: en/tutorial/README.md
+  - Demo container: en/demo-container.md
+  - Python API: en/api.md
+  - Architecture: en/architecture.md
+  - Compatibility: en/compatibility.md
+  - Releasing: en/releasing.md
+  - Naming: en/naming.md
   # Outside the site directory, so these stay on GitHub rather than
   # becoming a second copy that drifts.
   - Contributing: https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md
   - Security: https://github.com/BinRacer/KernLens/blob/main/SECURITY.md
   - Changelog: https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md
-
-# The Chinese pages are published but deliberately not in the nav.
-#
-# Choosing a language is the header switcher's job (`extra.alternate`
-# above), and it is on every page.  Listing the same language a second
-# time as a nav section made it look like a table of contents entry, so
-# the sidebar showed "简体中文" as though it were a chapter of the
-# documentation -- two controls for one decision, one of them in the
-# wrong place.
-#
-# `not_in_nav` is how mkdocs says "this file is published on purpose and
-# its absence from the nav is not an oversight".  Without it, `--strict`
-# treats the omission as a warning and the build fails; that warning is
-# otherwise exactly right, which is why the entries are declared rather
-# than the check being relaxed.
-not_in_nav: |
-  zh-CN/*.md

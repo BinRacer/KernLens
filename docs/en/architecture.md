@@ -109,19 +109,21 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── unit/             # pure-Python tests
 │   └── integration/      # adapter, gdbinit and host-runnable examples
 ├── docs/
-│   ├── architecture.md   # layout, API map, and design notes
-│   ├── compatibility.md  # measured / expected / unsupported environments
-│   ├── releasing.md      # what has to agree before a tag
-│   ├── index.md          # generated from README.md (site front page)
-│   ├── llms.txt          # generated plain-text index of the site
-│   ├── api.md            # Python API reference
-│   ├── commands.md       # generated command/alias table
+│   ├── en/               # the default language; built on the site root
+│   │   ├── architecture.md   # layout, API map, and design notes
+│   │   ├── compatibility.md  # measured / expected / unsupported
+│   │   ├── releasing.md      # what has to agree before a tag
+│   │   ├── index.md          # generated from README.md (front page)
+│   │   ├── api.md            # Python API reference
+│   │   ├── commands.md       # generated command/alias table
+│   │   ├── naming.md         # command, example and Python names
+│   │   └── tutorial/         # one generated page per command (40)
+│   ├── zh-CN/            # the Chinese pages, same paths, own directory
+│   │   ├── index.md      # generated from README.zh-CN.md
+│   │   ├── api.md        # the same API reference, in Chinese
+│   │   └── tutorial/     # index translated; the pages are not
 │   ├── assets/           # generated demo.svg + demo.cast, and extra.css
-│   ├── naming.md         # command, example and Python naming rules
-│   ├── tutorial/         # one generated page per command (40)
-│   └── zh-CN/            # the Chinese pages, one directory down
-│       ├── index.md      # generated from README.zh-CN.md
-│       └── api.md        # the same API reference, in Chinese
+│   └── llms.txt          # generated plain-text index of the site
 ├── overrides/            # mkdocs theme overrides: the language switcher
 ├── hooks/
 │   └── language.py       # per-page <html lang>, and the Chinese stemmer
@@ -175,9 +177,9 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   ├── run_examples_gdb.py           # replays the GDB-only examples
 │   ├── check_example_capture.py      # checks that record against the tree
 │   ├── gen_examples_readme.py        # renders the README coverage block
-│   ├── gen_tutorial.py               # renders docs/tutorial/ from the capture
-│   ├── gen_tutorial_index.py         # renders docs/tutorial/README.md
-│   ├── gen_commands.py               # renders docs/commands.md
+│   ├── gen_tutorial.py               # renders docs/en/tutorial/ from capture
+│   ├── gen_tutorial_index.py         # renders each locale's tutorial index
+│   ├── gen_commands.py               # renders the command table per locale
 │   ├── gen_demo.py                   # renders docs/assets/demo.*
 │   ├── gen_docs_site.py              # renders the two index pages + llms.txt
 │   ├── check_wheel.py                # the wheel contains the startup file

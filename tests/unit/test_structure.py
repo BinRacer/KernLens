@@ -569,7 +569,7 @@ class BannerTests(unittest.TestCase):
 class DocumentationTrackingTests(unittest.TestCase):
     """The repository tree in the docs must describe the real tree.
 
-    ``docs/architecture.md`` carries a hand-drawn tree, and it drifted
+    ``docs/en/architecture.md`` carries a hand-drawn tree, and it drifted
     twice: once when the examples were regrouped and again when they were
     renamed.  Both times the failure was silent -- a stale name in
     passive-voice documentation looks exactly like a current one -- and
@@ -585,7 +585,9 @@ class DocumentationTrackingTests(unittest.TestCase):
     ILLUSTRATIVE = frozenset({"anything.py"})
 
     def _tree_block(self) -> str:
-        text = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+        text = (ROOT / "docs" / "en" / "architecture.md").read_text(
+            encoding="utf-8",
+        )
         start = text.index("```\n")
         end = text.index("```", start + 4)
         return text[start:end]
@@ -682,7 +684,7 @@ class ReadmeStructureTests(unittest.TestCase):
                 self.assertLessEqual(
                     lines, self.MAX_LINES,
                     f"{name} is {lines} lines; reference material belongs "
-                    "in docs/api.md or CONTRIBUTING.md",
+                    "in docs/en/api.md or CONTRIBUTING.md",
                 )
 
     def test_shows_real_command_output(self) -> None:
@@ -707,12 +709,12 @@ class ReadmeStructureTests(unittest.TestCase):
         unreachable is worse than the long README was.
         """
         for name in (
-            "docs/api.md", "docs/zh-CN/api.md",
+            "docs/en/api.md", "docs/zh-CN/api.md",
             "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md",
         ):
             with self.subTest(path=name):
                 self.assertTrue((ROOT / name).is_file(), name)
-        for target in ("docs/api.md", "CONTRIBUTING.md"):
+        for target in ("docs/en/api.md", "CONTRIBUTING.md"):
             with self.subTest(linked=target):
                 self.assertIn(f"({target})", self._readme("README.md"))
 

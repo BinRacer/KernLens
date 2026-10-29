@@ -27,6 +27,6 @@ instead of the tour, for example:
 docker run --rm -it kernlens-demo kl-slab info dentry
 ```
 
-The page [docs/demo-container.md](../docs/demo-container.md) explains
+The page [docs/en/demo-container.md](../docs/en/demo-container.md) explains
 what is inside, why the kernel is compiled rather than downloaded, and
 the limits of the microvm.

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import io
 import json
-import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -25,7 +24,7 @@ class CommandReferenceTests(unittest.TestCase):
         current = gen_commands.DEFAULT_OUTPUT.read_text(encoding="utf-8")
         self.assertEqual(
             current, rendered,
-            "docs/commands.md is stale; run tools/gen_commands.py",
+            "docs/en/commands.md is stale; run tools/gen_commands.py",
         )
 
     def test_every_category_is_in_kl_help_order(self) -> None:
@@ -46,15 +45,53 @@ class CommandReferenceTests(unittest.TestCase):
                 for alias in entry["aliases"]:
                     self.assertIn(f"`{alias}`", text)
 
-    def test_check_fails_when_the_page_drifts(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            output = Path(tmp) / "commands.md"
-            output.write_text("stale\n", encoding="utf-8")
-            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                status = gen_commands.main([
-                    "--check", "--output", str(output),
-                ])
-        self.assertEqual(status, 1)
+    def test_both_languages_are_generated(self) -> None:
+        """One table, two frames.
+
+        The command names, aliases, and summaries stay English in both
+        pages -- they are the strings ``kl-help`` prints -- but the
+        heading, the column labels, and the note are translated, so the
+        Chinese page cannot simply be a copy.
+        """
+        english = gen_commands.DEFAULT_OUTPUT.read_text(encoding="utf-8")
+        chinese = gen_commands.LOCALE_OUTPUT.read_text(encoding="utf-8")
+        self.assertNotEqual(english, chinese)
+        self.assertIn("# Command reference", english)
+        self.assertIn("# 命令参考", chinese)
+        rows = [
+            line for line in english.splitlines()
+            if line.startswith("| `kernlens-")
+        ]
+        self.assertEqual(len(rows), 40)
+        for row in rows:
+            with self.subTest(row=row.split("|")[1].strip()):
+                self.assertIn(row, chinese)
+
+    def test_check_fails_when_a_page_drifts(self) -> None:
+        """``--check`` has to notice, whichever language drifted.
+
+        Driven through the real files rather than a temporary directory:
+        the generator no longer takes an output path, so the check has to
+        be exercised by editing a page and restoring it.  Both locales are
+        compared because a stale Chinese page is as wrong as a stale
+        English one, and nothing else would report it.
+        """
+        for locale, page in (
+            ("en", gen_commands.DEFAULT_OUTPUT),
+            ("zh-CN", gen_commands.LOCALE_OUTPUT),
+        ):
+            with self.subTest(locale=locale):
+                original = page.read_text(encoding="utf-8")
+                try:
+                    page.write_text("stale\n", encoding="utf-8")
+                    with redirect_stdout(io.StringIO()), \
+                            redirect_stderr(io.StringIO()):
+                        status = gen_commands.main([
+                            "--check", "--locale", locale,
+                        ])
+                finally:
+                    page.write_text(original, encoding="utf-8")
+                self.assertEqual(status, 1)
 
 
 if __name__ == "__main__":

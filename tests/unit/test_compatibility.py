@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PAGE = ROOT / "docs" / "compatibility.md"
+PAGE = ROOT / "docs" / "en" / "compatibility.md"
 
 #: The vocabulary the page defines.  A new word has to be defined there
 #: before it can be used, or the table stops being readable as a claim.
@@ -81,10 +81,12 @@ class PlacementTests(unittest.TestCase):
         for name in ("README.md", "README.zh-CN.md"):
             with self.subTest(readme=name):
                 text = (ROOT / name).read_text(encoding="utf-8")
-                self.assertIn("(docs/compatibility.md)", text)
+                self.assertIn("(docs/en/compatibility.md)", text)
 
     def test_the_architecture_tree_lists_it(self) -> None:
-        text = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+        text = (ROOT / "docs" / "en" / "architecture.md").read_text(
+            encoding="utf-8",
+        )
         self.assertIn("compatibility.md", text)
 
 

@@ -22,11 +22,19 @@
 - [Security](https://github.com/BinRacer/KernLens/blob/main/SECURITY.md)
 - [Changelog](https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md)
 
-## Not in the sidebar
+## zh-CN
 
-Reached from the language switcher in the site header, which
-applies to every page; listing them in the nav as well would
-present a language choice as a chapter of the documentation.
+The same pages in Chinese, at their own URLs.  Pages with no
+counterpart here are served in English under the Chinese
+prefix, so every link works and the language of what you land
+on is never a surprise.
 
-- [首页](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
+- [Overview](https://binracer.github.io/KernLens/zh-CN/): the same front page in Chinese
+- [Commands](https://binracer.github.io/KernLens/zh-CN/commands/): (translation)
+- [Tutorial](https://binracer.github.io/KernLens/zh-CN/tutorial/): (translation)
+- [Demo container](https://binracer.github.io/KernLens/zh-CN/demo-container/): (translation)
 - [Python API](https://binracer.github.io/KernLens/zh-CN/api/): the same API reference in Chinese
+- [Architecture](https://binracer.github.io/KernLens/zh-CN/architecture/): (translation)
+- [Compatibility](https://binracer.github.io/KernLens/zh-CN/compatibility/): (translation)
+- [Releasing](https://binracer.github.io/KernLens/zh-CN/releasing/): (translation)
+- [Naming](https://binracer.github.io/KernLens/zh-CN/naming/): (translation)

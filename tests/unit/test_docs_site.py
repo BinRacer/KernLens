@@ -20,6 +20,7 @@ DOCS = ROOT / "docs"
 MKDOCS = ROOT / "mkdocs.yml"
 
 _LOCAL_LINK = re.compile(r"\]\(([^)\s]+)\)")
+_NAV_ENTRY = re.compile(r"^\s*-\s+(?P<title>[^:]+):\s+(?P<target>\S+)\s*$")
 
 
 def _mkdocs() -> str:
@@ -28,6 +29,42 @@ def _mkdocs() -> str:
 
 def _nav() -> list[tuple[str, str]]:
     return gen_docs_site.nav_entries(_mkdocs())
+
+
+def _is_url(target: str) -> bool:
+    return target.startswith(("http://", "https://", "mailto:"))
+
+
+def _locale_nav(mkdocs: str, locale: str) -> list[tuple[str, str]]:
+    """The ``nav`` one locale overrides, as ``(title, target)`` pairs.
+
+    A locale's nav lives under ``plugins.i18n.languages`` and is indented
+    by a different amount from the top-level one, so it cannot be read by
+    the same scan.  The block is found by its own ``locale:`` line and
+    then followed until the indentation drops back.
+    """
+    lines = mkdocs.splitlines()
+    start = next(
+        index for index, line in enumerate(lines)
+        if line.strip() == f"- locale: {locale}"
+    )
+    indent = len(lines[start]) - len(lines[start].lstrip())
+    entries: list[tuple[str, str]] = []
+    inside = False
+    for line in lines[start + 1:]:
+        if line.strip() and len(line) - len(line.lstrip()) <= indent:
+            break
+        if line.strip() == "nav:":
+            inside = True
+            continue
+        if not inside:
+            continue
+        match = _NAV_ENTRY.match(line)
+        if match is not None:
+            entries.append(
+                (match.group("title").strip(), match.group("target"))
+            )
+    return entries
 
 
 def _local_targets(text: str) -> list[str]:
@@ -56,7 +93,7 @@ class GeneratedFileTests(unittest.TestCase):
         # The banner is no longer the first line: the front matter has to
         # be, or mkdocs reads the whole block as prose.  So the claim is
         # "the page says where it came from", not "on line one".
-        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+        for path in (DOCS / "en" / "index.md", DOCS / "zh-CN" / "index.md"):
             with self.subTest(path=path.relative_to(DOCS).as_posix()):
                 head = path.read_text(encoding="utf-8").splitlines()[:8]
                 self.assertTrue(
@@ -72,7 +109,7 @@ class GeneratedFileTests(unittest.TestCase):
         horizontal rule plus the literal ``hide:`` lines.  Nothing else in
         the build reports that, so it is checked here.
         """
-        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+        for path in (DOCS / "en" / "index.md", DOCS / "zh-CN" / "index.md"):
             with self.subTest(path=path.relative_to(DOCS).as_posix()):
                 first = path.read_text(encoding="utf-8").splitlines()[0]
                 self.assertEqual(first, "---")
@@ -81,39 +118,42 @@ class GeneratedFileTests(unittest.TestCase):
         # ``docs/api.md`` from ``docs/index.md`` would 404 under mkdocs:
         # it has to become ``api.md``.  A ``docs/`` prefix means the
         # rewrite did not happen at all.
-        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+        for path in (DOCS / "en" / "index.md", DOCS / "zh-CN" / "index.md"):
             text = path.read_text(encoding="utf-8")
             with self.subTest(path=path.relative_to(DOCS).as_posix()):
                 self.assertNotIn("](docs/", text)
 
     def test_the_english_front_page_does_not_climb(self) -> None:
-        """English is the default and lives at the site root.
+        """English is the default and is published at the site root.
 
-        ``../`` from ``index.md`` would leave the site directory, which
-        mkdocs cannot serve.  The Chinese page is the one that climbs,
-        and it has to -- see the test below.
+        The page is one directory down *on disk*, which is what a naive
+        depth count sees -- but the i18n plugin strips ``en/`` when it
+        builds, so the page is at ``/`` and ``../assets/demo.svg`` leaves
+        the site.  A raw-HTML ``src`` is not rewritten by mkdocs, so the
+        wrong prefix reaches the browser and 404s.  The climb is measured
+        in published depth, not source depth.
         """
-        text = (DOCS / "index.md").read_text(encoding="utf-8")
-        self.assertNotIn("](../", text)
-        self.assertNotIn('href="../', text)
+        text = (DOCS / "en" / "index.md").read_text(encoding="utf-8")
+        self.assertIn('src="assets/demo.svg"', text)
         self.assertNotIn('src="../', text)
+        self.assertNotIn('href="../', text)
 
     def test_the_chinese_page_climbs_exactly_one_level(self) -> None:
-        """Every site path on the Chinese page needs one ``..``.
+        """Chinese keeps its directory, so it climbs out of it once.
 
-        ``docs/`` is the site root, so ``zh-CN/index.md`` is one directory
-        down and an unprefixed ``assets/demo.svg`` would be emitted
-        verbatim by mkdocs (raw HTML is not rewritten) and resolve to
-        ``/zh-CN/assets/demo.svg`` -- a 404 that the English page never
-        showed, because there the same wrong guess and the truth coincide.
+        ``/zh-CN/`` is one level below the root, and ``assets/demo.svg``
+        is served once, at the root.  An unprefixed path would be emitted
+        verbatim and resolve to ``/zh-CN/assets/demo.svg`` -- a 404 that
+        the English page never showed, because there the wrong guess and
+        the truth coincided.
         """
         text = (DOCS / "zh-CN" / "index.md").read_text(encoding="utf-8")
         self.assertIn('src="../assets/demo.svg"', text)
         self.assertNotIn('src="assets/', text)
-        self.assertNotIn("](tutorial/", text)
+        self.assertNotIn('src="../../', text)
 
     def test_every_relative_link_resolves_inside_the_site(self) -> None:
-        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+        for path in (DOCS / "en" / "index.md", DOCS / "zh-CN" / "index.md"):
             here = path.parent.relative_to(DOCS)
             for target in _local_targets(path.read_text(encoding="utf-8")):
                 with self.subTest(
@@ -129,7 +169,7 @@ class GeneratedFileTests(unittest.TestCase):
         so copying it in would put two identical controls on the front
         page, one of them linking to itself.  The generator drops it.
         """
-        for path in (DOCS / "index.md", DOCS / "zh-CN" / "index.md"):
+        for path in (DOCS / "en" / "index.md", DOCS / "zh-CN" / "index.md"):
             text = path.read_text(encoding="utf-8")
             with self.subTest(path=path.relative_to(DOCS).as_posix()):
                 self.assertNotIn('README.zh-CN.md">', text)
@@ -142,6 +182,86 @@ class GeneratedFileTests(unittest.TestCase):
             with self.subTest(readme=name):
                 text = (ROOT / name).read_text(encoding="utf-8")
                 self.assertIn('README.md">English', text)
+
+
+class PathRewriteTests(unittest.TestCase):
+    """Relative depth is a property of the URL, not of the source tree.
+
+    The two differ exactly once, and it is the case that broke: the
+    default language is stored one directory down (``docs/en/index.md``)
+    but published at the site root.  Counting source separators made the
+    English front page emit ``../assets/demo.svg``, which leaves the site
+    from ``/``; a raw-HTML ``src`` is never rewritten by mkdocs, so the
+    browser requested it and 404'd while the Chinese page -- where the
+    naive count happens to be right -- rendered fine.
+    """
+
+    def test_raw_html_depth_follows_the_published_url(self) -> None:
+        for dest, expected in (
+            ("en/index.md", "assets/demo.svg"),
+            ("zh-CN/index.md", "../assets/demo.svg"),
+            # Use directory URLs, so a page that is not an index is
+            # served one level deeper: ``/tutorial/kl-help/``.
+            ("en/tutorial/kl-help.md", "../../assets/demo.svg"),
+            ("zh-CN/tutorial/README.md", "../../assets/demo.svg"),
+        ):
+            with self.subTest(dest=dest):
+                self.assertEqual(
+                    gen_docs_site.rewrite_attribute("src", "docs/assets/demo.svg", dest),
+                    expected,
+                )
+
+    def test_markdown_links_climb_out_of_the_language_directory(self) -> None:
+        """Assets are shared; pages are duplicated per locale.
+
+        ``commands.md`` exists beside the page in both languages, so the
+        link stays flat.  ``assets/demo.cast`` exists once, at the root,
+        so a page in a language directory climbs to it -- and ``docs/``
+        prefixes never reach the output, because mkdocs cannot serve them.
+        """
+        self.assertEqual(
+            gen_docs_site.rewrite_target("docs/en/commands.md", "en/index.md"),
+            "commands.md",
+        )
+        # ``docs/en/commands.md`` names the default language's file, but
+        # the locale is chosen by the page: on a Chinese page it means
+        # "the Chinese commands page", which exists.
+        self.assertEqual(
+            gen_docs_site.rewrite_target("docs/en/commands.md", "zh-CN/index.md"),
+            "commands.md",
+        )
+        self.assertEqual(
+            gen_docs_site.rewrite_target("docs/assets/demo.cast", "zh-CN/index.md"),
+            "../assets/demo.cast",
+        )
+
+    def test_an_untranslated_page_falls_back_to_the_default_language(self) -> None:
+        """A missing translation must link somewhere that exists.
+
+        The fallback order is the plugin's own: this locale, then the
+        default, then the root.  ``tutorial`` has a Chinese index but no
+        Chinese command pages, so it resolves inside ``zh-CN`` while a
+        page nobody has translated resolves into ``en``.
+        """
+        self.assertEqual(
+            gen_docs_site.rewrite_target(
+                "docs/en/tutorial/README.md", "zh-CN/index.md",
+            ),
+            "tutorial/README.md",
+        )
+        # ``releasing.md`` has a Chinese translation, so it stays flat;
+        # a command page does not, so the link crosses into ``en/``.  Both
+        # resolve to a file that exists in the build.
+        self.assertEqual(
+            gen_docs_site.rewrite_target("docs/en/releasing.md", "zh-CN/index.md"),
+            "releasing.md",
+        )
+        self.assertEqual(
+            gen_docs_site.rewrite_target(
+                "docs/en/tutorial/kl-help.md", "zh-CN/index.md",
+            ),
+            "../en/tutorial/kl-help.md",
+        )
 
 
 class RenderedOutputTests(unittest.TestCase):
@@ -208,20 +328,26 @@ class NavigationTests(unittest.TestCase):
     def test_every_page_is_reachable(self) -> None:
         """A page nobody links to is a page nobody reads.
 
-        Three kinds of page are not nav entries, and each has a different
+        Two kinds of page are not nav entries, and each has a different
         reason, so each is checked differently:
 
-        - the 40 tutorial pages are reached from the generated index, so
-          that index has to name them;
+        - the 40 tutorial pages are reached from the generated index, and
+          every language's index has to name them -- the pages themselves
+          are not translated, so the Chinese index links to them where
+          they are published (see ``LINK_DIR``);
         - the Chinese pages are reached from the header switcher, which is
-          the same control on every page -- so they are checked to be
-          published (built into the site) and listed in ``llms.txt``;
+          the same control on every page, and each locale overrides
+          ``nav`` so they are nav entries of their own build -- checked
+          here against ``llms.txt``, which lists them at their own URLs;
         - anything else has no excuse and fails.
         """
         nav = {target for _, target in _nav()}
-        tutorial = (DOCS / "tutorial" / "README.md").read_text(
-            encoding="utf-8",
-        )
+        indexes = {
+            locale: (DOCS / locale / "tutorial" / "README.md").read_text(
+                encoding="utf-8",
+            )
+            for locale in ("en", "zh-CN")
+        }
         llms = (DOCS / "llms.txt").read_text(encoding="utf-8")
         for path in sorted(DOCS.rglob("*")):
             if not path.is_file() or path.suffix != ".md":
@@ -229,30 +355,39 @@ class NavigationTests(unittest.TestCase):
             relative = path.relative_to(DOCS).as_posix()
             if relative in nav:
                 continue
-            if relative.startswith("tutorial/"):
-                self.assertIn(path.name, tutorial, relative)
+            locale, _, rest = relative.partition("/")
+            if rest.startswith("tutorial/") and path.stem.startswith("kl-"):
+                self.assertIn(path.name, indexes[locale], relative)
                 continue
-            if relative.startswith("zh-CN/"):
-                # Not in the sidebar by design: the header switcher is
-                # the control for choosing a language, and a nav section
-                # listing it made the same choice twice.
+            if locale == "zh-CN":
                 self.assertIn(
                     gen_docs_site.page_url(relative), llms, relative,
                 )
                 continue
             self.fail(f"{relative} is not in the nav")
 
-    def test_the_chinese_pages_declare_themselves_not_in_the_nav(self) -> None:
-        """`not_in_nav` is how the build is told the omission is intended.
+    def test_every_locale_directory_is_backed_by_the_plugin(self) -> None:
+        """Two directories on disk, two locales in the build.
 
-        Without it, ``mkdocs build --strict`` treats a published page that
-        the nav does not mention as a warning and fails -- which is the
-        right default, and the reason the exception is written down rather
-        than the check being relaxed.
+        ``docs_structure: folder`` pairs ``en/x.md`` with ``zh-CN/x.md``
+        by path, so a directory that the plugin does not know about is
+        published under its own name instead of being treated as a
+        language.  ``fallback_to_default`` is what keeps a page published
+        in Chinese when nobody has translated it yet.
         """
         text = _mkdocs()
-        self.assertIn("not_in_nav:", text)
-        self.assertIn("zh-CN/*.md", text)
+        self.assertIn("docs_structure: folder", text)
+        self.assertIn("fallback_to_default: true", text)
+        configured = set(re.findall(r"locale:\s*(\S+)", text))
+        # Every directory that holds pages is a locale, and every locale
+        # has a directory.  A directory missing from the config would be
+        # published at ``/its-own-name/`` with no nav of its own.
+        on_disk = {
+            path.name for path in DOCS.iterdir()
+            if path.is_dir() and path.name != "assets"
+        }
+        self.assertEqual(configured, on_disk)
+        self.assertEqual(configured, {"en", "zh-CN"})
 
     def test_every_nav_page_has_an_llms_note(self) -> None:
         for title, target in _nav():
@@ -283,58 +418,87 @@ class LanguageLayoutTests(unittest.TestCase):
     failed there and nowhere else, so it is checked rather than assumed.
     """
 
-    def test_the_chinese_pages_are_in_their_own_directory(self) -> None:
-        chinese = sorted(
-            path.name for path in (DOCS / "zh-CN").glob("*.md")
-        )
-        self.assertEqual(chinese, ["api.md", "index.md"])
-        # And no Chinese page is left loose in the root.
-        self.assertEqual(
-            [path.name for path in DOCS.glob("*.zh-CN.md")], [],
-        )
+    def test_every_page_lives_under_a_language_directory(self) -> None:
+        """The plugin pairs translations by path, so the path has a shape.
 
-    def test_no_english_page_grew_a_language_suffix(self) -> None:
-        # ``index.md``, not ``index.en.md``: English is the default and
-        # an unnamed page is what a default language should look like.
-        self.assertEqual(list(DOCS.glob("*.en.md")), [])
-        self.assertTrue((DOCS / "index.md").is_file())
-        self.assertTrue((DOCS / "api.md").is_file())
-
-    def test_the_nav_lists_only_the_default_language(self) -> None:
-        """English is the default, so English is what the sidebar shows.
-
-        The Chinese pages used to be a nav section, which put a language
-        choice in the place a reader looks for the table of contents --
-        while the header carried a switcher for the same purpose.  Two
-        controls for one decision, one of them in the wrong place.
-
-        Nothing about this makes the Chinese pages less published; it
-        moves the way you reach them.  The test below covers that.
+        ``docs/en/api.md`` and ``docs/zh-CN/api.md`` are the same page;
+        a file at ``docs/api.md`` would belong to no locale and be
+        published once, unlinked.  Assets are the exception -- they are
+        not translated, so they stay at the root and every page climbs
+        out of its directory to reach them.
         """
-        targets = [target for _, target in _nav()]
-        self.assertIn("index.md", targets)
-        self.assertNotIn("zh-CN/index.md", targets)
-        self.assertNotIn("zh-CN/api.md", targets)
-        self.assertNotIn("zh-CN.md", targets)
-        # English pages do not live under a language directory either.
-        self.assertFalse(
-            [t for t in targets if t.startswith("en/")], targets,
+        loose = sorted(
+            path.name for path in DOCS.glob("*.md")
         )
+        self.assertEqual(loose, [], "pages must live under en/ or zh-CN/")
+        for path in sorted(DOCS.glob("*/**/*.md")):
+            with self.subTest(page=path.relative_to(DOCS).as_posix()):
+                self.assertIn(
+                    path.relative_to(DOCS).parts[0], ("en", "zh-CN"),
+                )
 
-    def test_the_off_nav_pages_are_still_published(self) -> None:
-        """Not in the sidebar is not the same as not published.
+    def test_no_page_grew_a_language_suffix(self) -> None:
+        """The directory names the language; the filename does not.
 
-        `not_in_nav` keeps the build quiet about the omission, so the
-        pages would still be built -- but nothing would notice if they
-        stopped being listed anywhere.  `OFF_NAV` is the list the
-        generator uses for ``llms.txt``, and every entry has to name a
-        file that exists.
+        ``docs_structure: folder`` is the strategy in use, and mixing in
+        the ``suffix`` convention (``index.en.md``) would leave files the
+        plugin reads as ordinary pages called "index.en".
         """
-        self.assertTrue(gen_docs_site.OFF_NAV)
-        for _, target in gen_docs_site.OFF_NAV:
-            with self.subTest(page=target):
-                self.assertTrue((DOCS / target).is_file(), target)
-                self.assertIn(target, gen_docs_site.PAGE_NOTES)
+        self.assertEqual(list(DOCS.rglob("*.en.md")), [])
+        self.assertEqual(list(DOCS.rglob("*.zh-CN.md")), [])
+        self.assertTrue((DOCS / "en" / "index.md").is_file())
+        self.assertTrue((DOCS / "en" / "api.md").is_file())
+
+    def test_each_language_navigates_its_own_pages(self) -> None:
+        """The sidebar follows the language, not the file on disk.
+
+        A single shared nav cannot do this: the entries point at source
+        paths, so listing ``en/api.md`` under a Chinese build would send
+        the reader into the English tree while the page around it is
+        Chinese.  Each locale therefore overrides ``nav`` with paths of
+        its own.  English keeps the top-level ``nav`` because it is the
+        default, and the plugin builds it on the site root.
+        """
+        text = _mkdocs()
+        english = [target for _, target in _nav()]
+        self.assertTrue(english, "the default nav is empty")
+        self.assertTrue(all(t.startswith("en/") or _is_url(t)
+                            for t in english), english)
+
+        # The Chinese nav does not carry the prefix: its targets are
+        # resolved inside the locale's own copy of the docs tree, which
+        # is how the plugin pairs the two directories.  A prefixed target
+        # here would send the sidebar to the English pages.
+        chinese = [target for _, target in _locale_nav(text, "zh-CN")]
+        self.assertTrue(chinese, "zh-CN has no nav of its own")
+        self.assertTrue(
+            all(
+                not target.startswith(("en/", "zh-CN/")) or _is_url(target)
+                for target in chinese
+            ),
+            chinese,
+        )
+        self.assertEqual(len(chinese), len(english))
+
+    def test_the_two_navs_list_the_same_pages(self) -> None:
+        """A page added to one language's sidebar is added to both.
+
+        ``fallback_to_default`` publishes an English page under the
+        Chinese prefix when it has no translation, so the Chinese nav can
+        always offer every page the English one does.  Forgetting to add
+        the entry is silent otherwise: the page is built and reachable by
+        URL, just not from the sidebar.
+        """
+        text = _mkdocs()
+        english = {
+            target[len("en/"):] for _, target in _nav() if not _is_url(target)
+        }
+        chinese = {
+            target
+            for _, target in _locale_nav(text, "zh-CN")
+            if not _is_url(target)
+        }
+        self.assertEqual(english, chinese)
 
     def test_the_chinese_pages_declare_themselves_chinese(self) -> None:
         """``<html lang>`` is per page, and the theme has one value.
@@ -495,10 +659,11 @@ class LanguageSwitcherTests(unittest.TestCase):
                     url.startswith(gen_docs_site.SITE), url,
                 )
                 relative = url[len(gen_docs_site.SITE):].strip("/")
-                page = (
-                    DOCS / relative / "index.md" if relative
-                    else DOCS / "index.md"
-                )
+                # The default locale is built on the site root, so the
+                # unprefixed URL is the English front page -- which lives
+                # at ``docs/en/index.md``, its own language directory.
+                locale = relative or gen_docs_site.DEFAULT_LOCALE
+                page = DOCS / locale / "index.md"
                 self.assertTrue(page.is_file(), page)
 
     def test_the_links_are_absolute(self) -> None:

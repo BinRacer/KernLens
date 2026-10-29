@@ -3001,7 +3001,7 @@ class DocumentationTests(unittest.TestCase):
     def test_command_reference_lists_every_command(self) -> None:
         from contract_spec import CANONICAL_COMMANDS as FROZEN
 
-        self.assertEqual(self._documented("docs/commands.md"), set(FROZEN))
+        self.assertEqual(self._documented("docs/en/commands.md"), set(FROZEN))
 
     def test_both_readmes_link_to_the_command_reference(self) -> None:
         for name in ("README.md", "README.zh-CN.md"):
@@ -3009,7 +3009,7 @@ class DocumentationTests(unittest.TestCase):
                 text = (GDBINIT_PATH.parent / name).read_text(
                     encoding="utf-8",
                 )
-                self.assertIn("docs/commands.md", text)
+                self.assertIn("docs/en/commands.md", text)
 
 
 class TutorialTests(unittest.TestCase):
@@ -3023,7 +3023,7 @@ class TutorialTests(unittest.TestCase):
     capture, and a command that has no page at all.
     """
 
-    TUTORIAL = GDBINIT_PATH.parent / "docs" / "tutorial"
+    TUTORIAL = GDBINIT_PATH.parent / "docs" / "en" / "tutorial"
     CAPTURE = GDBINIT_PATH.parent / "tools" / "tutorial_capture.json"
     META = GDBINIT_PATH.parent / "tools" / "tutorial_meta.json"
 
