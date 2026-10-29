@@ -187,12 +187,17 @@ class FacadeTestBase(unittest.TestCase):
     def set_field(
         self, obj: int, type_name: str, field: str, value: int,
     ) -> None:
-        fake_gdb.values[f"(({type_name} *){obj})->{field}"] = value
+        # The adapter formats object addresses as hex; older tests wrote
+        # them in decimal, so register both spellings.
+        for address in {f"{obj}", f"{obj:#x}"}:
+            fake_gdb.values[
+                f"(({type_name} *){address})->{field}"
+            ] = value
 
     def set_field_hex(
         self, obj: int, type_name: str, field: str, value: int,
     ) -> None:
-        fake_gdb.values[f"(({type_name} *){obj:#x})->{field}"] = value
+        self.set_field(obj, type_name, field, value)
 
     def link_global(self, name: str, link: int) -> None:
         self.set_addr(name, link)
@@ -939,9 +944,11 @@ class CpuInfoTests(FacadeTestBase):
 
     def test_percpu_off(self) -> None:
         link = 0xFFFF888000001000
-        self.link_global("__per_cpu_offset[0]", link)
+        self.link_global("__per_cpu_offset", link)
         self.set_mem(link, 0x100000)
+        self.set_mem(link + 8, 0x200000)
         self.assertEqual(self.cpu.percpu_off(0), 0x100000)
+        self.assertEqual(self.cpu.percpu_off(1), 0x200000)
 
     def test_cur_cpu(self) -> None:
         # Modern kernels (>= 6.0) expose the per-CPU ``cpu_number`` directly;
@@ -1057,7 +1064,7 @@ class SlubFreelistTests(FacadeTestBase):
         percpu = 0x100000
         cpu_slab = template + percpu
         self.set_field(cache, "struct kmem_cache", "cpu_slab", template)
-        self.link_global("__per_cpu_offset[0]", 0x3000)
+        self.link_global("__per_cpu_offset", 0x3000)
         self.set_mem(0x3000, percpu)
         self.set_field(cpu_slab, "struct kmem_cache_cpu", "slab", 0x4000)
         self.set_field(cpu_slab, "struct kmem_cache_cpu", "freelist", 0x5000)
@@ -1191,6 +1198,94 @@ class SlubPartialTests(FacadeTestBase):
             self.slub.in_partial(self.cache, 0x5000, 0),
         )
         self.assertFalse(self.slub.in_partial(0, 0, 0))
+
+
+class BtfOnlySlubTests(FacadeTestBase):
+    """Slab inspection on a vmlinux that has BTF but no DWARF.
+
+    GDB 15 cannot read BTF, so no ``struct`` type is available and every
+    expression the inspector would normally evaluate fails.  The demo
+    image ships exactly this -- ``objcopy --strip-debug`` keeps ``.BTF``
+    and the symbol table -- so the member offsets have to come from the
+    loaded image instead.
+    """
+
+    #: 6.1.134 offsets, as BTF reports them (and DWARF confirms).
+    OFFSETS = {
+        ("struct kmem_cache", "cpu_slab"): 0x00,
+        ("struct kmem_cache", "size"): 0x18,
+        ("struct kmem_cache", "offset"): 0x28,
+        ("struct kmem_cache", "random"): 0x30,
+        ("struct kmem_cache", "name"): 0x60,
+        ("struct kmem_cache", "node"): 0xD8,
+        ("struct kmem_cache_cpu", "freelist"): 0x00,
+        ("struct kmem_cache_cpu", "slab"): 0x10,
+        ("struct slab", "slab_list"): 0x08,
+        ("struct slab", "slab_cache"): 0x10,
+        ("struct slab", "freelist"): 0x18,
+        ("struct slab", "counters"): 0x28,
+        ("struct kmem_cache_node", "partial"): 0x10,
+    }
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.slub = facade.SlubInspector(
+            self.config, self.reader, self.styler, self.logger, self.cpu,
+            offset_of=lambda type_name, path: self.OFFSETS.get(
+                (type_name, path),
+            ),
+        )
+        self.cache = 0x1000
+
+    def word(self, addr: int, value: int) -> None:
+        fake_gdb.values[f"*(unsigned long *){addr:#x}"] = value
+
+    def dword(self, addr: int, value: int) -> None:
+        fake_gdb.values[f"*(unsigned int *){addr:#x}"] = value
+
+    def test_cache_name(self) -> None:
+        self.word(self.cache + 0x60, 0x2000)
+        fake_gdb.strings[0x2000] = "kmalloc-1k"
+        self.assertEqual(self.slub.cache_name(self.cache), "kmalloc-1k")
+
+    def test_cpu_slab_and_freelist(self) -> None:
+        template = 0x2000
+        percpu = 0x100000
+        self.word(self.cache, template)
+        self.link_global("__per_cpu_offset", 0x3000)
+        self.word(0x3000, percpu)
+        cpu_slab = template + percpu
+        self.word(cpu_slab + 0x10, 0x4000)
+        self.word(cpu_slab, 0x5000)
+        self.assertEqual(self.slub.cpu_slab_ptr(self.cache), template)
+        self.assertEqual(self.slub.cpu_active_slab(self.cache, 0), 0x4000)
+        self.assertEqual(self.slub.cpu_freelist(self.cache, 0), 0x5000)
+
+    def test_freeptr_offset_and_random(self) -> None:
+        self.dword(self.cache + 0x18, 0x400)
+        self.dword(self.cache + 0x28, 0x200)
+        self.dword(self.cache + 0x30, 0xABCD)
+        self.assertEqual(self.slub.freeptr_offset(self.cache), 0x200)
+        self.assertEqual(self.slub.freeptr_random(self.cache), 0xABCD)
+
+    def test_partial_list(self) -> None:
+        node = 0x2000
+        slab_page = 0x3000
+        self.word(self.cache + 0xD8, node)
+        head = node + 0x10
+        self.word(head, slab_page + 0x08)
+        self.word(slab_page + 0x08, head)
+        self.word(slab_page + 0x18, 0x4000)
+        self.assertEqual(
+            self.slub.partial_info(self.cache, 0),
+            (1, node, slab_page, 0x4000),
+        )
+        self.assertTrue(self.slub.in_partial(self.cache, slab_page, 0))
+        self.assertFalse(self.slub.in_partial(self.cache, 0x9000, 0))
+
+    def test_slab_counters(self) -> None:
+        self.dword(0x3000 + 0x28, 3 | (16 << 16))
+        self.assertEqual(self.slub.slab_counters(0x3000), (3, 16, 0))
 
 
 class SlubPrintTests(FacadeTestBase):

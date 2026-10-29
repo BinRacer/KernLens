@@ -251,7 +251,8 @@ class KernelDebugger:
         self.walker: PageTableWalker = PageTableWalker(self.reader)
         self.kernel: KernelInspector = KernelInspector(self.reader)
         self.slub: SlubInspector = SlubInspector(
-            self.config, self.reader, self.styler, self.logger, self.cpu
+            self.config, self.reader, self.styler, self.logger, self.cpu,
+            offset_of=self.kernel._layout_offset,
         )
 
         # Make the reader follow KASLR on its own: when the slide is unset

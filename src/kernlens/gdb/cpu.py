@@ -110,10 +110,13 @@ class CpuInfo:
         """Read ``__per_cpu_offset[cpu]`` at its runtime address."""
         if cpu < 0:
             return None
-        addr = self._reader.kvar_addr(f"__per_cpu_offset[{cpu}]")
-        if not addr:
+        # `&__per_cpu_offset[cpu]` needs the symbol's type, which a
+        # vmlinux stripped of DWARF does not carry.  The array elements
+        # are pointers, so address arithmetic works without it.
+        base = self._reader.kvar_addr("__per_cpu_offset")
+        if not base:
             return None
-        return self._reader.u64(f"*(unsigned long *){addr:#x}")
+        return self._reader.u64(f"*(unsigned long *){base + 8 * cpu:#x}")
 
 
 __all__ = ["CpuInfo"]

@@ -8,7 +8,12 @@ image, so the tests exercise the actual byte layout rather than a mock.
 from __future__ import annotations
 
 import struct
+import tempfile
+import types
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 from kernlens.gdb import btf
 
@@ -242,6 +247,61 @@ class LoadTests(unittest.TestCase):
     def test_find_in_gdb_without_gdb_is_none(self) -> None:
         # The parser is imported outside GDB in the unit suite.
         self.assertIsNone(btf.find_in_gdb())
+
+
+class ObjfileTests(unittest.TestCase):
+    """The loaded image's file is a BTF source, not just a fallback.
+
+    GDB 15's ``gdb.Objfile`` has no ``sections`` attribute, so on current
+    releases the file is the only place ``.BTF`` can come from.  A build
+    stripped of DWARF -- a distribution debug package, or the demo image
+    -- has no other type information at all.
+    """
+
+    def setUp(self) -> None:
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.path = Path(self.folder.name) / "vmlinux"
+        self.path.write_bytes(_make_elf64({".BTF": make_blob()}))
+
+    def fake_gdb(self, objfile: object, read_memory: object = None) -> object:
+        module = types.ModuleType("gdb")
+        module.error = type("FakeGdbError", (Exception,), {})
+        module.current_progspace = lambda: SimpleNamespace(
+            objfiles=lambda: [objfile],
+        )
+        module.selected_inferior = lambda: SimpleNamespace(
+            read_memory=read_memory,
+        )
+        return module
+
+    def test_the_file_is_read_when_gdb_exposes_no_sections(self) -> None:
+        objfile = SimpleNamespace(filename=str(self.path))
+        with mock.patch.object(btf, "gdb", self.fake_gdb(objfile)):
+            database = btf.find_in_gdb()
+        self.assertIsNotNone(database)
+        assert database is not None
+        self.assertEqual(database.offset("struct outer", "in.b"), 8)
+
+    def test_the_file_is_read_when_the_section_cannot_be_mapped(self) -> None:
+        # A live target maps the section at its link-time address, so a
+        # KASLR kernel fails this read.  The file still describes the
+        # image, and is what the demo relies on.
+        def unreadable(addr: int, size: int) -> bytes:
+            raise btf.gdb.error("Cannot access memory")
+
+        section = SimpleNamespace(name=".BTF", start=0x1000, end=0x2000)
+        objfile = SimpleNamespace(
+            filename=str(self.path), sections=lambda: [section],
+        )
+        with mock.patch.object(btf, "gdb", self.fake_gdb(objfile, unreadable)):
+            database = btf.find_in_gdb()
+        self.assertIsNotNone(database)
+
+    def test_an_objfile_without_a_file_yields_none(self) -> None:
+        objfile = SimpleNamespace()
+        with mock.patch.object(btf, "gdb", self.fake_gdb(objfile)):
+            self.assertIsNone(btf.find_in_gdb())
 
 
 # --- minimal ELF builders ---------------------------------------------
