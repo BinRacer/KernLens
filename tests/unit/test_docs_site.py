@@ -295,8 +295,15 @@ class RenderedOutputTests(unittest.TestCase):
         # ``docs/assets/demo.svg`` is XML: a bare ESC makes it malformed,
         # and ``demo.cast`` is a JSON text record.  Neither can carry
         # colour, so neither may contain the byte.
+        #
+        # Binary assets are skipped, and that is not a loophole: a PNG's
+        # bytes are zlib streams, so 0x1b occurs as data rather than as an
+        # escape sequence, and it is impossible to render text into a PNG
+        # in the first place.  The check is about a *text* artifact that
+        # claims to be colour-free, which is the failure that happened.
+        text_suffixes = {".svg", ".cast", ".css", ".txt", ".md"}
         for path in sorted((DOCS / "assets").iterdir()):
-            if not path.is_file():
+            if not path.is_file() or path.suffix not in text_suffixes:
                 continue
             with self.subTest(asset=path.name):
                 raw = path.read_bytes()

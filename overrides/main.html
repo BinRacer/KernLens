@@ -18,4 +18,42 @@
   {# `| url` makes the href relative to the current page, which is what a
      page at `zh-CN/` needs; a hard-coded `assets/` would 404 there. #}
   <link rel="stylesheet" href="{{ 'assets/extra.css' | url }}">
+
+  {#
+    Link previews.  Without these, every shared link -- issue, chat, social
+    -- renders as a bare URL, because the theme emits no Open Graph tags at
+    all.  `assets/social-card.png` is a rasterisation of the committed SVG
+    beside it: the SVG is the source, but most unfurlers reject image/svg+xml,
+    so the PNG is what they are given.  Re-render it after editing the SVG
+    (the command is in `docs/en/architecture.md`).
+
+    Everything here comes from `site_name`/`site_description`/`site_url` and
+    the page's own title, so a renamed project or a new page needs no edit
+    in this file.
+  #}
+  {% set card = config.site_url ~ 'assets/social-card.png' %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ page.title | default(config.site_name) }}">
+  <meta property="og:description" content="{{ config.site_description }}">
+  <meta property="og:image" content="{{ card }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="KernLens: kl-walk decoding a 2 MiB page-table mapping on a live 6.1.134 kernel">
+  <meta name="twitter:card" content="summary_large_image">
+  {#
+    `og:url` and `og:locale` need the page, and the theme renders `404.html`
+    with `page = None`.  Guard rather than assume: a missing tag on the error
+    page costs nothing, an exception costs the whole build.
+  #}
+  {% if page %}
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  {# OGP wants `language_TERRITORY`.  `config.theme.language` stays `en` for
+     both builds, and the i18n plugin reduces `zh-CN` to `zh`, so neither
+     carries the territory; the page's own URL does, because the plugin
+     prefixes every non-default locale with its directory name. #}
+  {% set chinese = page.url.startswith('zh-CN/') %}
+  <meta property="og:locale" content="{{ 'zh_CN' if chinese else 'en_US' }}">
+  <meta property="og:locale:alternate" content="{{ 'en_US' if chinese else 'zh_CN' }}">
+  {% endif %}
 {% endblock %}

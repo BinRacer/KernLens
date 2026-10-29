@@ -294,6 +294,29 @@ registry by the test suite, so it cannot quietly become false.
 | [`CITATION.cff`](CITATION.cff) | how to cite the project, and the version being cited |
 | [`CHANGELOG.md`](CHANGELOG.md) | every change, newest first |
 
+## How it relates to other tools
+
+KernLens occupies a narrow slot, and it is worth knowing whether that is
+yours before installing anything.
+
+| If you want | Use | Why not this |
+| --- | --- | --- |
+| A general-purpose GDB front end while debugging a kernel | **pwndbg** | Its kernel commands are ports KernLens also has; pwndbg is the larger, more integrated tool. KernLens is designed to sit *beside* it, registering only `kernlens-*`/`kl-*` names so nothing collides. |
+| To query kernel structures from Python with no debugger in the loop | **drgn** | drgn reads the kernel directly through its own drivers. KernLens has no such path: every read goes through GDB, which is why it can attach to a `gdbserver` with no guest cooperation, and also why it cannot work without GDB. |
+| To analyse a `vmcore` crash dump | **crash**, **drgn** | KernLens reads a live `target remote` only; see [`docs/en/compatibility.md`](docs/en/compatibility.md). |
+| To see *why* a page-table or SLUB answer is what it is | **this** | Every command prints the intermediate values -- the entry address, the raw word, the `freeptr` operands -- so a wrong result is visibly wrong rather than plausible. That is the design goal, not a side effect. |
+| To run page-table and freelist decoding as a library in a test | **this** | `core/` and `output/` are pure Python with no `gdb` import, so the arithmetic runs in a normal test suite. |
+
+The "why not this" column is a description of scope, not a claim that
+one tool is better. pwndbg, drgn and crash each do things KernLens does
+not attempt, and the ported commands exist because pwndbg already showed
+what they should do.
+
+It is one maintainer's tool. What that means in practice is in
+[`docs/en/compatibility.md`](docs/en/compatibility.md): every claim is
+either measured on a named kernel, expected from the requirements, or
+listed as not claimed.
+
 ## Requirements and license
 
 Python 3.10+ and a GDB built with Python 3.10+. Those are two

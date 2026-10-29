@@ -117,12 +117,14 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   │   ├── api.md            # Python API reference
 │   │   ├── commands.md       # generated command/alias table
 │   │   ├── naming.md         # command, example and Python names
-│   │   └── tutorial/         # one generated page per command (40)
+│   │   └── tutorial/         # one generated page per command (30)
 │   ├── zh-CN/            # the Chinese pages, same paths, own directory
 │   │   ├── index.md      # generated from README.zh-CN.md
 │   │   ├── api.md        # the same API reference, in Chinese
 │   │   └── tutorial/     # index translated; the pages are not
-│   ├── assets/           # generated demo.svg + demo.cast, and extra.css
+│   ├── assets/           # generated demo.svg + demo.cast, extra.css,
+│   │                     #   plus the hand-written social-card.svg and
+│   │                     #   its rendered social-card.png
 │   └── llms.txt          # generated plain-text index of the site
 ├── overrides/            # mkdocs theme overrides: the language switcher
 ├── hooks/
@@ -192,6 +194,26 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 ├── CREDITS.md            # third-party attribution
 └── CHANGELOG.md
 ```
+
+`docs/assets/social-card.svg` is the only asset here that is **hand-written
+rather than generated**, because it is prose in a different medium: the
+one screenshot the project gets to show before anyone clicks. Its PNG
+neighbour is what link unfurlers receive, since most reject
+`image/svg+xml`; re-render it after any edit, because nothing in CI can
+tell that the two disagree:
+
+```console
+chromium --headless --hide-scrollbars --window-size=1200,630 \
+    --screenshot=docs/assets/social-card.png \
+    "file://$PWD/docs/assets/social-card.svg"
+```
+
+`overrides/main.html` points the Open Graph tags at that PNG and builds
+the URL from `site_url`, so the front page and every tutorial page unfurl
+with a real image instead of a bare link. `tests/unit/test_docs_site.py`
+holds the surrounding invariants: a text asset in `docs/assets/` may not
+contain a raw `ESC` byte, because an SGR sequence in an XML or JSON
+artifact makes it unparseable.
 
 ## Public API map
 

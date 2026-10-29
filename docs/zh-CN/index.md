@@ -276,6 +276,26 @@ KAddr.is_direct_map(0xffff888000001234)  # True
 | [`CITATION.cff`](https://github.com/BinRacer/KernLens/blob/main/CITATION.cff) | 如何引用本项目，以及被引用的版本 |
 | [`CHANGELOG.md`](https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md) | 全部变更，最新的在前 |
 
+## 与其它工具的关系
+
+KernLens 的位置很窄，值得先判断是不是你要的那个再装。
+
+| 你想要 | 用 | 为什么不是这个 |
+| --- | --- | --- |
+| 调试内核时一个通用的 GDB 前端 | **pwndbg** | 它的内核命令 KernLens 大多也有移植；pwndbg 更大、更集成。KernLens 特意与它**并存**：只注册 `kernlens-*`/`kl-*` 名字，不冲突。 |
+| 不用调试器介入，从 Python 直接查内核结构体 | **drgn** | drgn 用自己的驱动直接读内核。KernLens 没有这条路：每次读取都经过 GDB，所以它能挂上没有 guest 配合的 `gdbserver`，也因此离不开 GDB。 |
+| 分析 `vmcore` 崩溃转储 | **crash**、**drgn** | KernLens 只读活的 `target remote`，见 [`docs/en/compatibility.md`](compatibility.md)。 |
+| 想看清页表或 SLUB 那个答案**为什么**是这个值 | **这个** | 每条命令都打印中间量——表项地址、原始字、`freeptr` 的各个操作数——所以错误的结果看起来就是错的，而不是看起来很合理。这是设计目标，不是副作用。 |
+| 想在测试里把页表和 freelist 解码当库调用 | **这个** | `core/` 与 `output/` 是纯 Python、不 import `gdb`，所以这些算术能在普通测试套件里跑。 |
+
+"为什么不是这个"这一列说的是**范围**，不是说哪个工具更好。pwndbg、drgn、crash
+各自都做 KernLens 不打算做的事；那些移植的命令之所以存在，正是因为 pwndbg 已经示范了
+它们该是什么样子。
+
+它是**一个人维护**的工具。这在实践中意味着什么写在
+[`docs/en/compatibility.md`](compatibility.md)：每一条主张要么在某个具名内核上实测过，
+要么由环境要求推出，要么明确列为未主张。
+
 ## 环境要求与许可
 
 Python 3.10+，以及一个用 Python 3.10+ 构建的 GDB。这是两个解释器，
