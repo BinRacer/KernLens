@@ -83,6 +83,32 @@ jobs:
       - name: Test
         run: uv run --frozen pytest --cov=kernlens --cov-report=term-missing
 
+      - name: Test under the stdlib runner
+        # A second configuration, not a duplicate run.  The suite claims
+        # to be unittest-compatible, and CONTRIBUTING tells a reader to
+        # run it that way, but nothing checked either claim: the paths
+        # ``tests/conftest.py`` injects are installed by pytest's
+        # ``pythonpath`` setting, which does nothing outside pytest, so
+        # the documented command left ``contract_spec``,
+        # ``example_manifest``, ``abi_ranges`` and the mkdocs hook
+        # unimportable and reported 10 unit modules plus 4 integration
+        # tests as import errors that had nothing to do with the code.
+        #
+        # ``filterwarnings = ["error"]`` is also pytest-only, so this
+        # run sees warnings the one above turns into failures.  One
+        # interpreter is enough: the difference being guarded is the
+        # runner, not the version, and the version-specific surface is
+        # covered by the matrix above.
+        if: matrix.python-version == '3.10'
+        run: |
+          set -eu
+          # ``tests`` for the frozen contract and the manifests,
+          # ``tools`` for the generators, ``hooks`` for the mkdocs hook.
+          # Keep this list equal to ``tests/conftest.py``.
+          export PYTHONPATH=tests:tools:hooks
+          uv run --frozen python -m unittest discover -s tests/unit
+          uv run --frozen python -m unittest discover -s tests/integration
+
       - name: Verify the tutorial matches its capture
         run: |
           set -eu

@@ -935,5 +935,82 @@ class WriteAccessClaimTests(unittest.TestCase):
                 self.assertIn("kl-msr --write", text)
 
 
+class StdlibRunnerTests(unittest.TestCase):
+    """``unittest`` outside pytest needs the paths pytest injects.
+
+    The suite advertises itself as unittest-compatible and both
+    CONTRIBUTING files show how to run it that way, but ``pythonpath`` in
+    ``pyproject.toml`` is a pytest setting: run under ``unittest`` and the
+    helper modules ``tests/conftest.py`` puts on ``sys.path`` are simply
+    absent.  That was not theoretical -- the documented command reported
+    10 unit modules and 4 integration tests as import errors, and every
+    one of them was a missing ``PYTHONPATH`` entry rather than a defect.
+
+    So the fix has three parts that must agree: ``conftest.py`` decides
+    the paths, the documented ``PYTHONPATH`` passes them on, and CI runs
+    the documented command.  A test that only read one of them would let
+    the other two drift -- which is exactly how the broken pair survived.
+    """
+
+    ROOT = pathlib.Path(__file__).resolve().parents[2]
+    CONFTEST = ROOT / "tests" / "conftest.py"
+    #: Every file that tells a reader (or a runner) how to invoke it.
+    DOCS = ("CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md")
+    CI = ROOT / ".github" / "workflows" / "ci.yml"
+
+    def _injected(self) -> list[str]:
+        """The directory names ``conftest.py`` puts on ``sys.path``.
+
+        Read from :data:`conftest.EXTRA_PATHS` rather than by parsing the
+        file.  A first version did parse it and returned the wrong answer:
+        the loop variable is ``_TESTS``, so the AST gave the *identifier*
+        where the directory is ``tests``, and the guard failed against the
+        documents it was supposed to agree with.  The list is public for
+        exactly this reason -- one definition, read by everyone who needs
+        to spell it.
+        """
+        import conftest
+
+        return [path.name for path in conftest.EXTRA_PATHS]
+
+    def test_the_paths_are_what_the_documents_say(self) -> None:
+        expected = ":".join(self._injected())
+        for name in self.DOCS:
+            with self.subTest(document=name):
+                text = (self.ROOT / name).read_text(encoding="utf-8")
+                self.assertIn(f"PYTHONPATH={expected}", text)
+
+    def test_ci_runs_the_documented_command(self) -> None:
+        expected = ":".join(self._injected())
+        text = self.CI.read_text(encoding="utf-8")
+        self.assertIn(f"PYTHONPATH={expected}", text)
+        # Both suites, because ``discover`` restarting per directory is
+        # what caught the split between unit and integration helpers.
+        for suite in ("tests/unit", "tests/integration"):
+            with self.subTest(suite=suite):
+                self.assertIn(
+                    f"python -m unittest discover -s {suite}", text,
+                )
+
+    def test_the_guard_would_notice_a_missing_path(self) -> None:
+        # A guard whose expected value is derived from the thing it guards
+        # cannot fail; prove the comparison is real by removing one entry.
+        injected = self._injected()
+        self.assertGreaterEqual(len(injected), 2)
+        self.assertNotEqual(
+            ":".join(injected[1:]), ":".join(injected),
+        )
+
+    def test_the_directories_exist(self) -> None:
+        # ``PYTHONPATH`` silently ignores a path that does not exist, so a
+        # renamed directory would turn the documented command into the
+        # import-error run this guard exists to prevent.
+        import conftest
+
+        for path in conftest.EXTRA_PATHS:
+            with self.subTest(path=path.name):
+                self.assertTrue(path.is_dir(), f"{path} is not a directory")
+
+
 if __name__ == "__main__":
     unittest.main()
