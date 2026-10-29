@@ -38,7 +38,7 @@
   ],
   "category": "memory & symbols",
   "summary": "Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block.",
-  "usage": "kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]\n                      [--limit LIMIT]\n                      [command ...]",
+  "usage": "kernlens-buddy [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-v]\n                      [--limit LIMIT] [-p] [-c CPU] [-f FIND]\n                      [command ...]",
   "options": [
    {
     "flags": [
@@ -55,7 +55,7 @@
    {
     "flags": [],
     "dest": "command",
-    "help": "list [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] | info <addr> | freelist -o ORDER [-m MTYPE] | <addr>",
+    "help": "list [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] | info <addr> | freelist -o ORDER [-m MTYPE] | dump [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-f ADDR] | <addr>",
     "metavar": "command",
     "nargs": "*",
     "default": null,
@@ -131,6 +131,42 @@
     "nargs": "None",
     "default": "64",
     "choices": null
+   },
+   {
+    "flags": [
+     "-p",
+     "--pcp-only"
+    ],
+    "dest": "pcp_only",
+    "help": "displays/searches only PCP lists.",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-c",
+     "--cpu"
+    ],
+    "dest": "cpu",
+    "help": "CPU number for searching PCP.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-f",
+     "--find"
+    ],
+    "dest": "find",
+    "help": "an address to search for in the page free lists.",
+    "metavar": null,
+    "nargs": "None",
+    "default": null,
+    "choices": null
    }
   ]
  },
@@ -140,31 +176,8 @@
    "kl-base"
   ],
   "category": "kernel base & KASLR",
-  "summary": "Selects the runtime kernel text base and KASLR slide.",
-  "usage": "kernlens-base [-h]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-kbase",
-  "aliases": [
-   "kl-kbase"
-  ],
-  "category": "kernel base & KASLR",
-  "summary": "Finds the kernel virtual base address.",
-  "usage": "kernlens-kbase [-h] [-r] [-v]",
+  "summary": "Reports the runtime kernel text base and KASLR slide.",
+  "usage": "kernlens-base [-h] [-v] [-r] [command ...]",
   "options": [
    {
     "flags": [
@@ -179,15 +192,12 @@
     "choices": null
    },
    {
-    "flags": [
-     "-r",
-     "--rebase"
-    ],
-    "dest": "rebase",
-    "help": "rebase loaded symbol file",
-    "metavar": null,
-    "nargs": "0",
-    "default": "False",
+    "flags": [],
+    "dest": "args",
+    "help": "show | text <runtime _text> | offset <slide> | idt [count] | rebase | <runtime _text>",
+    "metavar": "command",
+    "nargs": "*",
+    "default": null,
     "choices": null
    },
    {
@@ -196,258 +206,7 @@
      "--verbose"
     ],
     "dest": "verbose",
-    "help": "also print the physical address of the text base",
-    "metavar": null,
-    "nargs": "0",
-    "default": "False",
-    "choices": null
-   },
-   {
-    "flags": [
-     "-p",
-     "--phys"
-    ],
-    "dest": "phys",
-    "help": "==SUPPRESS==",
-    "metavar": null,
-    "nargs": "0",
-    "default": "False",
-    "choices": null
-   },
-   {
-    "flags": [
-     "-s",
-     "--set"
-    ],
-    "dest": "set_offset",
-    "help": "==SUPPRESS==",
-    "metavar": null,
-    "nargs": "0",
-    "default": "False",
-    "choices": null
-   },
-   {
-    "flags": [
-     "-i",
-     "--idt"
-    ],
-    "dest": "idt",
-    "help": "==SUPPRESS==",
-    "metavar": "COUNT",
-    "nargs": "?",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "--text"
-    ],
-    "dest": "text",
-    "help": "==SUPPRESS==",
-    "metavar": "ADDR",
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "--offset"
-    ],
-    "dest": "offset",
-    "help": "==SUPPRESS==",
-    "metavar": "SLIDE",
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-kaslr",
-  "aliases": [
-   "kl-kaslr"
-  ],
-  "category": "kernel base & KASLR",
-  "summary": "Sets the KASLR slide from a runtime _text address.",
-  "usage": "kernlens-kaslr [-h] runtime_text",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "runtime_text",
-    "help": "runtime address of the _text symbol",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-kaslr-offset",
-  "aliases": [
-   "kl-kaslr-offset"
-  ],
-  "category": "kernel base & KASLR",
-  "summary": "Sets the KASLR slide directly.",
-  "usage": "kernlens-kaslr-offset [-h] offset",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "offset",
-    "help": "KASLR slide (e.g. 0x18e00000)",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-cpu",
-  "aliases": [
-   "kl-cpu"
-  ],
-  "category": "CPU topology",
-  "summary": "Displays CPU topology, the online mask, and per-CPU offsets.",
-  "usage": "kernlens-cpu [-h] [cpu]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "cpu",
-    "help": "CPU id to describe (default: current CPU)",
-    "metavar": null,
-    "nargs": "?",
-    "default": null,
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-percpu",
-  "aliases": [
-   "kl-percpu"
-  ],
-  "category": "CPU topology",
-  "summary": "Resolves a per-CPU symbol to its runtime address for a CPU.",
-  "usage": "kernlens-percpu [-h] symbol [cpu]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "symbol",
-    "help": "a per-CPU symbol (e.g. current_task)",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "cpu",
-    "help": "CPU id (default: current CPU)",
-    "metavar": null,
-    "nargs": "?",
-    "default": null,
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-msr",
-  "aliases": [
-   "kl-msr"
-  ],
-  "category": "CPU topology",
-  "summary": "Reads or writes x86_64 model-specific registers (via GDB).",
-  "usage": "kernlens-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "msr",
-    "help": "MSR value or name",
-    "metavar": null,
-    "nargs": "?",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "-w",
-     "--write"
-    ],
-    "dest": "write",
-    "help": "value to write in MSR",
-    "metavar": "write_value",
-    "nargs": "?",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "-l",
-     "--list"
-    ],
-    "dest": "list_msr",
-    "help": "list common MSRs for the current arch",
+    "help": "also print the physical address of the text base (with show)",
     "metavar": null,
     "nargs": "0",
     "default": "False",
@@ -456,50 +215,14 @@
    {
     "flags": [
      "-r",
-     "--range"
+     "--rebase"
     ],
-    "dest": "msr_range",
-    "help": "dash separated range of MSRs to read",
-    "metavar": null,
-    "nargs": "?",
-    "default": null,
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-color",
-  "aliases": [
-   "kl-color"
-  ],
-  "category": "output",
-  "summary": "Enable, disable, or toggle ANSI color output.",
-  "usage": "kernlens-color [-h] [{on,off,toggle}]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
+    "dest": "rebase",
+    "help": "reload the symbol file at the detected base",
     "metavar": null,
     "nargs": "0",
-    "default": "==SUPPRESS==",
+    "default": "False",
     "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "state",
-    "help": "explicit state; no argument prints the current state",
-    "metavar": null,
-    "nargs": "?",
-    "default": "",
-    "choices": [
-     "on",
-     "off",
-     "toggle"
-    ]
    }
   ]
  },
@@ -660,8 +383,8 @@
    "kl-sym"
   ],
   "category": "memory & symbols",
-  "summary": "Resolves an address to a symbol and source location.",
-  "usage": "kernlens-sym [-h] address",
+  "summary": "Resolves an address to a symbol, or finds symbols by name.",
+  "usage": "kernlens-sym [-h] [-f] [-a] [query]",
   "options": [
    {
     "flags": [
@@ -677,11 +400,35 @@
    },
    {
     "flags": [],
-    "dest": "address",
-    "help": "address to resolve",
+    "dest": "query",
+    "help": "address to resolve, or a name (or address) to search for",
     "metavar": null,
-    "nargs": "None",
+    "nargs": "?",
     "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-f",
+     "--find"
+    ],
+    "dest": "find",
+    "help": "search the kernel's kallsyms table instead of resolving",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-a",
+     "--apply"
+    ],
+    "dest": "apply",
+    "help": "accepted for pwndbg parity; kernlens reads kallsyms live",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
     "choices": null
    }
   ]
@@ -725,38 +472,6 @@
     "metavar": null,
     "nargs": "0",
     "default": "False",
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-chain",
-  "aliases": [
-   "kl-chain"
-  ],
-  "category": "memory & symbols",
-  "summary": "Prints a compact caller <- callee call chain.",
-  "usage": "kernlens-chain [-h] [depth]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "depth",
-    "help": "maximum frames, 1-128 (default 8)",
-    "metavar": null,
-    "nargs": "?",
-    "default": "8",
     "choices": null
    }
   ]
@@ -981,124 +696,6 @@
   ]
  },
  {
-  "name": "kernlens-buddydump",
-  "aliases": [
-   "kl-buddydump"
-  ],
-  "category": "memory & symbols",
-  "summary": "Displays metadata and freelists of the buddy allocator.",
-  "usage": "kernlens-buddydump [-h] [-z ZONE] [-o ORDER] [-m MTYPE] [-p] [-c CPU]\n                          [-n NODE] [-f FIND] [--MIGRATE_TYPES MIGRATE_TYPES]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [
-     "-z",
-     "--zone"
-    ],
-    "dest": "zone",
-    "help": "Displays/searches lists only in the specified zone.",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "-o",
-     "--order"
-    ],
-    "dest": "order",
-    "help": "Displays/searches lists only with the specified order.",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "-m",
-     "--mtype"
-    ],
-    "dest": "mtype",
-    "help": "Displays/searches lists only with the specified mtype.",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "-p",
-     "--pcp-only"
-    ],
-    "dest": "pcp_only",
-    "help": "Displays/searches only PCP lists.",
-    "metavar": null,
-    "nargs": "0",
-    "default": "False",
-    "choices": null
-   },
-   {
-    "flags": [
-     "-c",
-     "--cpu"
-    ],
-    "dest": "cpu",
-    "help": "CPU nr for searching PCP.",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "-n",
-     "--node"
-    ],
-    "dest": "node",
-    "help": "",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "-f",
-     "--find"
-    ],
-    "dest": "find",
-    "help": "The address to find in page free lists.",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [
-     "--MIGRATE_TYPES"
-    ],
-    "dest": "MIGRATE_TYPES",
-    "help": "Use the specified MIGRATE_TYPES value",
-    "metavar": null,
-    "nargs": "None",
-    "default": "3",
-    "choices": null
-   }
-  ]
- },
- {
   "name": "kernlens-kdmabuf",
   "aliases": [
    "kl-kdmabuf"
@@ -1174,7 +771,7 @@
   ],
   "category": "kernel metadata",
   "summary": "Outputs the kernel config (/proc/config.gz).",
-  "usage": "kernlens-kconfig [-h] [-l FILE_PATH] [config_name]",
+  "usage": "kernlens-kconfig [-h] [-l FILE_PATH] [-c] [config_name]",
   "options": [
    {
     "flags": [
@@ -1208,28 +805,17 @@
     "nargs": "None",
     "default": null,
     "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-kchecksec",
-  "aliases": [
-   "kl-kchecksec"
-  ],
-  "category": "kernel metadata",
-  "summary": "Checks for kernel hardening configuration options.",
-  "usage": "kernlens-kchecksec [-h]",
-  "options": [
+   },
    {
     "flags": [
-     "-h",
-     "--help"
+     "-c",
+     "--check"
     ],
-    "dest": "help",
-    "help": "show this help message and exit",
+    "dest": "check",
+    "help": "audit the hardening options instead of printing the config",
     "metavar": null,
     "nargs": "0",
-    "default": "==SUPPRESS==",
+    "default": "False",
     "choices": null
    }
   ]
@@ -1346,15 +932,45 @@
   ]
  },
  {
-  "name": "kernlens-klookup",
+  "name": "kernlens-cpu",
   "aliases": [
-   "kl-klookup",
-   "kl-kallsyms",
-   "kl-ks"
+   "kl-cpu"
   ],
-  "category": "kernel metadata",
-  "summary": "Lookup kernel symbols",
-  "usage": "kernlens-klookup [-h] [-a] [symbol]",
+  "category": "CPU topology",
+  "summary": "Displays CPU topology, the online mask, and per-CPU offsets.",
+  "usage": "kernlens-cpu [-h] [cpu]",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "cpu",
+    "help": "CPU id to describe (default: current CPU)",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-percpu",
+  "aliases": [
+   "kl-percpu"
+  ],
+  "category": "CPU topology",
+  "summary": "Resolves a per-CPU symbol to its runtime address for a CPU.",
+  "usage": "kernlens-percpu [-h] symbol [cpu]",
   "options": [
    {
     "flags": [
@@ -1371,34 +987,31 @@
    {
     "flags": [],
     "dest": "symbol",
-    "help": "Address or symbol name to lookup",
+    "help": "a per-CPU symbol (e.g. current_task)",
     "metavar": null,
-    "nargs": "?",
-    "default": "",
+    "nargs": "None",
+    "default": null,
     "choices": null
    },
    {
-    "flags": [
-     "-a",
-     "--apply"
-    ],
-    "dest": "apply",
-    "help": "applies all the symbols that satisfy the filter",
+    "flags": [],
+    "dest": "cpu",
+    "help": "CPU id (default: current CPU)",
     "metavar": null,
-    "nargs": "0",
-    "default": "False",
+    "nargs": "?",
+    "default": null,
     "choices": null
    }
   ]
  },
  {
-  "name": "kernlens-status",
+  "name": "kernlens-msr",
   "aliases": [
-   "kl-status"
+   "kl-msr"
   ],
-  "category": "overview",
-  "summary": "Shows the KernLens version, color mode, KASLR slide, and layout.",
-  "usage": "kernlens-status [-h]",
+  "category": "CPU topology",
+  "summary": "Reads or writes x86_64 model-specific registers (via GDB).",
+  "usage": "kernlens-msr [-h] [-w [write_value]] [-l] [-r [MSR_RANGE]] [msr]",
   "options": [
    {
     "flags": [
@@ -1411,6 +1024,121 @@
     "nargs": "0",
     "default": "==SUPPRESS==",
     "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "msr",
+    "help": "MSR value or name",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-w",
+     "--write"
+    ],
+    "dest": "write",
+    "help": "value to write in MSR",
+    "metavar": "write_value",
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-l",
+     "--list"
+    ],
+    "dest": "list_msr",
+    "help": "list common MSRs for the current arch",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "-r",
+     "--range"
+    ],
+    "dest": "msr_range",
+    "help": "dash separated range of MSRs to read",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": null
+   }
+  ]
+ },
+ {
+  "name": "kernlens-color",
+  "aliases": [
+   "kl-color"
+  ],
+  "category": "output",
+  "summary": "Enable, disable, or toggle ANSI color output.",
+  "usage": "kernlens-color [-h] [{on,off,toggle}]",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [],
+    "dest": "state",
+    "help": "explicit state; no argument prints the current state",
+    "metavar": null,
+    "nargs": "?",
+    "default": null,
+    "choices": [
+     "on",
+     "off",
+     "toggle"
+    ]
+   }
+  ]
+ },
+ {
+  "name": "kernlens-status",
+  "aliases": [
+   "kl-status"
+  ],
+  "category": "overview",
+  "summary": "Shows the KernLens version, color mode, KASLR slide, and layout.",
+  "usage": "kernlens-status [-h] [--doctor]",
+  "options": [
+   {
+    "flags": [
+     "-h",
+     "--help"
+    ],
+    "dest": "help",
+    "help": "show this help message and exit",
+    "metavar": null,
+    "nargs": "0",
+    "default": "==SUPPRESS==",
+    "choices": null
+   },
+   {
+    "flags": [
+     "--doctor"
+    ],
+    "dest": "doctor",
+    "help": "also print what GDB loaded: the object file, DWARF/BTF availability, and whether a target is attached",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
    }
   ]
  },
@@ -1420,8 +1148,8 @@
    "kl-addr"
   ],
   "category": "addresses & page tables",
-  "summary": "Prints a full KAddr analysis of an address.",
-  "usage": "kernlens-addr [-h] address [tag_mask]",
+  "summary": "Classifies an address and reports where it maps.",
+  "usage": "kernlens-addr [-h] [-b] address [tag_mask]",
   "options": [
    {
     "flags": [
@@ -1452,90 +1180,17 @@
     "nargs": "?",
     "default": null,
     "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-page",
-  "aliases": [
-   "kl-page"
-  ],
-  "category": "addresses & page tables",
-  "summary": "Classifies an address and translates direct-map addresses.",
-  "usage": "kernlens-page [-h] [-v] address",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "address",
-    "help": "address or GDB expression to classify",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
    },
    {
     "flags": [
-     "-v",
-     "--verbose"
+     "-b",
+     "--brief"
     ],
-    "dest": "verbose",
-    "help": "add the full KAddr analysis (canonicality, alignment, tags)",
+    "dest": "brief",
+    "help": "only the class, the translation, and the two bases",
     "metavar": null,
     "nargs": "0",
     "default": "False",
-    "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-pte",
-  "aliases": [
-   "kl-pte"
-  ],
-  "category": "addresses & page tables",
-  "summary": "Decodes page-table entry flags and leaf translations.",
-  "usage": "kernlens-pte [-h] entry [va]",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "entry",
-    "help": "raw page-table entry value",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "va",
-    "help": "address used for the leaf translations",
-    "metavar": null,
-    "nargs": "?",
-    "default": null,
     "choices": null
    }
   ]
@@ -1546,8 +1201,8 @@
    "kl-pt"
   ],
   "category": "addresses & page tables",
-  "summary": "Shows 4-level/5-level page-table indices for an address.",
-  "usage": "kernlens-pt [-h] va",
+  "summary": "Splits a virtual address into page-table indices, or decodes a page-table entry.",
+  "usage": "kernlens-pt [-h] [-e] [--paging {4,5}] [VALUE ...]",
   "options": [
    {
     "flags": [
@@ -1563,12 +1218,38 @@
    },
    {
     "flags": [],
-    "dest": "va",
-    "help": "virtual address to split",
+    "dest": "values",
+    "help": "virtual address [leaf address used for the translations]",
+    "metavar": "VALUE",
+    "nargs": "*",
+    "default": null,
+    "choices": null
+   },
+   {
+    "flags": [
+     "-e",
+     "--entry"
+    ],
+    "dest": "entry",
+    "help": "treat VALUE as a raw page-table entry instead of an address",
+    "metavar": null,
+    "nargs": "0",
+    "default": "False",
+    "choices": null
+   },
+   {
+    "flags": [
+     "--paging"
+    ],
+    "dest": "paging",
+    "help": "force one geometry instead of printing both",
     "metavar": null,
     "nargs": "None",
     "default": null,
-    "choices": null
+    "choices": [
+     "4",
+     "5"
+    ]
    }
   ]
  },
@@ -1579,7 +1260,7 @@
   ],
   "category": "addresses & page tables",
   "summary": "Walks the live page tables and decodes every level.",
-  "usage": "kernlens-walk [-h] [-p ROOT] va [{4,5}]",
+  "usage": "kernlens-walk [-h] [-p ROOT] [-s {levels,pwndbg}] va [{4,5}]",
   "options": [
    {
     "flags": [
@@ -1625,50 +1306,21 @@
     "nargs": "None",
     "default": null,
     "choices": null
-   }
-  ]
- },
- {
-  "name": "kernlens-pagewalk",
-  "aliases": [
-   "kl-pagewalk"
-  ],
-  "category": "addresses & page tables",
-  "summary": "Walks the page tables in pwndbg's pagewalk format.",
-  "usage": "kernlens-pagewalk [-h] [-p ENTRY] vaddr",
-  "options": [
-   {
-    "flags": [
-     "-h",
-     "--help"
-    ],
-    "dest": "help",
-    "help": "show this help message and exit",
-    "metavar": null,
-    "nargs": "0",
-    "default": "==SUPPRESS==",
-    "choices": null
-   },
-   {
-    "flags": [],
-    "dest": "vaddr",
-    "help": "virtual address to walk",
-    "metavar": null,
-    "nargs": "None",
-    "default": null,
-    "choices": null
    },
    {
     "flags": [
-     "-p",
-     "--pgd"
+     "-s",
+     "--style"
     ],
-    "dest": "entry",
-    "help": "Top-level table address",
+    "dest": "style",
+    "help": "presentation: one row per level, or pwndbg's pagewalk order (default: levels)",
     "metavar": null,
     "nargs": "None",
-    "default": null,
-    "choices": null
+    "default": "levels",
+    "choices": [
+     "levels",
+     "pwndbg"
+    ]
    }
   ]
  },

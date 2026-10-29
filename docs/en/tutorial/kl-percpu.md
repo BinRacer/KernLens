@@ -27,8 +27,8 @@ kernlens-percpu current_task
 
 ```text
 Symbol: current_task (cpu 0)
-Address: 0xffff975287a1fb80
-percpu_off: 0xffff975287a00000
+Address: 0xffff8c3647a1fb80
+percpu_off: 0xffff8c3647a00000
 ```
 
 ### Reading it
@@ -47,8 +47,8 @@ kernlens-percpu current_task 1
 
 ```text
 Symbol: current_task (cpu 1)
-Address: 0xffff975287a9fb80
-percpu_off: 0xffff975287a80000
+Address: 0xffff8c3647a9fb80
+percpu_off: 0xffff8c3647a80000
 ```
 
 ### Reading it

@@ -55,7 +55,7 @@ written.
 <!-- coverage:start -->
 | Component | Covered | Size |
 | --- | --- | --- |
-| GDB commands | **37** | 40 |
+| GDB commands | **28** | 30 |
 | `BitOps` | **44** | 44 |
 | `IntCodec` | **21** | 21 |
 | `IntFmt` | **26** | 26 |
@@ -72,7 +72,7 @@ written.
 | `symbols` | 4 | 5 |
 | `walker` | **1** | 1 |
 
-3 command(s) have no example: `kernlens-buddydump`, `kernlens-kbpf`, `kernlens-kdmabuf`. Each has a reason in `UNCOVERED_COMMANDS`.
+2 command(s) have no example: `kernlens-kbpf`, `kernlens-kdmabuf`. Each has a reason in `UNCOVERED_COMMANDS`.
 <!-- coverage:end -->
 
 ## All examples expect the same startup

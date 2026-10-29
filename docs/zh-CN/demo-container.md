@@ -16,11 +16,11 @@ docker run --rm -it kernlens-demo
 | 命令 | 它展示什么 |
 | --- | --- |
 | `kl-status` | KASLR 偏移、`_text`、直接映射与 vmemmap 基址、CPU 拓扑 |
-| `kl-kbase` | 运行时的 text 基址，以及是由哪份证据推出来的 |
+| `kl-base` | 运行时的 text 基址，以及是由哪份证据推出来的 |
 | `kl-kconfig RANDOMIZE_BASE` | 运行中内核的配置，从 IKCONFIG 读出 |
 | `kl-slab info kmalloc-1k` | 一个缓存的几何形状与每 CPU 空闲链表 |
 | `kl-sym` | 通过符号表解析出的 `init_task` |
-| `kl-pagewalk` | `init_task` 背后的各级页表 |
+| `kl-walk --style pwndbg` | `init_task` 背后的各级页表 |
 
 传入一个命令就只跑那一个，不跑导览：
 
@@ -81,7 +81,7 @@ TCG 意味着不需要 `/dev/kvm`；在这台测量用机器上，客户机约�
 
 KASLR 是开着的。导览从不打印从捕获里抄来的地址：它用
 `reader.kvar_addr("init_task")` 解析出 `init_task`，再把那个数传给 `kl-sym` 和
-`kl-pagewalk`。上一次运行的数字在下一次就是错的——这正是这个演示要教的东西。
+`kl-walk`。上一次运行的数字在下一次就是错的——这正是这个演示要教的东西。
 
 ## 换内核版本
 

@@ -7,9 +7,20 @@
 # Portions of the code are adapted from pwndbg
 # (https://github.com/pwndbg/pwndbg), which is distributed under the
 # MIT License.  See CREDITS.md for the full attribution.
-"""Kernel base and KASLR commands (pwndbg-style).
+"""Kernel base and KASLR command.
 
-``kernlens-base`` / ``kbase`` / ``kaslr`` / ``kaslr-offset``.
+``kernlens-base`` reports where the kernel text is loaded and, when asked,
+corrects the slide.  It replaces four commands -- ``base``, ``kbase``,
+``kaslr`` and ``kaslr-offset`` -- that all ended in the same place:
+
+* ``kbase`` printed a longer version of what ``base`` printed, and two of
+  its options were already aliases for the other two commands;
+* ``kaslr`` set the slide from a runtime ``_text`` address and
+  ``kaslr-offset`` set it directly -- two spellings of one assignment.
+
+There is one KASLR slide, so there is one command that reads and writes it.
+The other entry points are subcommands, and every report states the slide
+that is now in effect, which is what the four commands disagreed about.
 """
 
 from __future__ import annotations
@@ -27,19 +38,35 @@ from .formatting import default_base, kernel_running
 from .framework import (
     Command,
     CommandCategory,
-    hide,
     parse_int_arg,
 )
 
 _MASK64 = 0xFFFFFFFFFFFFFFFF
 
-
-# =========================================================================
-# base
-# =========================================================================
+#: Subcommands, in the order ``kl-help`` mentions them.
+_BASE_SUBCOMMANDS = ("show", "text", "offset", "idt", "rebase")
 
 _base_parser = argparse.ArgumentParser(
-    description="Selects the runtime kernel text base and KASLR slide."
+    description="Reports the runtime kernel text base and KASLR slide.",
+)
+# A single ``nargs="*"`` positional carries the subcommand and its
+# argument.  Two optional positionals would make argparse guess which one a
+# lone number belongs to, and ``kl-base 0xffffffff83000000`` is genuinely
+# ambiguous between "a runtime _text" and "a slide".
+_base_parser.add_argument(
+    "args", nargs="*", metavar="command",
+    help=(
+        "show | text <runtime _text> | offset <slide> | "
+        "idt [count] | rebase | <runtime _text>"
+    ),
+)
+_base_parser.add_argument(
+    "-v", "--verbose", action="store_true",
+    help="also print the physical address of the text base (with show)",
+)
+_base_parser.add_argument(
+    "-r", "--rebase", action="store_true",
+    help="reload the symbol file at the detected base",
 )
 
 
@@ -47,9 +74,67 @@ _base_parser = argparse.ArgumentParser(
     _base_parser,
     category=CommandCategory.KERNEL_BASE,
     aliases=["kl-base"],
-    examples="kl-base\n  auto-detect and apply the runtime text base",
+    examples=(
+        "kl-base\n"
+        "  detect and apply the runtime text base\n"
+        "kl-base --verbose\n"
+        "  also show the physical address of the text\n"
+        "kl-base text 0xffffffff83000000\n"
+        "  set the slide from a runtime _text address\n"
+        "kl-base offset 0x2cc00000\n"
+        "  set the slide directly\n"
+        "kl-base idt 8\n"
+        "  dump the first eight interrupt gates\n"
+        "kl-base rebase\n"
+        "  reload the symbol file at the detected base"
+    ),
+    notes=(
+        "A bare address is read as a runtime ``_text``, because that is the\n"
+        "value a breakpoint or a symbol listing gives you; use ``offset``\n"
+        "for a slide.\n"
+        "\n"
+        "``show`` is the default.  It prints the base, the slide in effect,\n"
+        "the link-time ``_text``, and how the base was found -- the union of\n"
+        "what ``kl-base`` and ``kl-kbase`` used to report separately."
+    ),
 )
-def kernlens_base() -> None:
+def kernlens_base(
+    args: list[str] | None = None,
+    verbose: bool = False,
+    rebase: bool = False,
+) -> None:
+    tokens = list(args or [])
+    sub = tokens[0] if tokens and tokens[0] in _BASE_SUBCOMMANDS else "show"
+    rest = tokens[1:] if tokens and tokens[0] in _BASE_SUBCOMMANDS else tokens
+
+    if sub == "idt":
+        _dump_idt(parse_int_arg(rest[0]) if rest else 16)
+        return
+    if sub == "text":
+        if not rest:
+            _base_parser.print_usage()
+            return
+        _set_from_text(parse_int_arg(rest[0]))
+        return
+    if sub == "offset":
+        if not rest:
+            _base_parser.print_usage()
+            return
+        _set_offset(parse_int_arg(rest[0]))
+        return
+    if sub == "rebase":
+        _rebase_detected()
+        return
+    # A bare number is a runtime _text: that is the value a breakpoint or a
+    # symbol listing gives, and the commoner of the two corrections.
+    if rest:
+        _set_from_text(parse_int_arg(rest[0]))
+        return
+    _show(verbose, rebase)
+
+
+def _show(verbose: bool, rebase: bool) -> None:
+    """Report the base and slide, applying what was detected."""
     result = kdbg.find_kbase()
     indent = IndentContextManager()
     if result is None:
@@ -57,8 +142,8 @@ def kernlens_base() -> None:
             print(
                 message.error(
                     "kernel is running but the text base could not be "
-                    "detected; load a matching vmlinux or use "
-                    "kl-kaslr/kl-kaslr-offset manually"
+                    "detected; load a matching vmlinux or pass the slide "
+                    "with 'kl-base offset <slide>'"
                 )
             )
             return
@@ -89,125 +174,7 @@ def kernlens_base() -> None:
         indent.prefix("method") + ": "
         + message.notice(str(getattr(result, "method", "unknown")))
     )
-    indent.print(indent.prefix("status") + ": " + message.success("kernel running"))
-
-
-# =========================================================================
-# kbase
-# =========================================================================
-
-_kbase_parser = argparse.ArgumentParser(
-    description="Finds the kernel virtual base address."
-)
-_kbase_parser.add_argument(
-    "-r", "--rebase", action="store_true",
-    help="rebase loaded symbol file",
-)
-_kbase_parser.add_argument(
-    "-v", "--verbose", action="store_true",
-    help="also print the physical address of the text base",
-)
-# Legacy aliases (kept working, hidden from --help): earlier KernLens used
-# ``-p/--phys`` where pwndbg uses ``-v/--verbose``, and ``-s/--set`` /
-# ``-i/--idt`` which pwndbg's kbase does not have.
-hide(_kbase_parser.add_argument(
-    "-p", "--phys", action="store_true", dest="phys",
-))
-hide(_kbase_parser.add_argument(
-    "-s", "--set", action="store_true", dest="set_offset",
-))
-hide(_kbase_parser.add_argument(
-    "-i", "--idt", nargs="?", type=int, const=16, default=None,
-    metavar="COUNT", dest="idt",
-))
-# KernLens-only: fold kl-kaslr / kl-kaslr-offset into kbase so the slide
-# can be corrected where it is *reported* (kbase already prints
-# ``kaslr=+0x...``).  Hidden like the other extras, so the pwndbg help
-# surface is unchanged.
-_kbase_apply = _kbase_parser.add_mutually_exclusive_group()
-hide(_kbase_apply.add_argument(
-    "--text", type=parse_int_arg, default=None, metavar="ADDR",
-    help="set the KASLR slide from a runtime _text address",
-))
-hide(_kbase_apply.add_argument(
-    "--offset", type=parse_int_arg, default=None, metavar="SLIDE",
-    help="set the KASLR slide directly (e.g. 0x18e00000)",
-))
-
-
-@Command(
-    _kbase_parser,
-    category=CommandCategory.KERNEL_BASE,
-    aliases=["kl-kbase"],
-    examples=(
-        "kl-kbase\n"
-        "kl-kbase --verbose\n"
-        "kl-kbase --rebase"
-    ),
-    notes=(
-        "KernLens extras (hidden from --help): ``-s/--set`` applies the\n"
-        "derived KASLR slide to the session, ``-i/--idt [count]`` dumps\n"
-        "the interrupt descriptor table, and ``--text <addr>`` /\n"
-        "``--offset <slide>`` set the slide here (the equivalents of\n"
-        "``kl-kaslr`` and ``kl-kaslr-offset``), which is convenient\n"
-        "because the report above already prints ``kaslr=+0x...``."
-    ),
-)
-def kernlens_kbase(
-    rebase: bool = False,
-    verbose: bool = False,
-    phys: bool = False,
-    set_offset: bool = False,
-    idt: int | None = None,
-    text: int | None = None,
-    offset: int | None = None,
-) -> None:
-    if idt is not None:
-        _dump_idt(idt)
-        return
-    if text is not None:
-        kernlens_kaslr(text)
-        return
-    if offset is not None:
-        kernlens_kaslr_offset(offset)
-        return
-    result = kdbg.find_kbase()
-    if result is None:
-        print(
-            message.error(
-                "cannot locate the kernel text base; load a matching "
-                "vmlinux or run under QEMU"
-            )
-        )
-        return
-    indent = IndentContextManager()
-    indent.print(indent.prefix("text base") + ": " + indent.addr_hex(result.base))
-    method = (
-        message.notice(result.method)
-        + (f"  handler={result.handler:#x}" if result.handler is not None else "")
-    )
-    indent.print(indent.prefix("method") + ": " + method)
-    if result.handler_symbol:
-        indent.print(
-            indent.prefix("symbol") + ": " + message.notice(result.handler_symbol)
-        )
-    if result.idt is not None:
-        indent.print(
-            indent.prefix("idt") + ": base=" + indent.addr_hex(result.idt.base)
-            + " limit=" + indent.aux_hex(result.idt.limit)
-            + " source=" + message.notice(result.idt.source)
-        )
-    if result.link_text is not None:
-        kaslr = (
-            f"+{result.kaslr_offset:#x}"
-            if result.kaslr_offset is not None
-            else message.warn("?")
-        )
-        indent.print(
-            indent.prefix("link _text") + ": "
-            + indent.addr_hex(result.link_text) + f"  kaslr={kaslr}"
-        )
-    if phys or verbose:
+    if verbose:
         walk = kdbg.walk(result.base)
         indent.print(
             indent.prefix("Physical") + ": "
@@ -217,27 +184,56 @@ def kernlens_kbase(
                 else message.warn("?")
             )
         )
-    if set_offset:
-        if result.kaslr_offset is None:
-            print(
-                message.error("cannot derive the KASLR offset without &_text")
-            )
-            return
-        kdbg.kaslr_offset = result.kaslr_offset
-        indent.print(
-            indent.prefix("KASLR offset set") + f": +{result.kaslr_offset:#x}"
-        )
-    elif result.kaslr_offset and result.link_text is not None:
-        indent.print(
-            indent.prefix("hint")
-            + ": " + message.hint("kl-kbase --set applies this slide")
-        )
+    indent.print(
+        indent.prefix("status") + ": " + message.success("kernel running")
+    )
     if rebase:
         _rebase(result.base)
 
 
+def _set_from_text(runtime_text: int) -> None:
+    """Set the slide from a runtime ``_text`` address."""
+    link = kdbg.link_text()
+    if link is None:
+        print(
+            message.error("cannot resolve &_text; load a matching vmlinux first")
+        )
+        return
+    offset = (runtime_text - link) & _MASK64
+    kdbg.kaslr_offset = offset
+    indent = IndentContextManager()
+    indent.print(indent.prefix("KASLR offset") + f": +{offset:#x}")
+    indent.print(
+        indent.prefix("link _text") + ": " + indent.addr_hex(link)
+        + " runtime _text: " + indent.addr_hex(runtime_text)
+    )
+    indent.print(indent.prefix("status") + ": " + message.success("applied"))
+
+
+def _set_offset(offset: int) -> None:
+    """Set the slide directly."""
+    offset &= _MASK64
+    kdbg.kaslr_offset = offset
+    indent = IndentContextManager()
+    indent.print(indent.prefix("KASLR offset") + f": +{offset:#x}")
+    indent.print(indent.prefix("status") + ": " + message.success("applied"))
+
+
+def _rebase_detected() -> None:
+    """``kl-base rebase``: detect the base, then reload the symbols there."""
+    result = kdbg.find_kbase()
+    if result is None:
+        print(
+            message.error(
+                "cannot locate the kernel text base; load a matching vmlinux"
+            )
+        )
+        return
+    _rebase(result.base)
+
+
 def _rebase(base: int) -> None:
-    """Reload the loaded symbol file at *base* (``--rebase``)."""
+    """Reload the loaded symbol file at *base* (``rebase``)."""
     try:
         progspace = gdb.current_progspace()
         objfile = progspace.filename if progspace is not None else None
@@ -255,7 +251,7 @@ def _rebase(base: int) -> None:
 
 
 def _dump_idt(count: int) -> None:
-    """Dump up to *count* decoded IDT gate descriptors (``--idt``)."""
+    """Dump up to *count* decoded IDT gate descriptors (``idt``)."""
     idt = getattr(kdbg.kbase, "idt", None)
     info = cast("IdtInfo | None", idt() if callable(idt) else None)
     if info is None:
@@ -271,7 +267,8 @@ def _dump_idt(count: int) -> None:
         indent.prefix("idt") + ": base="
         + indent.addr_hex(int(getattr(info, "base", 0)))
         + " limit=" + indent.aux_hex(int(getattr(info, "limit", 0)))
-        + f" count={total} source={message.notice(str(getattr(info, 'source', '?')))}"
+        + f" count={total}"
+        + " source=" + message.notice(str(getattr(info, "source", "?")))
     )
     limit = total if count <= 0 else min(count, total)
     for index in range(limit):
@@ -299,67 +296,6 @@ def _dump_idt(count: int) -> None:
         )
 
 
-# =========================================================================
-# kaslr / kaslr-offset
-# =========================================================================
-
-_kaslr_parser = argparse.ArgumentParser(
-    description="Sets the KASLR slide from a runtime _text address."
-)
-_kaslr_parser.add_argument(
-    "runtime_text", type=parse_int_arg,
-    help="runtime address of the _text symbol",
-)
-
-
-@Command(
-    _kaslr_parser,
-    category=CommandCategory.KERNEL_BASE,
-    aliases=["kl-kaslr"],
-    examples="kl-kaslr 0xffffffff83000000",
-)
-def kernlens_kaslr(runtime_text: int) -> None:
-    link = kdbg.link_text()
-    if link is None:
-        print(
-            message.error(
-                "cannot resolve &_text; load a matching vmlinux first"
-            )
-        )
-        return
-    offset = (runtime_text - link) & _MASK64
-    kdbg.kaslr_offset = offset
-    indent = IndentContextManager()
-    indent.print(indent.prefix("KASLR offset") + f": +{offset:#x}")
-    indent.print(
-        indent.prefix("link _text") + ": " + indent.addr_hex(link)
-        + " runtime _text: " + indent.addr_hex(runtime_text)
-    )
-
-
-_kaslr_offset_parser = argparse.ArgumentParser(
-    description="Sets the KASLR slide directly."
-)
-_kaslr_offset_parser.add_argument(
-    "offset", type=parse_int_arg, help="KASLR slide (e.g. 0x18e00000)",
-)
-
-
-@Command(
-    _kaslr_offset_parser,
-    category=CommandCategory.KERNEL_BASE,
-    aliases=["kl-kaslr-offset"],
-    examples="kl-kaslr-offset 0x18e00000\nkl-kaslr-offset 0",
-)
-def kernlens_kaslr_offset(offset: int) -> None:
-    offset &= _MASK64
-    kdbg.kaslr_offset = offset
-    print(message.notice("KASLR offset:") + f" +{offset:#x}")
-
-
 __all__ = [
     "kernlens_base",
-    "kernlens_kaslr",
-    "kernlens_kaslr_offset",
-    "kernlens_kbase",
 ]

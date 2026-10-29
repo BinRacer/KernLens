@@ -22,11 +22,11 @@ nothing lives there, and the failure is quiet: a breakpoint set on
 `0xffffffff81234567` reports success, never fires, and looks like the code
 path was not taken.
 
-`retarget` runs the four commands that get you unstuck, in the order that
-gets you unstuck fastest -- `kl-status` (what KernLens believes),
-`kl-kbase -v` (what the target says, and which of three methods found it),
+`retarget` runs the commands that get you unstuck, in the order that gets
+you unstuck fastest -- `kl-status` (what KernLens believes),
+`kl-base -v` (what the target says, and which of three methods found it),
 `kl-base` (apply it -- finding is not applying, and this is the step people
-skip), and `kl-kaslr` / `kl-kaslr-offset` (the manual override for when
+skip), and `kl-base text` / `kl-base offset` (the manual override for when
 discovery fails).  It closes with `kl-color` and `kl-help`, which belong to
 the same "fix the environment first" family.
 
@@ -109,7 +109,7 @@ Load it and start tracing:
 `trace-start manual` refuses a zero slide on purpose: a zero slide means
 nokaslr addresses, and a tracer planted there looks correct while
 watching the wrong memory.  Select a non-zero slide first with
-`kl-kaslr` / `kl-kaslr-offset` if you need the manual path.
+`kl-base text` / `kl-base offset` if you need the manual path.
 
 > This example has one known gap on Linux 6.1: `tcp_eat_recv_skb` is a
 > `static` function with no `&`-expressible symbol, so `bp_spec()` cannot

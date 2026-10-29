@@ -9,8 +9,13 @@
 # MIT License.  See CREDITS.md for the full attribution.
 """Address and page-table commands (pwndbg-style).
 
-``kernlens-addr`` / ``page`` / ``pt`` / ``pte`` / ``walk`` / ``pagewalk``
-/ ``p2v`` / ``v2p`` / ``pageinfo``.
+``kernlens-addr`` / ``pt`` / ``walk`` / ``p2v`` / ``v2p`` / ``pageinfo``.
+
+``page``, ``pte`` and ``pagewalk`` used to be commands of their own and are
+now a mode of the command that already answered the same question: ``addr``
+classified an address and ``page -v`` delegated to it, ``pt`` split an
+address while ``pte`` decoded an entry value, and ``walk``/``pagewalk`` ran
+the same page walk with two presentations.
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ import argparse
 
 from .. import KERNEL_BASE, KAddr, KPageTable
 from ..gdb.facade import kdbg
+from ..gdb.walker import PageWalk
 from ..output import message
 from ..output.tree import IndentContextManager
 from .formatting import (
@@ -55,11 +61,11 @@ def _print_page_info(indent: IndentContextManager, phys: int, page: int) -> None
 
 
 # =========================================================================
-# addr / page
+# addr (was: addr + page)
 # =========================================================================
 
 _addr_parser = argparse.ArgumentParser(
-    description="Prints a full KAddr analysis of an address."
+    description="Classifies an address and reports where it maps."
 )
 _addr_parser.add_argument(
     "address", type=parse_int_arg, help="address or GDB expression to analyse",
@@ -68,15 +74,34 @@ _addr_parser.add_argument(
     "tag_mask", nargs="?", type=parse_int_arg, default=None,
     help="mask used for pointer-tag analysis (e.g. 0xfff)",
 )
+_addr_parser.add_argument(
+    "-b", "--brief", action="store_true",
+    help="only the class, the translation, and the two bases",
+)
 
 
 @Command(
     _addr_parser,
     category=CommandCategory.PAGING,
     aliases=["kl-addr"],
-    examples="kl-addr 0xffff888000001234\nkl-addr 0xffff888000001234 0xfff",
+    examples=(
+        "kl-addr 0xffff888000001234\n"
+        "kl-addr 0xffff888000001234 0xfff\n"
+        "kl-addr 0xffff888000001234 --brief"
+    ),
+    notes=(
+        "``-b/--brief`` answers the one question most lookups have --\n"
+        "which region is this, and what does it map to -- and stops.  It\n"
+        "replaces ``kl-page``, which printed the same block behind a\n"
+        "command name that differed from ``kl-addr`` by two letters."
+    ),
 )
-def kernlens_addr(address: int, tag_mask: int | None = None) -> None:
+def kernlens_addr(
+    address: int, tag_mask: int | None = None, brief: bool = False,
+) -> None:
+    if brief:
+        _addr_brief(address)
+        return
     page_offset = page_offset_base()
     vmemmap = vmemmap_base()
     text = _runtime_text()
@@ -129,33 +154,11 @@ def kernlens_addr(address: int, tag_mask: int | None = None) -> None:
         )
 
 
-_page_parser = argparse.ArgumentParser(
-    description="Classifies an address and translates direct-map addresses."
-)
-_page_parser.add_argument(
-    "address", type=parse_int_arg, help="address or GDB expression to classify",
-)
-_page_parser.add_argument(
-    "-v", "--verbose", action="store_true",
-    help="add the full KAddr analysis (canonicality, alignment, tags)",
-)
+def _addr_brief(address: int) -> None:
+    """The short form: class, translation, and the two bases.
 
-
-@Command(
-    _page_parser,
-    category=CommandCategory.PAGING,
-    aliases=["kl-page"],
-    examples="kl-page 0xffff888000001000\nkl-page 0xffff888000001000 --verbose",
-    notes=(
-        "``-v/--verbose`` delegates to the ``kl-addr`` analysis, so the\n"
-        "full breakdown is available without knowing which of the two\n"
-        "commands reports more."
-    ),
-)
-def kernlens_page(address: int, verbose: bool = False) -> None:
-    if verbose:
-        kernlens_addr(address)
-        return
+    Same text ``kl-page`` printed before it became ``kl-addr --brief``.
+    """
     page_offset = page_offset_base()
     vmemmap = vmemmap_base()
     text = _runtime_text()
@@ -188,31 +191,80 @@ def kernlens_page(address: int, verbose: bool = False) -> None:
 
 
 # =========================================================================
-# pte / pt
+# pt (was: pt + pte)
 # =========================================================================
 
-_pte_parser = argparse.ArgumentParser(
-    description="Decodes page-table entry flags and leaf translations."
+_pt_parser = argparse.ArgumentParser(
+    description=(
+        "Splits a virtual address into page-table indices, or decodes a "
+        "page-table entry."
+    )
 )
-_pte_parser.add_argument(
-    "entry", type=parse_int, help="raw page-table entry value",
+# One positional drives both views, because ``kl-pt`` and ``kl-pte``
+# differed only in what the number meant.  ``--entry`` says it is an entry
+# value; the default reads it as an address.  A single ``nargs="*"``
+# positional avoids argparse deciding which of two optional positionals an
+# argument belongs to.
+_pt_parser.add_argument(
+    "values", nargs="*", metavar="VALUE",
+    help="virtual address [leaf address used for the translations]",
 )
-_pte_parser.add_argument(
-    "va", nargs="?", type=parse_int, default=None,
-    help="address used for the leaf translations",
+_pt_parser.add_argument(
+    "-e", "--entry", action="store_true",
+    help="treat VALUE as a raw page-table entry instead of an address",
+)
+_pt_parser.add_argument(
+    "--paging", choices=["4", "5"], default=None,
+    help="force one geometry instead of printing both",
 )
 
 
 @Command(
-    _pte_parser,
+    _pt_parser,
     category=CommandCategory.PAGING,
-    aliases=["kl-pte"],
+    aliases=["kl-pt"],
     examples=(
-        "kl-pte 0x8000000000123067\n"
-        "kl-pte 0x8000000000123067 0xffff888000001234"
+        "kl-pt 0xffff888000001234\n"
+        "kl-pt 0xffff888000001234 --paging 5\n"
+        "kl-pt --entry 0x8000000000123067\n"
+        "kl-pt --entry 0x8000000000123067 0xffff888000001234"
+    ),
+    notes=(
+        "``--entry`` decodes a page-table *value* (flags, physical address,\n"
+        "and the three leaf interpretations when a second address is given);\n"
+        "without it the argument is treated as an address and split into\n"
+        "indices.  It replaces ``kl-pte``, which was the same decoder behind\n"
+        "a name that differed from ``kl-pt`` by one letter."
     ),
 )
-def kernlens_pte(entry: int, va: int | None = None) -> None:
+def kernlens_pt(
+    values: list[str] | None = None,
+    entry: bool = False,
+    paging: str | None = None,
+) -> None:
+    tokens = list(values or [])
+    if not tokens:
+        _pt_parser.print_usage()
+        return
+    if entry:
+        raw = parse_int(tokens[0])
+        va = parse_int(tokens[1]) if len(tokens) > 1 else None
+        _pt_entry(raw, va)
+        return
+    if len(tokens) > 1:
+        print(
+            message.error(
+                "a virtual address takes one argument; pass --entry to "
+                "decode a table entry"
+            )
+        )
+        return
+    _pt_indices(parse_int_arg(tokens[0]), paging)
+
+
+def _pt_entry(entry_value: int, va: int | None = None) -> None:
+    """Decode one page-table entry value (the former ``kl-pte``)."""
+    entry = entry_value
     indent = IndentContextManager()
     indent.print(
         indent.prefix("PTE") + ": " + indent.addr_hex(entry)
@@ -246,35 +298,24 @@ def kernlens_pte(entry: int, va: int | None = None) -> None:
         )
 
 
-_pt_parser = argparse.ArgumentParser(
-    description="Shows 4-level/5-level page-table indices for an address."
-)
-_pt_parser.add_argument(
-    "va", type=parse_int_arg, help="virtual address to split",
-)
-
-
-@Command(
-    _pt_parser,
-    category=CommandCategory.PAGING,
-    aliases=["kl-pt"],
-    examples="kl-pt 0xffff888000001234",
-)
-def kernlens_pt(va: int) -> None:
+def _pt_indices(va: int, paging: str | None = None) -> None:
+    """Split one virtual address into page-table indices."""
     pgd, pud, pmd, pte, offset = KPageTable.split_4(va)
     pgd5, p4d, pud5, pmd5, pte5, offset5 = KPageTable.split_5(va)
     indent = IndentContextManager()
     indent.print(indent.prefix("VA") + ": " + indent.addr_hex(va))
-    indent.print(
-        indent.prefix("4-level")
-        + f": pgd={pgd} pud={pud} pmd={pmd} pte={pte}"
-        + " off=" + indent.aux_hex(offset)
-    )
-    indent.print(
-        indent.prefix("5-level")
-        + f": pgd={pgd5} p4d={p4d} pud={pud5} pmd={pmd5} pte={pte5}"
-        + " off=" + indent.aux_hex(offset5)
-    )
+    if paging != "5":
+        indent.print(
+            indent.prefix("4-level")
+            + f": pgd={pgd} pud={pud} pmd={pmd} pte={pte}"
+            + " off=" + indent.aux_hex(offset)
+        )
+    if paging != "4":
+        indent.print(
+            indent.prefix("5-level")
+            + f": pgd={pgd5} p4d={p4d} pud={pud5} pmd={pmd5} pte={pte5}"
+            + " off=" + indent.aux_hex(offset5)
+        )
     indent.print(
         indent.prefix("huge")
         + ": 2m_base=" + indent.addr_hex(KPageTable.huge_2m_base(va))
@@ -311,6 +352,13 @@ _walk_parser.add_argument(
     "-p", "--pgd", dest="root", type=parse_int_arg, default=None,
     help="top-level table to start from (default: the live CR3)",
 )
+_walk_parser.add_argument(
+    "-s", "--style", choices=["levels", "pwndbg"], default="levels",
+    help=(
+        "presentation: one row per level, or pwndbg's pagewalk order "
+        "(default: levels)"
+    ),
+)
 
 
 @Command(
@@ -320,19 +368,31 @@ _walk_parser.add_argument(
     examples=(
         "kl-walk 0xffff888000001234\n"
         "kl-walk 0xffff800000201234 5\n"
-        "kl-walk 0xffff888000001234 --pgd 0x10000"
+        "kl-walk 0xffff888000001234 --pgd 0x10000\n"
+        "kl-walk 0xffff888000001234 --style pwndbg"
     ),
     notes=(
         "``-p/--pgd`` walks a table other than the live CR3 -- a saved or\n"
         "foreign root, so a page table of another task can be followed\n"
-        "without switching to it."
+        "without switching to it.\n"
+        "\n"
+        "``-s/--style pwndbg`` prints the deepest level first, in\n"
+        "pwndbg's ``vmmap``-style layout; ``levels`` (the default) prints\n"
+        "one row per level from the top down.  It is one walk either way,\n"
+        "so it is one command."
     ),
 )
 def kernlens_walk(
-    va: int, mode: str | None = None, root: int | None = None,
+    va: int,
+    mode: str | None = None,
+    root: int | None = None,
+    style: str = "levels",
 ) -> None:
     five_level = None if mode is None else mode == "5"
     walk = kdbg.walk(va, five_level=five_level, root=root)
+    if style == "pwndbg":
+        _walk_pwndbg(walk)
+        return
     indent = IndentContextManager()
     indent.print(indent.prefix("VA") + ": " + indent.addr_hex(walk.va))
     indent.print(
@@ -373,29 +433,14 @@ def kernlens_walk(
         )
 
 
-_pagewalk_parser = argparse.ArgumentParser(
-    description="Walks the page tables in pwndbg's pagewalk format."
-)
-_pagewalk_parser.add_argument(
-    "vaddr", type=parse_int_arg, help="virtual address to walk",
-)
-_pagewalk_parser.add_argument(
-    "-p", "--pgd", dest="entry", type=parse_int_arg, default=None,
-    help="Top-level table address",
-)
+def _walk_pwndbg(walk: PageWalk) -> None:
+    """Print a completed walk in pwndbg's ``pagewalk`` layout.
 
-
-@Command(
-    _pagewalk_parser,
-    category=CommandCategory.PAGING,
-    aliases=["kl-pagewalk"],
-    examples=(
-        "kl-pagewalk 0xffff888000001234\n"
-        "kl-pagewalk 0xffff888000001234 --pgd 0x10000"
-    ),
-)
-def kernlens_pagewalk(vaddr: int, entry: int | None = None) -> None:
-    walk = kdbg.walk(vaddr, root=entry)
+    The deepest level comes first and the resolved physical address last,
+    which is the order a reader of pwndbg's output already knows.  Same
+    walk, same data -- only the presentation differs, which is why this is
+    a style of ``kl-walk`` rather than a command of its own.
+    """
     indent = IndentContextManager()
     # pwndbg prints the deepest level first, then the final result.
     for level in reversed(walk.levels):
@@ -519,11 +564,8 @@ def kernlens_pageinfo(page: int) -> None:
 __all__ = [
     "kernlens_addr",
     "kernlens_p2v",
-    "kernlens_page",
     "kernlens_pageinfo",
-    "kernlens_pagewalk",
     "kernlens_pt",
-    "kernlens_pte",
     "kernlens_v2p",
     "kernlens_walk",
 ]

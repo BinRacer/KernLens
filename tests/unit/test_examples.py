@@ -194,15 +194,16 @@ class NegativeTests(unittest.TestCase):
     def test_mentioned_but_not_executed_command_is_reported(self) -> None:
         """Claiming a command a file only names in prose must fail.
 
-        ``cve_2025_38616_tracer.py`` mentions ``kl-kaslr`` in a banner and
-        in a docstring but never executes it -- that is exactly the
-        distinction this checker exists to draw.
+        ``bits_tour.py`` mentions ``kl-cpu`` in a printed annotation --
+        "(kl-cpu prints this as the 'Online:' range)" -- but only ever
+        executes ``kl-bits``.  That is exactly the distinction this
+        checker exists to draw.
         """
         broken = example_manifest.Example(
-            path="examples/tracing/cve_2025_38616_tracer.py",
+            path="examples/api/bits_tour.py",
             purpose="negative test",
-            commands=("kernlens-kaslr",),
-            readme="examples/tracing/README.md",
+            commands=("kernlens-cpu",),
+            readme="examples/api/README.md",
         )
         original = check_examples.manifest.EXAMPLES
         check_examples.manifest.EXAMPLES = (broken,)
@@ -255,11 +256,10 @@ class ExecutionDetectionTests(unittest.TestCase):
         )
 
     def test_canonical_spelling_counts(self) -> None:
-        path = self._write('import gdb\ngdb.execute("kernlens-kbase")\n')
+        path = self._write('import gdb\ngdb.execute("kernlens-status")\n')
         self.assertEqual(
-            check_examples.executed_commands(path), {"kernlens-kbase"}
+            check_examples.executed_commands(path), {"kernlens-status"}
         )
-
     def test_execute_with_arguments_counts(self) -> None:
         path = self._write('import gdb\ngdb.execute("kl-walk 0xffff888000000000")\n')
         self.assertEqual(

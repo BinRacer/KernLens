@@ -12,56 +12,46 @@
 | --- | --- | --- |
 | `kernlens-status` | `kl-status` | Shows the KernLens version, color mode, KASLR slide, and layout. |
 
-## kernel base & KASLR (4)
+## kernel base & KASLR (1)
 
 | 命令 | 别名 | 作用 |
 | --- | --- | --- |
-| `kernlens-base` | `kl-base` | Selects the runtime kernel text base and KASLR slide. |
-| `kernlens-kbase` | `kl-kbase` | Finds the kernel virtual base address. |
-| `kernlens-kaslr` | `kl-kaslr` | Sets the KASLR slide from a runtime _text address. |
-| `kernlens-kaslr-offset` | `kl-kaslr-offset` | Sets the KASLR slide directly. |
+| `kernlens-base` | `kl-base` | Reports the runtime kernel text base and KASLR slide. |
 
-## kernel metadata (8)
+## kernel metadata (6)
 
 | 命令 | 别名 | 作用 |
 | --- | --- | --- |
 | `kernlens-kcmdline` | `kl-kcmdline` | Return the kernel command line (/proc/cmdline). |
 | `kernlens-kversion` | `kl-kversion` | Outputs the kernel version (/proc/version). |
 | `kernlens-kconfig` | `kl-kconfig` | Outputs the kernel config (/proc/config.gz). |
-| `kernlens-kchecksec` | `kl-kchecksec` | Checks for kernel hardening configuration options. |
 | `kernlens-kmod` | `kl-kmod` | Displays the loaded Linux kernel modules. |
 | `kernlens-ksyscalls` | `kl-ksyscalls` | Displays the Linux syscall table, including names and addresses of syscalls. |
 | `kernlens-kdmesg` | `kl-kdmesg` | Displays the kernel ring buffer (dmesg) contents. |
-| `kernlens-klookup` | `kl-klookup`, `kl-kallsyms`, `kl-ks` | Lookup kernel symbols |
 
-## addresses & page tables (9)
+## addresses & page tables (6)
 
 | 命令 | 别名 | 作用 |
 | --- | --- | --- |
-| `kernlens-addr` | `kl-addr` | Prints a full KAddr analysis of an address. |
-| `kernlens-page` | `kl-page` | Classifies an address and translates direct-map addresses. |
-| `kernlens-pte` | `kl-pte` | Decodes page-table entry flags and leaf translations. |
-| `kernlens-pt` | `kl-pt` | Shows 4-level/5-level page-table indices for an address. |
+| `kernlens-addr` | `kl-addr` | Classifies an address and reports where it maps. |
+| `kernlens-pt` | `kl-pt` | Splits a virtual address into page-table indices, or decodes a page-table entry. |
 | `kernlens-walk` | `kl-walk` | Walks the live page tables and decodes every level. |
-| `kernlens-pagewalk` | `kl-pagewalk` | Walks the page tables in pwndbg's pagewalk format. |
 | `kernlens-p2v` | `kl-p2v` | Translates a physical address to virtual + struct page. |
 | `kernlens-v2p` | `kl-v2p` | Translates a virtual address (live page tables) to physical. |
 | `kernlens-pageinfo` | `kl-pageinfo` | Translates a struct page to virtual and physical addresses. |
 
-## memory & symbols (11)
+## memory & symbols (9)
 
 | 命令 | 别名 | 作用 |
 | --- | --- | --- |
 | `kernlens-buddy` | `kl-buddy` | Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block. |
 | `kernlens-slab` | `kl-slab`, `kl-slabs` | Prints information about the linux kernel's slab allocator SLUB. |
-| `kernlens-sym` | `kl-sym` | Resolves an address to a symbol and source location. |
+| `kernlens-sym` | `kl-sym` | Resolves an address to a symbol, or finds symbols by name. |
 | `kernlens-bt` | `kl-bt` | Prints a formatted kernel backtrace. |
-| `kernlens-chain` | `kl-chain` | Prints a compact caller <- callee call chain. |
 | `kernlens-read` | `kl-read` | Dumps kernel memory as 64-bit words with symbol annotations. |
 | `kernlens-kvar` | `kl-kvar` | Reads a KASLR-aware kernel global variable. |
 | `kernlens-read-field` | `kl-read-field` | Reads a struct field (including nested paths) as an integer. |
 | `kernlens-kbpf` | `kl-kbpf` | Prints information about the linux kernel bpf progs and maps. |
-| `kernlens-buddydump` | `kl-buddydump` | Displays metadata and freelists of the buddy allocator. |
 | `kernlens-kdmabuf` | `kl-kdmabuf` | Prints DMA buf info. |
 
 ## CPU topology (3)

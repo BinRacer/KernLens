@@ -160,15 +160,17 @@ PAGES["kernlens-color"] = {
 # --------------------------------------------------------------------
 
 PAGES["kernlens-base"] = {
-    "title": "Active base and slide",
+    "title": "Kernel base and KASLR slide",
     "intro": (
-        "Prints the base KernLens is *using right now* and how it decided "
-        "on it.  Unlike `kl-kbase`, which searches, this only reports: it "
-        "never changes the slide."
+        "Reports where the kernel text is loaded, and corrects the slide "
+        "when the automatic answer is wrong.  These are four operations "
+        "that used to be four commands (`kl-base`, `kl-kbase`, "
+        "`kl-kaslr`, `kl-kaslr-offset`): there is one slide, so there is "
+        "one command that reads and writes it."
     ),
     "sections": [
         {
-            "heading": "The active base",
+            "heading": "The report",
             "invocation": "kernlens-base",
             "reading": (
                 "`kernel base` is the runtime `_text`; `KASLR offset` is "
@@ -179,40 +181,24 @@ PAGES["kernlens-base"] = {
                 "since the slide can also be known from a core file."
             ),
         },
-    ],
-    "notes": (
-        "12+ call sites add the slide to a link-time address themselves, "
-        "which is why `link_text()` keeps returning the link-time value "
-        "and this command is what reports the runtime one."
-    ),
-}
-
-PAGES["kernlens-kbase"] = {
-    "title": "Find the kernel base",
-    "intro": (
-        "Recovers the kernel's runtime base from the live machine, "
-        "independently of any symbol table.  This is what makes KernLens "
-        "usable on a KASLR kernel whose `vmlinux` is loaded at its "
-        "link-time addresses."
-    ),
-    "sections": [
         {
-            "heading": "The search",
-            "invocation": "kernlens-kbase",
+            "heading": "Reading the method",
+            "invocation": "kernlens-base show",
             "reading": (
-                "`method: symbol` is the strongest case: the `_text` "
-                "symbol was resolvable.  When it is not, the fallback "
-                "reads the IDT and takes the first handler's address, "
-                "subtracting the handler's known link-time offset -- that "
-                "is what `handler=` and `symbol=` report.  `idt:` shows "
-                "the table's own base, limit, and where it was read from "
+                "When `_text` does not resolve, the fallback reads the IDT "
+                "and takes the first handler's address, subtracting the "
+                "handler's known link-time offset -- that is what "
+                "`handler=` and `symbol=` report, and `idt:` shows the "
+                "table's own base, limit, and where it was read from "
                 "(`monitor` means the QEMU monitor, `memory` means the "
-                "`idt_table` symbol)."
+                "`idt_table` symbol).  The slide is verified against the "
+                "IDT rather than trusted, because a wrong slide produces "
+                "plausible-looking garbage everywhere else."
             ),
         },
         {
             "heading": "Showing the physical address",
-            "invocation": "kernlens-kbase -v",
+            "invocation": "kernlens-base -v",
             "reading": (
                 "`-v` adds the physical address the text is loaded at, "
                 "which is what a bootloader or QEMU command line refers "
@@ -222,9 +208,9 @@ PAGES["kernlens-kbase"] = {
         },
         {
             "heading": "Dumping the IDT",
-            "invocation": "kernlens-kbase -i 4",
+            "invocation": "kernlens-base idt 4",
             "reading": (
-                "`-i N` prints the first N gate descriptors: offset, "
+                "`idt N` prints the first N gate descriptors: offset, "
                 "segment selector, gate type, IST index, DPL, and whether "
                 "the address is in the kernel or user range.  The first "
                 "entries are the CPU exceptions in architectural order, "
@@ -233,93 +219,52 @@ PAGES["kernlens-kbase"] = {
         },
         {
             "heading": "Rebasing the symbol file",
-            "invocation": "kernlens-kbase -r",
+            "invocation": "kernlens-base rebase",
             "reading": (
-                "`-r` runs `add-symbol-file` for the loaded object at the "
-                "recovered base, so GDB's own symbol lookups (and "
+                "`rebase` runs `add-symbol-file` for the loaded object at "
+                "the recovered base, so GDB's own symbol lookups (and "
                 "`info symbol`, and pwndbg's disassembly) start working at "
                 "runtime addresses.  Without it GDB's symbol table remains "
-                "link-time."
+                "link-time.  `--rebase` does the same after the report."
             ),
         },
         {
-            "heading": "Applying an explicit value",
-            "invocation": "kernlens-kbase --offset {slide}",
+            "heading": "Setting the slide directly",
+            "invocation": "kernlens-base offset {slide}",
             "reading": (
-                "`--offset` sets the slide directly and prints nothing "
-                "else, which is the form to use in a script that already "
-                "knows the slide."
+                "`offset` applies a slide you were given, with no "
+                "derivation and no verification; `0` means a non-KASLR "
+                "kernel.  The value is echoed back so a mistyped slide is "
+                "visible immediately -- nothing here is compared with the "
+                "target, which is why the echoed line matters.  A wrong "
+                "value makes every later read wrong in a plausible way, so "
+                "`kl-status` is the quick check afterwards: its `_text` row "
+                "shows link and runtime side by side."
             ),
         },
         {
             "heading": "Computing a slide from a known address",
-            "invocation": "kernlens-kbase --text 0xffffffff81000000",
+            "invocation": "kernlens-base text {text}",
             "reading": (
-                "`--text` takes a runtime `_text` and derives the slide "
-                "from it.  Passing the link-time address yields `+0x0`, "
-                "which is a useful sanity check that the inputs are what "
-                "you think they are."
+                "`text` takes a runtime `_text` -- from a leak, from `%pK` "
+                "output, or from the monitor -- and derives the slide from "
+                "it.  Both values are printed so a typo (an address that is "
+                "not actually `_text`) shows up as an absurd slide instead "
+                "of silently shifting every later read.  A bare address "
+                "means the same thing: `kl-base 0xffffffff83000000` is "
+                "`kl-base text ...`."
             ),
         },
     ],
     "notes": (
-        "`-s/--set` and `-p/--phys` are KernLens-only additions hidden "
-        "from `-h`, so the visible surface stays pwndbg's.  The slide is "
-        "verified against the IDT rather than trusted, because a wrong "
-        "slide produces plausible-looking garbage everywhere else."
+        "12+ call sites add the slide to a link-time address themselves, "
+        "which is why `link_text()` keeps returning the link-time value "
+        "and this command is what reports the runtime one.  Prefer the "
+        "default report on a live machine: it derives the slide *and* "
+        "cross-checks it against the IDT.  The explicit subcommands are "
+        "for when the address came from somewhere else."
     ),
 }
-
-PAGES["kernlens-kaslr"] = {
-    "title": "Slide from a runtime address",
-    "intro": (
-        "Sets the KASLR slide from a runtime `_text` you already have -- "
-        "from a leak, from `%pK` output, or from the monitor."
-    ),
-    "sections": [
-        {
-            "heading": "Deriving and applying",
-            "invocation": "kernlens-kaslr {text}",
-            "reading": (
-                "The difference from the link-time `_text` is the slide.  "
-                "Both values are printed so a typo (an address that is not "
-                "actually `_text`) shows up as an absurd slide instead of "
-                "silently shifting every later read."
-            ),
-        },
-    ],
-    "notes": (
-        "Prefer `kl-kbase` when the machine is live: it derives the same "
-        "value *and* cross-checks it against the IDT.  This command is "
-        "for when you already have the address from elsewhere."
-    ),
-}
-
-PAGES["kernlens-kaslr-offset"] = {
-    "title": "Set the slide directly",
-    "intro": (
-        "Applies a slide you were given, with no derivation and no "
-        "verification.  `0` means a non-KASLR kernel."
-    ),
-    "sections": [
-        {
-            "heading": "Applying a numeric slide",
-            "invocation": "kernlens-kaslr-offset {slide}",
-            "reading": (
-                "One line, echoing the value that was set.  The slide is "
-                "a plain attribute on the facade, so this returns "
-                "immediately; nothing is read from the target."
-            ),
-        },
-    ],
-    "notes": (
-        "Because nothing is verified, a wrong value here makes every "
-        "later read wrong in a plausible way.  `kl-status` is the quick "
-        "check afterwards: its `_text` row shows link and runtime "
-        "side by side."
-    ),
-}
-
 
 # --------------------------------------------------------------------
 # kernel metadata
@@ -384,43 +329,27 @@ PAGES["kernlens-kversion"] = {
 PAGES["kernlens-kconfig"] = {
     "title": "Kernel configuration",
     "intro": (
-        "Reads the kernel's embedded configuration.  Struct layouts depend "
-        "on `CONFIG_*` options, so this is the other half of the "
-        "information the layout registry needs besides the version."
+        "Reads the `CONFIG_*` options out of the kernel image itself -- no "
+        "`/boot/config-$(uname -r)` needed, so this works on a target "
+        "whose headers you do not have.  `--check` narrows the same "
+        "lookup to the hardening options; that audit was `kl-kchecksec`."
     ),
     "sections": [
         {
             "heading": "One option",
             "invocation": "kernlens-kconfig RANDOMIZE_BASE",
+            "output_lines": 6,
             "reading": (
-                "The name may be given with or without the `CONFIG_` "
-                "prefix.  The value is printed in the same form the kernel "
-                "uses: `y`, `m`, a number, or a quoted string, and "
-                "`not set` for an option that is off -- which is "
-                "different from `= n`."
+                "The image stores a compressed `IKCFG` blob; KernLens "
+                "inflates it and answers from that.  `= y` is built in, "
+                "`= m` is a module allowed to be built in, and `not set` "
+                "means compiled out -- which is not the same as `n`, "
+                "because unimplemented symbols leave no line at all."
             ),
         },
-    ],
-    "notes": (
-        "The full dump is thousands of lines, so pipe it: "
-        "`kl-kconfig | grep DMABUF`.  When `/proc/config.gz` support is "
-        "absent the command says so rather than inventing defaults, "
-        "because a guessed `CONFIG_*` silently picks the wrong struct "
-        "layout."
-    ),
-}
-
-PAGES["kernlens-kchecksec"] = {
-    "title": "Hardening audit",
-    "intro": (
-        "Audits the `CONFIG_*` options that decide how hard the kernel is "
-        "to exploit.  This is the kernel-space counterpart of pwndbg's "
-        "`checksec`."
-    ),
-    "sections": [
         {
-            "heading": "The audit",
-            "invocation": "kernlens-kchecksec",
+            "heading": "The hardening audit",
+            "invocation": "kernlens-kconfig --check",
             "output_lines": 20,
             "reading": (
                 "Three states appear: `= y` (enabled), `= m` (module), and "
@@ -435,9 +364,11 @@ PAGES["kernlens-kchecksec"] = {
         },
     ],
     "notes": (
-        "The options audited are fixed in the command, not configurable: "
-        "they are the ones that change what an exploit has to do, and a "
-        "user-supplied list would make two reports incomparable."
+        "The audit's option list is fixed in the command, not "
+        "configurable: they are the ones that change what an exploit has "
+        "to do, and a user-supplied list would make two reports "
+        "incomparable.  It reads the same `CONFIG_*` image this command "
+        "prints, so the two cannot disagree."
     ),
 }
 
@@ -565,46 +496,6 @@ PAGES["kernlens-kdmesg"] = {
     ),
 }
 
-PAGES["kernlens-klookup"] = {
-    "title": "Symbol search",
-    "intro": (
-        "Searches the kernel's own kallsyms tables and prints every match "
-        "with its address and type.  This is the command to use when "
-        "GDB's symbol table is at link-time addresses and `info symbol` "
-        "misses."
-    ),
-    "sections": [
-        {
-            "heading": "A function",
-            "invocation": "kernlens-klookup commit_creds",
-            "reading": (
-                "Two rows appear for a function: the function itself "
-                "(`T` for a global text symbol) and its `__ksymtab_` entry "
-                "(`r`, read-only data), which is the export record used by "
-                "modules.  The trailing count is the number of matches, "
-                "not a limit."
-            ),
-        },
-        {
-            "heading": "A variable",
-            "invocation": "kernlens-klookup page_offset_base",
-            "reading": (
-                "`D` marks an initialised data symbol.  The address shown "
-                "is where the variable lives, not its value -- use "
-                "`kl-kvar` for the value, which is a distinction "
-                "`page_offset_base` makes very visible, since the address "
-                "is in `.data` and the value is a direct-map base."
-            ),
-        },
-    ],
-    "notes": (
-        "`-a/--apply` is accepted for pwndbg compatibility and explains "
-        "that it is a no-op: pwndbg rebuilds an ELF symbol table from "
-        "kallsyms and loads it, while KernLens reads the tables live, so "
-        "there is nothing to apply."
-    ),
-}
-
 # --------------------------------------------------------------------
 # CPU topology
 # --------------------------------------------------------------------
@@ -725,55 +616,50 @@ PAGES["kernlens-msr"] = {
 # --------------------------------------------------------------------
 
 PAGES["kernlens-addr"] = {
-    "title": "Address analysis",
+    "title": "Analyse an address",
     "intro": (
-        "Classifies a 64-bit value as an address: canonical or not, which "
-        "region it falls in, whether it is an error pointer, how it "
-        "aligns, and -- when it is in the direct map -- what physical page "
-        "it refers to."
+        "Every question KernLens can answer about a bare address: "
+        "canonicality, the region it falls in, whether it is an `ERR_PTR`, "
+        "how it aligns, its pointer tag, and -- for a direct-map address -- "
+        "the physical address, pfn, and `struct page`.  `--brief` stops "
+        "after the region and the translation, which is what `kl-page` "
+        "printed."
     ),
     "sections": [
         {
-            "heading": "A direct-map address",
+            "heading": "The full analysis",
             "invocation": "kernlens-addr {direct}",
             "reading": (
-                "`Region` is a set of independent tests, not a single "
-                "classification: `kernel`, `user`, `direct`, `vmemmap`, "
-                "`vmalloc`, `module` and `text` are each answered "
-                "separately, because a vmemmap address is also a kernel "
-                "address.  `Physical` appears only when the address is in "
-                "the direct map, since only there is the mapping a constant "
-                "offset."
+                "`Canonical` checks both widths, because a 57-bit kernel "
+                "accepts addresses a 48-bit one would reject as "
+                "non-canonical.  `Region` is the set of range tests that "
+                "apply, and `direct=True` is what makes the translation "
+                "below meaningful.  `Alignment` gives the containing page "
+                "and the next boundary."
             ),
         },
         {
-            "heading": "A text address",
-            "invocation": "kernlens-addr {text_addr}",
-            "reading": (
-                "Now `text=True` and `direct=False`, and there is no "
-                "`Physical` row: text is mapped by the kernel image's own "
-                "page tables at its runtime virtual address, not through "
-                "the direct map."
-            ),
-        },
-        {
-            "heading": "A non-canonical value",
-            "invocation": "kernlens-addr 0x5",
-            "reading": (
-                "`user=True` and every kernel region false.  `Canonical` "
-                "reports both 48-bit and 57-bit forms, which differ only "
-                "for values in the upper half between the two sign "
-                "boundaries -- a useful check when a pointer arrives "
-                "truncated."
-            ),
-        },
-        {
-            "heading": "Ignoring a tag",
+            "heading": "Pointer tags",
             "invocation": "kernlens-addr {direct} 0xfff",
             "reading": (
-                "The optional second argument masks the low bits before the "
-                "analysis, which is how an address-tagged or page-offset-"
-                "carrying value is normalised to its page."
+                "The optional mask separates a tagged pointer from the "
+                "address inside it -- the last step, for a value that "
+                "carried a page offset or a tag, back to the page it names."
+            ),
+        },
+        {
+            "heading": "The brief form",
+            "invocation": "kernlens-addr {direct} --brief",
+            "reading": (
+                "`Class` is the region set, `Physical` and `page` follow "
+                "from the direct map and the vmemmap, and `bases:` prints "
+                "`page_offset_base` and `vmemmap_base` so the arithmetic "
+                "can be checked by hand: `page = vmemmap + pfn * "
+                "sizeof(struct page)`.  `sizeof(struct page)` is read from "
+                "the debug info (64 bytes here), never assumed: it changes "
+                "with `CONFIG_*` options, and using `PAGE_SIZE` instead is "
+                "a classic error that produces `struct page` pointers 64x "
+                "too far apart."
             ),
         },
     ],
@@ -786,12 +672,13 @@ PAGES["kernlens-addr"] = {
 }
 
 PAGES["kernlens-pt"] = {
-    "title": "Page-table indices",
+    "title": "Page-table indices and entries",
     "intro": (
-        "Shows the index extracted at each level for a virtual address, in "
-        "both 4-level and 5-level form, plus the huge-page bases it falls "
-        "inside.  This is pure arithmetic -- nothing is read from the "
-        "target."
+        "Address arithmetic in both directions: a virtual address split "
+        "into its per-level indices, or a raw page-table entry decoded "
+        "into flags and a physical address.  `--entry` selects the second, "
+        "which is what `kl-pte` did.  Nothing is read from the target -- "
+        "the value is the argument."
     ),
     "sections": [
         {
@@ -819,11 +706,39 @@ PAGES["kernlens-pt"] = {
                 "`pgd` but the kernel still occupies the top."
             ),
         },
+        {
+            "heading": "Decoding an entry",
+            "invocation": "kernlens-pt --entry 0x8000000000120063",
+            "reading": (
+                "`present=True` comes from bit 0.  The flag list names each "
+                "set bit: `P` present, `RW` writable, `US` user, `A` "
+                "accessed, `D` dirty, `PS` page-size (huge), `NX` "
+                "no-execute.  `bit7=PS/PAT` is called out separately "
+                "because bit 7 means page-size at the PMD level and PAT "
+                "elsewhere; only the level resolves it, so the command "
+                "reports the ambiguity rather than picking one.  Removing "
+                "the low 12 bits gives the physical page frame, and `NX` is "
+                "the top bit of the 64-bit value -- which is why the entry "
+                "starts with `0x8`."
+            ),
+        },
+        {
+            "heading": "An entry with an address for context",
+            "invocation": "kernlens-pt --entry 0x8000000000120063 {direct}",
+            "reading": (
+                "Giving the address lets the command label the three leaf "
+                "interpretations of the same bits: what the value would "
+                "mean as a 4 KiB, 2 MiB or 1 GiB leaf.  This is how a "
+                "rounding mistake becomes obvious -- the same entry reads "
+                "differently at each level."
+            ),
+        },
     ],
     "notes": (
         "Indices are computed from the address widths, so they do not "
-        "depend on the live tables at all.  `kl-walk` is the command that "
-        "then reads each level."
+        "depend on the live tables at all; `kl-walk` is the command that "
+        "then reads each level.  `--paging 4` or `--paging 5` prints one "
+        "geometry when you are looking at a specific one."
     ),
 }
 
@@ -833,7 +748,8 @@ PAGES["kernlens-walk"] = {
         "Follows the live tables from CR3 down to the leaf, decoding each "
         "entry.  This is the authoritative answer for `what is this "
         "address mapped to`, as opposed to what the index arithmetic "
-        "suggests."
+        "suggests.  `--style pwndbg` prints the same walk in pwndbg's "
+        "layout, which is what `kl-pagewalk` did."
     ),
     "sections": [
         {
@@ -846,7 +762,9 @@ PAGES["kernlens-walk"] = {
                 "-- here `pmd`, marked `(huge leaf)` -- because a huge "
                 "mapping has no lower levels.  `Leaf: 2 MiB` then gives the "
                 "physical base and the offset inside the huge page.  "
-                "`root=` is CR3 with its low control bits masked off."
+                "`root=` is CR3 with its low control bits masked off.  "
+                "`$cr3` is physical, so table pages are read at "
+                "`page_offset_base + phys`."
             ),
         },
         {
@@ -860,118 +778,24 @@ PAGES["kernlens-walk"] = {
                 "and the address is not mapped in that mode."
             ),
         },
-    ],
-    "notes": (
-        "`$cr3` is physical, so table pages are read at "
-        "`page_offset_base + phys`.  `-p/--pgd` walks a table other than "
-        "the live CR3: a saved one, or a foreign process's."
-    ),
-}
-
-PAGES["kernlens-pagewalk"] = {
-    "title": "Pagewalk (pwndbg format)",
-    "intro": (
-        "The same walk as `kl-walk`, printed in pwndbg's `pagewalk` "
-        "layout: leaf first, root last."
-    ),
-    "sections": [
         {
             "heading": "The pwndbg layout",
-            "invocation": "kernlens-pagewalk {direct}",
+            "invocation": "kernlens-walk {direct} --style pwndbg",
             "reading": (
-                "The order is reversed relative to `kl-walk` -- the leaf is "
-                "printed first -- because that is what pwndbg's command "
-                "does and scripts may parse it.  Each row shows the level, "
-                "the entry's address, the index in brackets, the raw value, "
-                "the decoded flags, and the next table.  The final line is "
-                "the translated address, or the physical address when the "
-                "walk reached a leaf."
+                "The order is reversed relative to the default view -- the "
+                "leaf is printed first -- because that is what pwndbg's "
+                "command does and scripts may parse it.  Each row shows the "
+                "level, the entry's address, the index in brackets, the raw "
+                "value, the decoded flags, and the next table.  The final "
+                "line is the translated address, or the physical address "
+                "when the walk reached a leaf."
             ),
         },
     ],
     "notes": (
-        "Kept alongside `kl-walk` deliberately: `kl-walk` is the KernLens "
-        "view (root-down, with the failure reason inline), and this is the "
-        "pwndbg-compatible one.  Neither is redundant for a user who has "
-        "pwndbg muscle memory."
-    ),
-}
-
-PAGES["kernlens-pte"] = {
-    "title": "Decode a page-table entry",
-    "intro": (
-        "Takes one page-table entry's raw value and decodes the flag bits "
-        "and the physical address it encodes.  No memory is read: the "
-        "value is the argument."
-    ),
-    "sections": [
-        {
-            "heading": "Flags and physical address",
-            "invocation": "kernlens-pte 0x8000000000120063",
-            "reading": (
-                "`present=True` comes from bit 0.  The flag list names each "
-                "set bit: `P` present, `RW` writable, `US` user, `A` "
-                "accessed, `D` dirty, `PS` page-size (huge), `NX` "
-                "no-execute.  `bit7=PS/PAT` is called out separately "
-                "because bit 7 means page-size at the PMD level and "
-                "PAT elsewhere; only the level resolves it, so the command "
-                "reports the ambiguity rather than picking one."
-            ),
-        },
-        {
-            "heading": "With an address for context",
-            "invocation": "kernlens-pte 0x8000000000120063 {direct}",
-            "reading": (
-                "Giving the address lets the command label the three leaf "
-                "interpretations of the same bits: what the value would "
-                "mean as a 4 KiB, 2 MiB or 1 GiB leaf.  This is how a "
-                "rounding mistake becomes obvious -- the same entry reads "
-                "differently at each level."
-            ),
-        },
-    ],
-    "notes": (
-        "Removing the low 12 bits gives the physical page frame; the `NX` "
-        "bit is the top bit of the 64-bit value, which is why the entry "
-        "starts with `0x8`."
-    ),
-}
-
-PAGES["kernlens-page"] = {
-    "title": "Page for an address",
-    "intro": (
-        "Classifies an address and, for a direct-map address, prints the "
-        "physical address, pfn and the `struct page` that describes it in "
-        "one place."
-    ),
-    "sections": [
-        {
-            "heading": "The default view",
-            "invocation": "kernlens-page {direct}",
-            "reading": (
-                "`Class` is the region set from `kl-addr`.  `Physical` and "
-                "`page` follow from the direct map and the vmemmap, both of "
-                "which are printed as `bases:` so the arithmetic can be "
-                "checked by hand: `page = vmemmap + pfn * sizeof(struct "
-                "page)`."
-            ),
-        },
-        {
-            "heading": "Verbose",
-            "invocation": "kernlens-page {direct} -v",
-            "reading": (
-                "`-v` adds the full `kl-addr` block -- canonicality, the "
-                "`ERR_PTR` check, and the alignment pair -- before the same "
-                "translation.  It is the 'explain this address completely' "
-                "form."
-            ),
-        },
-    ],
-    "notes": (
-        "`sizeof(struct page)` is read from the debug info (64 bytes "
-        "here), never assumed: it changes with `CONFIG_*` options, and "
-        "using `PAGE_SIZE` instead is a classic error that produces "
-        "`struct page` pointers 64x too far apart."
+        "`-p/--pgd` walks a table other than the live CR3: a saved one, or "
+        "a foreign process's, so another task's page table can be followed "
+        "without switching to it."
     ),
 }
 
@@ -1065,11 +889,12 @@ PAGES["kernlens-v2p"] = {
 # --------------------------------------------------------------------
 
 PAGES["kernlens-sym"] = {
-    "title": "Address to symbol",
+    "title": "Symbol lookup",
     "intro": (
-        "Resolves an address to the symbol that covers it and its source "
-        "location, using the loaded debug info.  Equivalent to GDB's "
-        "`info symbol` but KASLR-aware."
+        "Answers \"which symbol is this?\" from both tables a session "
+        "has: an address resolves through the loaded debug info, and "
+        "`--find` searches the kernel's own kallsyms table by name or "
+        "address.  The second half was `kl-klookup`."
     ),
     "sections": [
         {
@@ -1078,7 +903,10 @@ PAGES["kernlens-sym"] = {
             "reading": (
                 "The symbol, its section, and `file:line` -- the line comes "
                 "from DWARF, so it is exact for this build.  The address "
-                "printed first is the one that was queried, unchanged."
+                "printed first is the one that was queried, unchanged.  "
+                "GDB's symbol table is link-time, so KernLens subtracts the "
+                "slide before asking it; that is why this resolves on a "
+                "KASLR kernel where a plain `info symbol` misses."
             ),
         },
         {
@@ -1086,16 +914,44 @@ PAGES["kernlens-sym"] = {
             "invocation": "kernlens-sym {direct}",
             "reading": (
                 "`?? at ??` means nothing covers the address.  For a "
-                "direct-map address that is the correct answer -- the direct "
-                "map is not a symbol, it is a mapping -- and it is worth "
-                "seeing so you do not mistake it for a broken symbol table."
+                "direct-map address that is the correct answer -- the "
+                "direct map is not a symbol, it is a mapping -- and it is "
+                "worth seeing so you do not mistake it for a broken symbol "
+                "table."
+            ),
+        },
+        {
+            "heading": "Searching kallsyms for a function",
+            "invocation": "kernlens-sym --find commit_creds",
+            "reading": (
+                "Two rows appear for a function: the function itself "
+                "(`T` for a global text symbol) and its `__ksymtab_` entry "
+                "(`r`, read-only data), which is the export record used by "
+                "modules.  The trailing count is the number of matches, "
+                "not a limit.  The first column is a *runtime* address, so "
+                "it is usable even when GDB's own symbols are link-time."
+            ),
+        },
+        {
+            "heading": "Searching kallsyms for a variable",
+            "invocation": "kernlens-sym --find page_offset_base",
+            "reading": (
+                "`D` marks an initialised data symbol.  The address shown "
+                "is where the variable lives, not its value -- use "
+                "`kl-kvar` for the value, which is a distinction "
+                "`page_offset_base` makes very visible, since the address "
+                "is in `.data` and the value is a direct-map base."
             ),
         },
     ],
     "notes": (
-        "GDB's symbol table is link-time.  KernLens subtracts the slide "
-        "before asking GDB, which is why this resolves on a KASLR kernel "
-        "where a plain `info symbol` would miss."
+        "`--find` is the command to use when GDB's symbol table is at "
+        "link-time addresses and `info symbol` misses; without it the "
+        "argument must be an address, and a name is refused with a pointer "
+        "to `--find`.  `-a/--apply` is accepted for pwndbg compatibility "
+        "and explains that it is a no-op: pwndbg rebuilds an ELF symbol "
+        "table from kallsyms and loads it, while KernLens reads the tables "
+        "live, so there is nothing to apply."
     ),
 }
 
@@ -1104,7 +960,8 @@ PAGES["kernlens-bt"] = {
     "intro": (
         "A kernel-aware backtrace: each frame's return address resolved to "
         "a symbol and source line, with the noise of the interrupted "
-        "context handled."
+        "context handled.  `--chain` collapses the same stack to one line, "
+        "which is the form `kl-chain` used to print."
     ),
     "sections": [
         {
@@ -1129,46 +986,25 @@ PAGES["kernlens-bt"] = {
                 "printed text."
             ),
         },
-    ],
-    "notes": (
-        "`--chain` switches to the one-line form, which is what "
-        "`kl-chain` prints.  A frame showing `??` is one where the return "
-        "address did not resolve -- often a stack-corruption artefact, and "
-        "worth noting rather than hiding."
-    ),
-}
-
-PAGES["kernlens-chain"] = {
-    "title": "Compact call chain",
-    "intro": (
-        "The same stack as `kl-bt` collapsed to one line of "
-        "`caller <- callee`, for pasting into a report."
-    ),
-    "sections": [
         {
-            "heading": "The chain",
-            "invocation": "kernlens-chain",
+            "heading": "The chain form",
+            "invocation": "kernlens-bt --chain",
             "reading": (
-                "Innermost first, joined by `<-`.  Only symbol names "
-                "appear -- no addresses, no source lines -- which is what "
-                "makes it fit on one line.  Repeated inlined symbols are "
-                "kept rather than deduplicated, because collapsing them "
-                "would misrepresent the depth."
-            ),
-        },
-        {
-            "heading": "A longer chain",
-            "invocation": "kernlens-chain 12",
-            "reading": (
-                "The optional argument is a depth.  `init_thread_union` "
-                "appearing between frames is a known artefact of the "
-                "kernel's stack layout, not a bad unwind."
+                "Innermost first, joined by `<-`, symbol names only -- no "
+                "addresses, no source lines -- which is what makes it fit "
+                "on one line.  Repeated inlined symbols are kept rather "
+                "than deduplicated, because collapsing them would "
+                "misrepresent the depth.  `init_thread_union` appearing "
+                "between frames is a known artefact of the kernel's stack "
+                "layout, not a bad unwind."
             ),
         },
     ],
     "notes": (
-        "For anything where the addresses matter, use `kl-bt`: this form "
-        "deliberately drops them."
+        "A frame showing `??` is one where the return address did not "
+        "resolve -- often a stack-corruption artefact, and worth noting "
+        "rather than hiding.  For anything where the addresses matter, do "
+        "not use `--chain`: it deliberately drops them."
     ),
 }
 
@@ -1509,26 +1345,13 @@ PAGES["kernlens-buddy"] = {
                 "while this particular list holds zero."
             ),
         },
-    ],
-    "notes": (
-        "PCP (per-CPU page) lists are not covered yet: a page can be free in "
-        "a PCP list without appearing here.  `--limit` caps the rows printed "
-        "for very large zones."
-    ),
-}
-
-PAGES["kernlens-buddydump"] = {
-    "title": "Buddy free-list dump",
-    "intro": (
-        "pwndbg's `buddydump` view: every page on the free lists, in list "
-        "order, with its `struct page` and physical address."
-    ),
-    "sections": [
         {
-            "heading": "Every zone",
-            "invocation": "kernlens-buddydump",
+            "heading": "Every free page, in list order",
+            "invocation": "kernlens-buddy dump",
             "output_lines": 18,
             "reading": (
+                "pwndbg's `buddydump` view, kept as a subcommand because it "
+                "reports the same `free_area` lists in a different shape.  "
                 "Each row is `[index] virtual [page: ptr, phys: addr]`.  The "
                 "index is the position in the list, so consecutive blocks of "
                 "the same order appear consecutively -- the physical "
@@ -1537,9 +1360,10 @@ PAGES["kernlens-buddydump"] = {
             ),
         },
         {
-            "heading": "One zone",
-            "invocation": "kernlens-buddydump -z DMA",
+            "heading": "Restricting the dump",
+            "invocation": "kernlens-buddy dump -z DMA",
             "reading": (
+                "The same filters as `list` (`-z`, `-o`, `-m`, `-n`) apply.  "
                 "The DMA zone here is small and its blocks are the largest "
                 "ones, so the first rows are the same order-10 and order-9 "
                 "blocks `kl-buddy list` counts."
@@ -1547,31 +1371,26 @@ PAGES["kernlens-buddydump"] = {
         },
         {
             "heading": "Searching for an address",
-            "invocation": "kernlens-buddydump -f {direct}",
+            "invocation": "kernlens-buddy dump -f {direct}",
             "reading": (
                 "`-f/--find` matches against the virtual address, the "
                 "physical address, or the `struct page`, so any of the three "
                 "forms identifies the block.  It accepts hex, which matters "
-                "because the value is an address."
-            ),
-        },
-        {
-            "heading": "The migratetype count",
-            "invocation": "kernlens-buddydump --MIGRATE_TYPES 5",
-            "reading": (
-                "`--MIGRATE_TYPES` overrides the discovered count.  It exists "
-                "for images whose `migratetype_names` symbol is missing; "
-                "getting it wrong misplaces every list after the first, so "
-                "the command normally reads the array instead of guessing."
+                "because the value is an address.  `--MIGRATE_TYPES` is "
+                "accepted for pwndbg parity and ignored: the count is read "
+                "from the image's `migratetype_names` symbol, and overriding "
+                "it could only make the walk wrong."
             ),
         },
     ],
     "notes": (
-        "Overlaps `kl-buddy` on purpose: this is the pwndbg layout, "
-        "`kl-buddy` is the KernLens one with the per-order totals.  Use "
-        "`kl-buddy list` for counts and this for the individual blocks."
+        "PCP (per-CPU page) lists are not covered yet: a page can be free in "
+        "a PCP list without appearing here.  `--limit` caps the rows printed "
+        "for very large zones, and `dump -p/--pcp-only` says so instead of "
+        "silently showing buddy lists."
     ),
 }
+
 
 PAGES["kernlens-kbpf"] = {
     "title": "BPF programs and maps",

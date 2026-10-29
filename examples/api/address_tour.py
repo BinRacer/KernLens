@@ -5,27 +5,33 @@
 # Copyright (c) 2026 BinRacer <native.lab@outlook.com>
 #
 # This work is licensed under the terms of the GNU GPL, version 3 or later.
-"""Carry one address through all nine views KernLens offers.
+"""Carry one address through every view KernLens offers.
 
-The nine commands below are not nine ways to ask the same question.
+The commands below are not several ways to ask the same question.
 Each answers something the previous one could not, and the order is the
 order a reader needs them in:
 
-1. `kl-addr` -- what kind of address is this, and is it even canonical.
-2. `kl-page` -- the same question plus the physical translation, which
-   `kl-addr` omits because it is not always possible.
+1. `kl-addr` -- what kind of address is this, is it even canonical, and
+   (for a direct-map address) what physical frame it names.
+2. `kl-addr --brief` -- the same classification without the long report.
 3. `kl-pt` -- the four (or five) index tuples.  Pure arithmetic, no
    memory read, so it works on any address including an unmapped one.
 4. `kl-walk` -- the real page tables, level by level, reading memory.
-5. `kl-pagewalk` -- the same walk in pwndbg's format, for people who
+5. `kl-walk --style pwndbg` -- the same walk in pwndbg's format, for
+   people who
    already read that output.
-6. `kl-pte` -- decode one entry by hand, once the walk told you which
+6. `kl-pt --entry` -- decode one entry by hand, once the walk told you
+   which
    entry to look at.
 7. `kl-v2p` -- virtual to physical, with the leaf size stated.
 8. `kl-p2v` -- the inverse, which is the only view that works when you
    have a physical address and no virtual one (a crash dump, a DMA log).
 9. `kl-pageinfo` -- the `struct page`, which is where the allocator
    keeps its own opinion of the frame.
+
+Steps 1 and 2 are one command because they are one analysis: the brief
+form stops after the classification and the translation, and the full
+form keeps going into alignment, tags, and the `struct page`.
 
 The interesting detail is step 3 versus step 4: `kl-pt` will happily
 compute indices for an unmapped address and `kl-walk` will then report
@@ -147,8 +153,8 @@ def tour(address: int) -> None:
     _section("1. classify (kl-addr)")
     _run(f"kl-addr {address:#x}")
 
-    _section("2. classify + translate (kl-page)")
-    _run(f"kl-page {address:#x}")
+    _section("2. classify, brief form (kl-addr --brief)")
+    _run(f"kl-addr --brief {address:#x}")
 
     _section("3. indices, no memory read (kl-pt)")
     _run(f"kl-pt {address:#x}")
@@ -156,17 +162,17 @@ def tour(address: int) -> None:
     _section("4. walk the live tables (kl-walk)")
     _run(f"kl-walk {address:#x}")
 
-    _section("5. the same walk, pwndbg format (kl-pagewalk)")
-    _run(f"kl-pagewalk {address:#x}")
+    _section("5. the same walk, pwndbg format (kl-walk --style pwndbg)")
+    _run(f"kl-walk --style pwndbg {address:#x}")
 
-    _section("6. decode one entry (kl-pte)")
+    _section("6. decode one entry (kl-pt --entry)")
     try:
         value, level = _leaf_entry(address)
     except RuntimeError as exc:
         gdb.write(f"-- skipped: {exc}\n")
     else:
         gdb.write(f"-- leaf level: {level}\n")
-        _run(f"kl-pte {value:#x} {address:#x}")
+        _run(f"kl-pt --entry {value:#x} {address:#x}")
 
     _section("7. virtual to physical (kl-v2p)")
     _run(f"kl-v2p {address:#x}")

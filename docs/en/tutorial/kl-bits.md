@@ -41,13 +41,13 @@ The `value:` row pairs the hex form with a 64-bit binary rendering, so the bit p
 ### Invocation
 
 ```gdb
-kernlens-bits 0xffffffffadd00000
+kernlens-bits 0xffffffffa7700000
 ```
 
 ### Output
 
 ```text
-value: 0xffffffffadd00000  1111111111111111111111111111111110101101110100000000000000000000
+value: 0xffffffffa7700000  1111111111111111111111111111111110100111011100000000000000000000
 scan: popcount=40 leading_zeros=0 trailing_zeros=20 first_set=21 last_set=64
 power: is_power_of_2=False  log2_floor=63  log2_ceil=64
 ```

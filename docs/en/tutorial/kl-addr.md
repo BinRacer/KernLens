@@ -1,12 +1,12 @@
 # `kernlens-addr`
 
-Address analysis
+Analyse an address
 
 **Alias:** `kl-addr`  
 **Category:** addresses & page tables  
-**Synopsis:** `kernlens-addr [-h] address [tag_mask]`
+**Synopsis:** `kernlens-addr [-h] [-b] address [tag_mask]`
 
-Classifies a 64-bit value as an address: canonical or not, which region it falls in, whether it is an error pointer, how it aligns, and -- when it is in the direct map -- what physical page it refers to.
+Every question KernLens can answer about a bare address: canonicality, the region it falls in, whether it is an `ERR_PTR`, how it aligns, its pointer tag, and -- for a direct-map address -- the physical address, pfn, and `struct page`.  `--brief` stops after the region and the translation, which is what `kl-page` printed.
 
 ## Options
 
@@ -14,99 +14,78 @@ Classifies a 64-bit value as an address: canonical or not, which region it falls
 | --- | --- | --- |
 |  | — | address or GDB expression to analyse |
 |  | (optional) | mask used for pointer-tag analysis (e.g. 0xfff) |
+| `-b`, `--brief` | — | only the class, the translation, and the two bases |
 
-## A direct-map address
+## The full analysis
 
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffff975280400000
+kernlens-addr 0xffff8c3640400000
 ```
 
 ### Output
 
 ```text
-Address: 0xffff975280400000
+Address: 0xffff8c3640400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff975280400000 up=0xffff975280400000
+Alignment: down=0xffff8c3640400000 up=0xffff8c3640400000
 Physical: 0x400000  pfn=1024
-page: 0xffffee5d00010000
+page: 0xffffd66f00010000
 ```
 
 ### Reading it
 
-`Region` is a set of independent tests, not a single classification: `kernel`, `user`, `direct`, `vmemmap`, `vmalloc`, `module` and `text` are each answered separately, because a vmemmap address is also a kernel address.  `Physical` appears only when the address is in the direct map, since only there is the mapping a constant offset.
+`Canonical` checks both widths, because a 57-bit kernel accepts addresses a 48-bit one would reject as non-canonical.  `Region` is the set of range tests that apply, and `direct=True` is what makes the translation below meaningful.  `Alignment` gives the containing page and the next boundary.
 
-## A text address
+## Pointer tags
 
 ### Invocation
 
 ```gdb
-kernlens-addr 0xffffffffadd00000
+kernlens-addr 0xffff8c3640400000 0xfff
 ```
 
 ### Output
 
 ```text
-Address: 0xffffffffadd00000
-Canonical: 48=True  57=True
-Region: kernel=True user=False direct=False vmemmap=False vmalloc=False module=False text=True
-ERR_PTR: no
-Alignment: down=0xffffffffadd00000 up=0xffffffffadd00000
-```
-
-### Reading it
-
-Now `text=True` and `direct=False`, and there is no `Physical` row: text is mapped by the kernel image's own page tables at its runtime virtual address, not through the direct map.
-
-## A non-canonical value
-
-### Invocation
-
-```gdb
-kernlens-addr 0x5
-```
-
-### Output
-
-```text
-Address: 0x5
-Canonical: 48=True  57=True
-Region: kernel=False user=True direct=False vmemmap=False vmalloc=False module=False text=False
-ERR_PTR: no
-Alignment: down=0x0 up=0x1000
-```
-
-### Reading it
-
-`user=True` and every kernel region false.  `Canonical` reports both 48-bit and 57-bit forms, which differ only for values in the upper half between the two sign boundaries -- a useful check when a pointer arrives truncated.
-
-## Ignoring a tag
-
-### Invocation
-
-```gdb
-kernlens-addr 0xffff975280400000 0xfff
-```
-
-### Output
-
-```text
-Address: 0xffff975280400000
+Address: 0xffff8c3640400000
 Canonical: 48=True  57=True
 Region: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
 ERR_PTR: no
-Alignment: down=0xffff975280400000 up=0xffff975280400000
-Tags: mask=0xfff tag=0x0 stripped=0xffff975280400000
+Alignment: down=0xffff8c3640400000 up=0xffff8c3640400000
+Tags: mask=0xfff tag=0x0 stripped=0xffff8c3640400000
 Physical: 0x400000  pfn=1024
-page: 0xffffee5d00010000
+page: 0xffffd66f00010000
 ```
 
 ### Reading it
 
-The optional second argument masks the low bits before the analysis, which is how an address-tagged or page-offset-carrying value is normalised to its page.
+The optional mask separates a tagged pointer from the address inside it -- the last step, for a value that carried a page offset or a tag, back to the page it names.
+
+## The brief form
+
+### Invocation
+
+```gdb
+kernlens-addr 0xffff8c3640400000 --brief
+```
+
+### Output
+
+```text
+Address: 0xffff8c3640400000
+Class: kernel=True user=False direct=True vmemmap=False vmalloc=False module=False text=False
+Physical: 0x400000  pfn=1024
+page: 0xffffd66f00010000
+bases: page_offset=0xffff8c3640000000 vmemmap=0xffffd66f00000000
+```
+
+### Reading it
+
+`Class` is the region set, `Physical` and `page` follow from the direct map and the vmemmap, and `bases:` prints `page_offset_base` and `vmemmap_base` so the arithmetic can be checked by hand: `page = vmemmap + pfn * sizeof(struct page)`.  `sizeof(struct page)` is read from the debug info (64 bytes here), never assumed: it changes with `CONFIG_*` options, and using `PAGE_SIZE` instead is a classic error that produces `struct page` pointers 64x too far apart.
 
 ## Notes
 

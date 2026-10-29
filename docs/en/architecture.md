@@ -69,11 +69,11 @@ full rules and abbreviation table live in [`naming.md`](naming.md).
 │   │   ├── formatting.py # shared output/parse helpers
 │   │   ├── help.py       # GROUP_ORDER + kl-help overview / detail renderers
 │   │   ├── overview.py   # kl-status
-│   │   ├── kernel_base.py# kl-base / kl-kbase / kl-kaslr(-offset)
+│   │   ├── kernel_base.py# kl-base (+ show/text/offset/idt/rebase)
 │   │   ├── memory.py     # kl-slab (list/info/contains/details) / kl-sym / kl-bt / ...
 │   │   ├── metadata.py   # kl-kcmdline / kl-kversion / kl-kconfig / ...
 │   │   ├── misc.py       # kl-cpu / kl-percpu / kl-msr / kl-color
-│   │   ├── paging.py     # kl-addr / kl-page / kl-pt(e) / kl-walk / ...
+│   │   ├── paging.py     # kl-addr / kl-pt / kl-walk / kl-p2v / ...
 │   │   └── primitives.py # kl-bits / kl-int
 │   ├── gdb/
 │   │   ├── __init__.py   # lazy component exports
@@ -632,9 +632,8 @@ core.
   works.  Whenever the slide changes the reader fires an `on_change`
   hook that drops `KernelInspector`'s address-derived caches, which is
   what makes every ported command follow a KASLR change without a manual
-  `kl-base`.  `kl-base` and `kl-kbase --set` remain the explicit,
-  user-facing way to pin the slide; `kl-kaslr` / `kl-kaslr-offset`
-  override it by hand.
+  `kl-base`.  `kl-base` remains the explicit, user-facing way to pin the
+  slide: its `offset` and `text` subcommands override it by hand.
 
 ## Testing strategy
 

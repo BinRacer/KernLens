@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 168" preserveAspectRatio="xMidYMid meet" width="100%" role="img" aria-labelledby="banner-title banner-desc">
     <title id="banner-title">KernLens</title>
-    <desc id="banner-desc">KernLens — Linux kernel introspection for GDB, 40 kl-* commands for page tables, SLUB, symbols, and KASLR</desc>
+    <desc id="banner-desc">KernLens — Linux kernel introspection for GDB, 30 kl-* commands for page tables, SLUB, symbols, and KASLR</desc>
     <defs>
         <linearGradient id="wordmark" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#4361ee"/>
@@ -44,5 +44,5 @@
 
     <text class="wordmark" x="50%" y="60">KernLens</text>
     <text class="tagline" x="50%" y="104">Linux kernel introspection for GDB</text>
-    <text class="surface" x="50%" y="136">40 kl-* commands · page tables · SLUB · symbols · KASLR</text>
+    <text class="surface" x="50%" y="136">30 kl-* commands · page tables · SLUB · symbols · KASLR</text>
 </svg>

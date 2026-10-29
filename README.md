@@ -17,11 +17,11 @@
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
-    <img src="https://img.shields.io/badge/commands-40-informational" alt="40 commands">
+    <img src="https://img.shields.io/badge/commands-30-informational" alt="30 commands">
   </p>
 </div>
 
-KernLens adds **40 commands** to GDB for reading a running Linux kernel.
+KernLens adds **30 commands** to GDB for reading a running Linux kernel.
 Each one reads real memory through a single reader, decodes it with
 arithmetic you can check by hand, and prints the answer with the entry it
 came from -- so a wrong result looks wrong instead of looking plausible.
@@ -171,9 +171,9 @@ docker build -f demo/Dockerfile -t kernlens-demo .
 docker run --rm -it kernlens-demo
 ```
 
-The tour runs `kl-status`, `kl-kbase`, `kl-kconfig`, `kl-slab info`,
-`kl-sym`, and `kl-pagewalk`. Pass a command instead of the tour to run
-just that one:
+The tour runs `kl-status`, `kl-base`, `kl-kconfig`, `kl-slab info`,
+`kl-sym`, and `kl-walk`. Pass a command instead of the tour to run just
+that one:
 
 ```console
 docker run --rm -it kernlens-demo kl-slab info dentry
@@ -184,7 +184,7 @@ the session is also a test of the BTF path. What is inside, and why it is
 built rather than downloaded, is in
 [`docs/en/demo-container.md`](docs/en/demo-container.md).
 
-## The 40 commands
+## The 30 commands
 
 Grouped as `kl-help` groups them. The `kl-` form is what you type at the
 prompt; the canonical `kernlens-` form is what scripts and the generated
@@ -194,10 +194,10 @@ one-line description is in [`docs/en/commands.md`](docs/en/commands.md).
 | Category | Commands |
 | --- | --- |
 | overview (1) | `kl-status` |
-| kernel base & KASLR (4) | `kl-base`, `kl-kbase`, `kl-kaslr`, `kl-kaslr-offset` |
-| kernel metadata (8) | `kl-kchecksec`, `kl-kcmdline`, `kl-kconfig`, `kl-kdmesg`, `kl-klookup`, `kl-kmod`, `kl-ksyscalls`, `kl-kversion` |
-| addresses & page tables (9) | `kl-addr`, `kl-p2v`, `kl-page`, `kl-pageinfo`, `kl-pagewalk`, `kl-pt`, `kl-pte`, `kl-v2p`, `kl-walk` |
-| memory & symbols (11) | `kl-bt`, `kl-buddy`, `kl-buddydump`, `kl-chain`, `kl-kbpf`, `kl-kdmabuf`, `kl-kvar`, `kl-read`, `kl-read-field`, `kl-slab`, `kl-sym` |
+| kernel base & KASLR (1) | `kl-base` |
+| kernel metadata (6) | `kl-kcmdline`, `kl-kconfig`, `kl-kdmesg`, `kl-kmod`, `kl-ksyscalls`, `kl-kversion` |
+| addresses & page tables (6) | `kl-addr`, `kl-p2v`, `kl-pageinfo`, `kl-pt`, `kl-v2p`, `kl-walk` |
+| memory & symbols (9) | `kl-bt`, `kl-buddy`, `kl-kbpf`, `kl-kdmabuf`, `kl-kvar`, `kl-read`, `kl-read-field`, `kl-slab`, `kl-sym` |
 | CPU topology (3) | `kl-cpu`, `kl-msr`, `kl-percpu` |
 | bit & integer primitives (2) | `kl-bits`, `kl-int` |
 | output (1) | `kl-color` |

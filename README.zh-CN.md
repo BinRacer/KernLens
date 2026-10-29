@@ -16,7 +16,7 @@
     <a href="https://github.com/BinRacer/KernLens"><img src="https://img.shields.io/badge/GitHub-KernLens-181717.svg" alt="GitHub: KernLens"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="许可证：GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10-3.13">
-    <img src="https://img.shields.io/badge/commands-40-informational" alt="40 个命令">
+    <img src="https://img.shields.io/badge/commands-30-informational" alt="30 个命令">
   </p>
 </div>
 
@@ -161,8 +161,8 @@ docker build -f demo/Dockerfile -t kernlens-demo .
 docker run --rm -it kernlens-demo
 ```
 
-默认会依次运行 `kl-status`、`kl-kbase`、`kl-kconfig`、`kl-slab info`、
-`kl-sym` 和 `kl-pagewalk`。传入一个命令则只运行那一条：
+默认会依次运行 `kl-status`、`kl-base`、`kl-kconfig`、`kl-slab info`、
+`kl-sym` 和 `kl-walk`。传入一个命令则只运行那一条：
 
 ```console
 docker run --rm -it kernlens-demo kl-slab info dentry
@@ -172,7 +172,7 @@ docker run --rm -it kernlens-demo kl-slab info dentry
 路径的检验。镜像里有什么、为什么选择编译而不是下载，见
 [`docs/en/demo-container.md`](docs/en/demo-container.md)。
 
-## 40 个命令
+## 30 个命令
 
 分组与 `kl-help` 完全一致。`kl-` 形式是你在提示符下敲的；规范的
 `kernlens-` 形式是脚本和生成式教程用的。两者始终都能用。每个命令的
@@ -181,10 +181,10 @@ docker run --rm -it kernlens-demo kl-slab info dentry
 | 分类 | 命令 |
 | --- | --- |
 | overview (1) 总览 | `kl-status` |
-| kernel base & KASLR (4) 基址与偏移 | `kl-base`, `kl-kbase`, `kl-kaslr`, `kl-kaslr-offset` |
-| kernel metadata (8) 内核元信息 | `kl-kchecksec`, `kl-kcmdline`, `kl-kconfig`, `kl-kdmesg`, `kl-klookup`, `kl-kmod`, `kl-ksyscalls`, `kl-kversion` |
-| addresses & page tables (9) 地址与页表 | `kl-addr`, `kl-p2v`, `kl-page`, `kl-pageinfo`, `kl-pagewalk`, `kl-pt`, `kl-pte`, `kl-v2p`, `kl-walk` |
-| memory & symbols (11) 内存与符号 | `kl-bt`, `kl-buddy`, `kl-buddydump`, `kl-chain`, `kl-kbpf`, `kl-kdmabuf`, `kl-kvar`, `kl-read`, `kl-read-field`, `kl-slab`, `kl-sym` |
+| kernel base & KASLR (1) 基址与偏移 | `kl-base` |
+| kernel metadata (6) 内核元信息 | `kl-kcmdline`, `kl-kconfig`, `kl-kdmesg`, `kl-kmod`, `kl-ksyscalls`, `kl-kversion` |
+| addresses & page tables (6) 地址与页表 | `kl-addr`, `kl-p2v`, `kl-pageinfo`, `kl-pt`, `kl-v2p`, `kl-walk` |
+| memory & symbols (9) 内存与符号 | `kl-bt`, `kl-buddy`, `kl-kbpf`, `kl-kdmabuf`, `kl-kvar`, `kl-read`, `kl-read-field`, `kl-slab`, `kl-sym` |
 | CPU topology (3) CPU 拓扑 | `kl-cpu`, `kl-msr`, `kl-percpu` |
 | bit & integer primitives (2) 位与整数 | `kl-bits`, `kl-int` |
 | output (1) 输出 | `kl-color` |

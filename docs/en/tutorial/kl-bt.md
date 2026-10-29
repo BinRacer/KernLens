@@ -6,7 +6,7 @@ Backtrace
 **Category:** memory & symbols  
 **Synopsis:** `kernlens-bt [-h] [--chain] [depth]`
 
-A kernel-aware backtrace: each frame's return address resolved to a symbol and source line, with the noise of the interrupted context handled.
+A kernel-aware backtrace: each frame's return address resolved to a symbol and source line, with the noise of the interrupted context handled.  `--chain` collapses the same stack to one line, which is the form `kl-chain` used to print.
 
 ## Options
 
@@ -27,14 +27,14 @@ kernlens-bt
 
 ```text
 bt:
-                   #0  0xffffffffaee1263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
-                   #1  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #2  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #3  0xffffffffadc5a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
-                   #4  0xffffffffaee127aa  default_idle_call  at ./arch/x86/include/asm/paravirt.h:699
-                   #5  0xffffffffade119bf  do_idle  at kernel/sched/idle.c:192
-                   #6  0xffffffffade119bf  do_idle  at kernel/sched/idle.c:192
-                   #7  0xffffffffade11c1a  cpu_startup_entry  at kernel/sched/idle.c:400
+                   #0  0xffffffffa881263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
+                   #1  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #2  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #3  0xffffffffa765a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
+                   #4  0xffffffffa88127aa  default_idle_call  at ./arch/x86/include/asm/paravirt.h:699
+                   #5  0xffffffffa78119bf  do_idle  at kernel/sched/idle.c:192
+                   #6  0xffffffffa78119bf  do_idle  at kernel/sched/idle.c:192
+                   #7  0xffffffffa7811c1a  cpu_startup_entry  at kernel/sched/idle.c:400
 ```
 
 ### Reading it
@@ -53,19 +53,37 @@ kernlens-bt 4
 
 ```text
 bt:
-                   #0  0xffffffffaee1263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
-                   #1  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #2  0xffffffffaee1248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
-                   #3  0xffffffffadc5a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
+                   #0  0xffffffffa881263b  native_safe_halt  at ./arch/x86/include/asm/irqflags.h:52
+                   #1  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #2  0xffffffffa881248e  default_idle  at ./arch/x86/include/asm/paravirt.h:173
+                   #3  0xffffffffa765a245  arch_cpu_idle  at arch/x86/kernel/process.c:728
 ```
 
 ### Reading it
 
 A depth limit keeps the output readable on a deep stack.  The inner frames are the same, so the limit is applied from the innermost frame outward, not by truncating the printed text.
 
+## The chain form
+
+### Invocation
+
+```gdb
+kernlens-bt --chain
+```
+
+### Output
+
+```text
+native_safe_halt <- default_idle <- default_idle <- arch_cpu_idle <- default_idle_call <- do_idle <- do_idle <- cpu_startup_entry
+```
+
+### Reading it
+
+Innermost first, joined by `<-`, symbol names only -- no addresses, no source lines -- which is what makes it fit on one line.  Repeated inlined symbols are kept rather than deduplicated, because collapsing them would misrepresent the depth.  `init_thread_union` appearing between frames is a known artefact of the kernel's stack layout, not a bad unwind.
+
 ## Notes
 
-`--chain` switches to the one-line form, which is what `kl-chain` prints.  A frame showing `??` is one where the return address did not resolve -- often a stack-corruption artefact, and worth noting rather than hiding.
+A frame showing `??` is one where the return address did not resolve -- often a stack-corruption artefact, and worth noting rather than hiding.  For anything where the addresses matter, do not use `--chain`: it deliberately drops them.
 
 ---
 

@@ -22,10 +22,10 @@ and used alone.
 
 | Command | File | Covers |
 | --- | --- | --- |
-| `kfacts [symbol]` | [`kernel_facts_tour.py`](kernel_facts_tour.py) | `kl-kversion` `kl-kcmdline` `kl-kconfig` `kl-kchecksec` `kl-kmod` `kl-ksyscalls` `kl-klookup` `kl-kdmesg` |
-| `atour [addr]` | [`address_tour.py`](address_tour.py) | `kl-addr` `kl-page` `kl-pt` `kl-walk` `kl-pagewalk` `kl-pte` `kl-v2p` `kl-p2v` `kl-pageinfo` |
+| `kfacts [symbol]` | [`kernel_facts_tour.py`](kernel_facts_tour.py) | `kl-kversion` `kl-kcmdline` `kl-kconfig` `kl-kconfig --check` `kl-kmod` `kl-ksyscalls` `kl-sym --find` `kl-kdmesg` |
+| `atour [addr]` | [`address_tour.py`](address_tour.py) | `kl-addr` `kl-addr --brief` `kl-pt` `kl-walk` `kl-walk --style pwndbg` `kl-pt --entry` `kl-v2p` `kl-p2v` `kl-pageinfo` |
 | `stour [cache]` | [`slab_tour.py`](slab_tour.py) | `kl-slab` `kl-buddy` |
-| `ytour [symbol]` | [`symbols_tour.py`](symbols_tour.py) | `kl-klookup` `kl-sym` `kl-read` `kl-kvar` `kl-read-field` `kl-bt` `kl-chain` |
+| `ytour [symbol]` | [`symbols_tour.py`](symbols_tour.py) | `kl-sym --find` `kl-sym` `kl-read` `kl-kvar` `kl-read-field` `kl-bt` `kl-bt --chain` |
 
 ## The one that decodes rather than describes
 
