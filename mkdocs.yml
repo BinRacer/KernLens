@@ -205,7 +205,21 @@ plugins:
             - 参与贡献: https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.zh-CN.md
             - 安全: https://github.com/BinRacer/KernLens/blob/main/SECURITY.md
             - 变更日志: https://github.com/BinRacer/KernLens/blob/main/CHANGELOG.md
-  - search
+  # The search index is one file for the whole site, so it carries one
+  # tokenizer for both languages.  Chinese has no spaces, and the default
+  # separator (`[\s\-]+`) left a whole paragraph as a single token --
+  # `分页` and `结构体` matched nothing at all, while `页表` matched only
+  # where it happened to start a run.
+  #
+  # `jieba` is the theme's own answer: with it installed, the search plugin
+  # cuts every Han run into words and joins them with U+200B (see
+  # `_segment_chinese` in `material/plugins/search/plugin.py`).  The
+  # separator below is the theme's Chinese one, and it has to include
+  # `\u200b` or the boundaries jieba inserts are not boundaries at all.
+  # Measured on the same corpus: `页表` 4 -> 16 pages, `结构体` 0 -> 9,
+  # `直接映射` 1 -> 17, `页表遍历` 4 -> 19.
+  - search:
+      separator: "[\\s\\u200b\\u3000\\-\\u3001\\u3002\\uff0c\\uff0e\\uff1f\\uff01\\uff1b]+"
 
 # English is the default language, so English is what the root nav shows.
 # Targets are relative to `docs/`, which is why they carry the `en/`

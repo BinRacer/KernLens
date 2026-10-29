@@ -42,11 +42,11 @@ _HTML_TAG = re.compile(r'<html lang="[^"]*"')
 #: ``<title>...</title>``, the only one in the document.
 _TITLE = re.compile(r"<title>.*?</title>", re.DOTALL)
 
-#: Directory under ``docs/`` whose pages are Chinese, and the tag they
-#: need.  A path prefix rather than a filename test: the rule is "this
-#: directory is a language", which is what makes adding a page to it safe.
-CHINESE_DIR = "zh-CN/"
+#: The tag a page gets when its source is the default language.  A
+#: constant rather than the theme's value, because the same
+#: ``on_post_page`` handles pages from both languages.
 CHINESE_LANG = "zh-CN"
+DEFAULT_LANG = "en"
 
 #: Document titles for pages the theme would name after the file.  Keyed
 #: by source path so a rename fails visibly (the page reverts to
@@ -57,11 +57,25 @@ TITLES: dict[str, str] = {
 
 
 def on_post_page(output: str, *, page, config) -> str:
-    """Rewrite the ``lang`` attribute, and the title where it is needed."""
+    """Rewrite the ``lang`` attribute, and the title where it is needed.
+
+    The attribute declares the language of the *text*, which is not
+    always the language of the URL.  ``fallback_to_default`` publishes
+    every untranslated page under ``/zh-CN/`` as well, built from the
+    English source, so a page can live at ``/zh-CN/tutorial/kl-walk/``
+    and be entirely English.  Announcing that as Chinese is worse than
+    saying nothing: a screen reader picks a Chinese voice, the browser
+    picks a Chinese font stack, and the search index applies Chinese
+    rules to English prose.
+
+    ``page.file.locale`` is the source file's own locale, and it is what
+    tells the two apart -- the URL does not.  A translated page has
+    ``locale == "zh-CN"``; a fallback page keeps ``"en"`` while its URL
+    is rewritten.  So the tag follows the file, not the directory.
+    """
     source = getattr(page.file, "src_uri", "") or ""
-    if not source.startswith(CHINESE_DIR):
-        return output
-    output = _HTML_TAG.sub(f'<html lang="{CHINESE_LANG}"', output, count=1)
     if source in TITLES:
         output = _TITLE.sub(f"<title>{TITLES[source]}</title>", output, count=1)
-    return output
+    locale = getattr(page.file, "locale", None) or ""
+    language = CHINESE_LANG if locale == CHINESE_LANG else DEFAULT_LANG
+    return _HTML_TAG.sub(f'<html lang="{language}"', output, count=1)

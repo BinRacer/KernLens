@@ -64,9 +64,15 @@ dev = [
 # Building the documentation site is not part of `uv sync`; the docs job
 # in CI asks for this group explicitly, so a contributor who only runs the
 # test suite does not download a theme.
+# `jieba` is not used by this repository directly.  `mkdocs-material`
+# imports it if it is present and, when it is, segments Chinese text
+# before indexing it; without it the Chinese pages are indexed as single
+# unbroken paragraphs and are effectively unsearchable.  It is a build
+# dependency, not a runtime one.
 docs = [
     "mkdocs-material>=9.5",
     "mkdocs-static-i18n>=1.3",
+    "jieba>=0.42.1",
 ]
 # `twine check` is the release job's last gate before an upload; it is
 # not needed to test or to build the site.

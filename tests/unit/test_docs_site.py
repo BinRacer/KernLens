@@ -35,6 +35,19 @@ def _is_url(target: str) -> bool:
     return target.startswith(("http://", "https://", "mailto:"))
 
 
+def _page(src_uri: str, *, locale: str, url: str = ""):
+    """A stand-in for the ``Page`` that ``on_post_page`` receives.
+
+    Only three attributes are read -- ``file.src_uri``, ``file.locale``
+    and ``file`` itself -- so a namespace is enough, and it says which
+    ones the hook actually depends on.  ``locale`` is separate from
+    ``src_uri`` on purpose: for a fallback page they disagree, and that
+    disagreement is the whole point of the language rule.
+    """
+    file = type("File", (), {"src_uri": src_uri, "locale": locale})()
+    return type("Page", (), {"file": file, "url": url, "title": ""})()
+
+
 def _locale_nav(mkdocs: str, locale: str) -> list[tuple[str, str]]:
     """The ``nav`` one locale overrides, as ``(title, target)`` pairs.
 
@@ -594,12 +607,8 @@ class LanguageLayoutTests(unittest.TestCase):
         import language
 
         config = type("Config", (), {"docs_dir": str(DOCS)})()
-        chinese = type(
-            "Page", (), {"file": type("File", (), {"src_uri": "zh-CN/api.md"})()},
-        )()
-        english = type(
-            "Page", (), {"file": type("File", (), {"src_uri": "api.md"})()},
-        )()
+        chinese = _page("zh-CN/api.md", locale="zh-CN")
+        english = _page("api.md", locale="en")
         rendered = '<html lang="en" class="no-js">'
 
         self.assertEqual(
@@ -609,6 +618,37 @@ class LanguageLayoutTests(unittest.TestCase):
         self.assertEqual(
             language.on_post_page(rendered, page=english, config=config),
             rendered,
+        )
+
+    def test_an_untranslated_page_does_not_claim_to_be_chinese(self) -> None:
+        """A fallback page is published under ``/zh-CN/`` and is English.
+
+        ``fallback_to_default: true`` builds every untranslated page for
+        both locales, so ``/zh-CN/tutorial/kl-walk/`` exists and is
+        English prose.  Choosing the tag from the URL prefix made those
+        30 pages announce ``lang="zh-CN"``, which hands English text to
+        a Chinese screen-reader voice and a Chinese font stack.
+
+        The giveaway is ``page.file.locale``: it names the language of
+        the source file, so a fallback page keeps ``en`` even though its
+        ``url`` was rewritten.  Both halves are asserted here, because a
+        fix that keyed on the URL would pass the first assertion alone.
+        """
+        import language
+
+        config = type("Config", (), {"docs_dir": str(DOCS)})()
+        fallback = _page("en/tutorial/kl-walk.md", locale="en",
+                         url="zh-CN/tutorial/kl-walk/")
+        translated = _page("zh-CN/api.md", locale="zh-CN", url="zh-CN/api/")
+        rendered = '<html lang="zh" class="no-js">'
+
+        self.assertEqual(
+            language.on_post_page(rendered, page=fallback, config=config),
+            '<html lang="en" class="no-js">',
+        )
+        self.assertEqual(
+            language.on_post_page(rendered, page=translated, config=config),
+            '<html lang="zh-CN" class="no-js">',
         )
 
     def test_the_chinese_front_page_gets_a_document_title(self) -> None:
@@ -624,9 +664,7 @@ class LanguageLayoutTests(unittest.TestCase):
 
         config = type("Config", (), {"docs_dir": str(DOCS)})()
         source = "zh-CN/index.md"
-        page = type(
-            "Page", (), {"file": type("File", (), {"src_uri": source})()},
-        )()
+        page = _page(source, locale="zh-CN", url="zh-CN/")
         rendered = '<html lang="en"><head><title>Index - KernLens</title>'
         out = language.on_post_page(rendered, page=page, config=config)
         self.assertIn(f"<title>{language.TITLES[source]}</title>", out)
@@ -647,6 +685,54 @@ class LanguageLayoutTests(unittest.TestCase):
     def test_the_language_hook_is_configured(self) -> None:
         self.assertIn("hooks/language.py", _mkdocs())
         self.assertTrue((ROOT / "hooks" / "language.py").is_file())
+
+
+class SearchIndexTests(unittest.TestCase):
+    """The search box has to be usable in Chinese, not just in English.
+
+    There is one ``search_index.json`` for the whole site, so one
+    tokenizer has to serve both languages.  The default separator is
+    ``[\\s\\-]+``, which is fine for English and wrong for Chinese: with
+    no spaces to split on, a whole paragraph becomes a single token, and
+    a query only matches where it happens to begin one.  Measured on the
+    docs before the fix: ``分页`` and ``结构体`` matched nothing at all.
+
+    The theme already solves this, but only if ``jieba`` can be imported
+    -- it then segments every Han run and joins the words with U+200B.
+    Two things therefore have to stay true, and neither is visible in the
+    rendered page: the dependency, and a separator that treats U+200B as a
+    boundary.
+    """
+
+    def test_the_separator_splits_on_the_boundary_jieba_inserts(self) -> None:
+        """U+200B has to be in the separator, or segmentation is inert.
+
+        ``_segment_chinese`` joins the words it finds with ``\\u200b``.
+        Every other character class in the theme's Chinese separator
+        (``\\u3000``, ``、``, ``，``) is about full-width punctuation, which
+        a Markdown page rarely contains; the ZWSP is the one that carries
+        the segmentation.  Dropping it leaves the dependency installed and
+        the index unchanged.
+        """
+        text = _mkdocs()
+        separator = next(
+            line.split(":", 1)[1].strip()
+            for line in text.splitlines()
+            if line.strip().startswith("separator:")
+        )
+        self.assertIn("\\u200b", separator)
+
+    def test_the_docs_group_installs_the_tokenizer(self) -> None:
+        """The build is the only consumer, so the docs group is where it goes.
+
+        Putting it in the runtime dependencies would ship 37 MB of
+        dictionary to everyone who installs KernLens, for a feature that
+        only the site build uses.
+        """
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        group = re.search(r"^docs = \[(.*?)^\]", pyproject, re.S | re.M)
+        self.assertIsNotNone(group, "no `docs` dependency group")
+        self.assertIn("jieba", group.group(1))
 
 
 class LanguageSwitcherTests(unittest.TestCase):
