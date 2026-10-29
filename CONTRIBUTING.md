@@ -19,12 +19,21 @@ a checkout, `site-packages` in a wheel.  `src/kernlens/gdbinit.py` does
 both; the root `gdbinit.py` is a shim so existing `~/.gdbinit` lines keep
 working.
 
-The console script is host-side only, and it answers to two names:
-`kernlens` and its short alias `kl`, the same pairing every GDB command
-has.  `kernlens path` prints the startup
+The console script is host-side only, and the console script itself
+answers to two names: `kernlens` and its short alias `kl`, the same
+pairing every GDB command has.  `kernlens path` prints the startup
 file, `kernlens install` edits `~/.gdbinit`, `kernlens doctor` checks the
 load path, and `kernlens version` prints the version.  None of them
 imports `kernlens.gdb`, because the host interpreter has no `gdb` module.
+
+One asymmetry worth knowing before editing either path: `install.sh`
+writes only the `kernlens` wrapper, so a checkout install has no `kl` on
+`PATH`.  The `kl` name comes solely from the wheel's `[project.scripts]`
+entry, so the alias only exists for a `pip install` user.  That is not a
+typo to "fix" casually: the shell installer writes a static file and
+cannot read `pyproject.toml`, so adding a second name there means
+duplicating the entry-point target in shell, which is exactly the kind
+of drift `tests/unit/test_install.py` already guards for the markers.
 
 Publishing is a release step, not a code step.  The order, the checks,
 and the one-time trusted-publishing setup are in
@@ -47,6 +56,16 @@ uv run mypy
 uv run python tools/gen_commands.py --check
 uv run python tools/gen_demo.py --check
 uv run python tools/gen_docs_site.py --check
+uv run python tools/gen_tutorial.py --capture tools/tutorial_capture.json \
+    --meta tools/tutorial_meta.json --out docs/en/tutorial --check
+uv run python tools/gen_tutorial_index.py \
+    --capture tools/tutorial_capture.json --meta tools/tutorial_meta.json \
+    --out docs/zh-CN/tutorial --locale zh-CN --check
+uv run python tools/check_examples.py --check
+uv run python tools/gen_examples_readme.py --check
+uv run python tools/check_example_capture.py
+uv run python tools/gen_layouts.py --btf /sys/kernel/btf/vmlinux \
+    --coverage --version "$(uname -r | cut -d- -f1)"
 ```
 
 `pyright` and `mypy` are both gates: the package ships an empty
@@ -54,21 +73,30 @@ uv run python tools/gen_docs_site.py --check
 finds annotations the other accepts.  Both read the `gdb` stub from the
 `types-gdb` dev dependency, so no debugger is needed to run them.
 
-The stdlib runner remains available inside the uv environment:
+The stdlib runner remains available inside the uv environment, but it
+needs the same paths `tests/conftest.py` injects for pytest -- pytest's
+`pythonpath` setting does nothing outside pytest, so the helper modules
+`contract_spec`, `example_manifest`, `abi_ranges`, and the mkdocs hook
+are not importable on their own:
 
 ```console
-uv run python -m unittest discover -s tests/unit
-uv run python -m unittest discover -s tests/integration
+PYTHONPATH=tests:tools:hooks uv run python -m unittest discover -s tests/unit
+PYTHONPATH=tests:tools:hooks uv run python -m unittest discover -s tests/integration
 ```
+
+Without that prefix ten unit modules fail to import (`contract_spec`,
+`example_manifest`, `abi_ranges`, ...) and four integration tests do
+too, so a plain `discover` run reports errors that have nothing to do
+with the code.
 
 The integration tests install a fake `gdb` module, so no debugger or
 kernel is required.  `tests/integration/test_gdbinit.py` additionally
 runs the real `gdbinit.py` against a fake `gdb` and a stub facade, so
 command registration, argument parsing, and output formatting are
-covered without GDB.  `uv sync` installs the package, so `uv run`
-commands import the installed distribution rather than relying on
-`PYTHONPATH`; `pyproject.toml` also sets `pythonpath = ["src"]` so a
-bare `pytest` run works from a checkout.
+covered without GDB.  `uv sync` installs the package in editable mode,
+so `uv run` reaches `src/kernlens` through the wheel's `.pth` file rather
+than needing `PYTHONPATH`; `pyproject.toml` also sets
+`pythonpath = ["src"]` so a bare `pytest` run works from a checkout.
 
 ### History: linear for the maintainer, forgiving for everyone else
 
@@ -160,15 +188,18 @@ offsets shift with the kernel version and with `CONFIG_*` (for example
    neither is available.
 
 Each registry entry records where the struct is defined and which kernel
-it was verified against (`layouts.VERIFIED_KERNEL`, currently Linux
-7.0), and gates its variants on the version and `CONFIG_*`.  Because
-those values are only known-good for one configuration, every command
-prints a one-time warning when the fallback tier is used:
+it was verified against (`layouts.VERIFIED_KERNEL` names both: the
+6.1.134 test VM through DWARF and the 7.0.0-38 host through BTF), and
+gates its variants on the version and `CONFIG_*`.  Because a value is
+only known-good for the configuration it was measured on, every command
+prints a one-time warning per struct type when the fallback tier is
+used.  The warning has no command prefix -- it is emitted by the shared
+command layer, not by the command that happened to trigger it:
 
 ```console
-kl-kbpf: struct bpf_map, struct dma_buf: no debug info; using built-in
-fallback layouts that may not match this kernel. Load a matching vmlinux
-for exact struct offsets.
+struct bpf_map, struct dma_buf: no debug info; using built-in fallback
+layouts that may not match this kernel. Load a matching vmlinux for
+exact struct offsets.
 ```
 
 A BTF blob can also be supplied explicitly (for a remote target with no
@@ -200,12 +231,13 @@ when the kernel cannot be identified.
 
 `tools/abi_ranges.py` decides *which releases need their own row* before
 any of that.  The kernel has changed these structures across releases, so
-a row verified against one kernel is silently wrong for another -- the
-registry's `struct slab.slab_cache` was read from a 7.0 kernel and
-reports `0x8` on every release, while 5.17-6.1 really has `0x18`.  The
-tool reads a local `linux-stable` clone, resolves each release's struct
-body into a flat member list for one `CONFIG_*` set, and reports the
-ranges where that list is unchanged:
+a row verified against one kernel is silently wrong for another.  That
+is not hypothetical: `struct slab.slab_cache` was once a single row read
+from a 7.0 kernel, so it reported `0x8` on every release while 5.17-6.1
+really has `0x18` -- and the fix was the banded row that is there now,
+not a corrected constant.  The tool reads a local `linux-stable` clone,
+resolves each release's struct body into a flat member list for one
+`CONFIG_*` set, and reports the ranges where that list is unchanged:
 
 ```console
 uv run python tools/abi_ranges.py struct slab

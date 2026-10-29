@@ -16,11 +16,19 @@ KernLens 从同一棵树以两种方式分发。`install.sh` 克隆 checkout，�
 `src/kernlens/gdbinit.py` 同时处理两种情况；根目录的 `gdbinit.py` 是
 兼容旧 `~/.gdbinit` 行的 shim。
 
-控制台脚本只运行在宿主侧，并且有两个名字：`kernlens` 与短别名 `kl`，
-与每条 GDB 命令的长短拼写一一对应。`kernlens path` 打印启动文件，
-`kernlens install` 编辑 `~/.gdbinit`，`kernlens doctor` 检查加载路径，
-`kernlens version` 打印版本。它们都不 import `kernlens.gdb`，因为宿主
-解释器里没有 `gdb` 模块。
+控制台脚本只运行在宿主侧，而控制台脚本本身有两个名字：`kernlens` 与
+短别名 `kl`，与每条 GDB 命令的长短拼写一一对应。`kernlens path` 打印
+启动文件，`kernlens install` 编辑 `~/.gdbinit`，`kernlens doctor` 检查
+加载路径，`kernlens version` 打印版本。它们都不 import `kernlens.gdb`，
+因为宿主解释器里没有 `gdb` 模块。
+
+动手改这两条路径之前，先知道一处不对称：`install.sh` 只写 `kernlens`
+包装脚本，所以从 checkout 安装时 `PATH` 上没有 `kl`。`kl` 这个名字只来自
+wheel 的 `[project.scripts]` 条目，也就是说这个别名只对 `pip install`
+的用户存在。这不属于可以随手"顺手修掉"的笔误：shell 安装器写的是一个
+静态文件、读不到 `pyproject.toml`，在那里补第二个名字意味着把 entry
+point 的目标在 shell 里再抄一遍——而这正是 `tests/unit/test_install.py`
+已经为标记行防住的那类漂移。
 
 发布是 release 步骤，不是代码步骤。顺序、检查项与一次性的 trusted
 publishing 配置见 [`docs/en/releasing.md`](docs/en/releasing.md)。
@@ -40,25 +48,43 @@ uv run mypy
 uv run python tools/gen_commands.py --check
 uv run python tools/gen_demo.py --check
 uv run python tools/gen_docs_site.py --check
+uv run python tools/gen_tutorial.py --capture tools/tutorial_capture.json \
+    --meta tools/tutorial_meta.json --out docs/en/tutorial --check
+uv run python tools/gen_tutorial_index.py \
+    --capture tools/tutorial_capture.json --meta tools/tutorial_meta.json \
+    --out docs/zh-CN/tutorial --locale zh-CN --check
+uv run python tools/check_examples.py --check
+uv run python tools/gen_examples_readme.py --check
+uv run python tools/check_example_capture.py
+uv run python tools/gen_layouts.py --btf /sys/kernel/btf/vmlinux \
+    --coverage --version "$(uname -r | cut -d- -f1)"
 ```
 
 `pyright` 与 `mypy` 都是闸门：包内是空的 `py.typed`，而两个检查器
 经常互相发现对方接受的注解问题。它们读取的都是 `types-gdb` 开发依赖
 提供的 `gdb` stub，因此运行时不需调试器。
 
-仍可在 uv 环境中使用 stdlib runner：
+仍可在 uv 环境中使用 stdlib runner，但它需要和 `tests/conftest.py` 为
+pytest 注入的那批路径一致——pytest 的 `pythonpath` 设置只在 pytest 内
+生效，所以辅助模块 `contract_spec`、`example_manifest`、`abi_ranges`
+以及 mkdocs hook 单独跑时都不可导入：
 
 ```console
-uv run python -m unittest discover -s tests/unit
-uv run python -m unittest discover -s tests/integration
+PYTHONPATH=tests:tools:hooks uv run python -m unittest discover -s tests/unit
+PYTHONPATH=tests:tools:hooks uv run python -m unittest discover -s tests/integration
 ```
+
+不加这个前缀时，十个单元测试模块（`contract_spec`、`example_manifest`、
+`abi_ranges` 等）和四个集成测试都会导入失败，裸 `discover` 会报出与
+代码无关的错误。
 
 集成测试会注入 fake `gdb` 模块，不需要调试器或内核；
 `tests/integration/test_gdbinit.py` 还用 fake `gdb` 与 stub facade
 直接执行真实的 `gdbinit.py`，因此命令注册、参数解析和输出格式
-也无需 GDB 即可覆盖。`uv sync` 已安装项目，因此 `uv run` 会导入
-安装后的分发包，不再依赖 `PYTHONPATH`；`pyproject.toml` 另外设置了
-`pythonpath = ["src"]`，裸 `pytest` 也能直接在 checkout 中运行。
+也无需 GDB 即可覆盖。`uv sync` 以可编辑方式安装项目，因此 `uv run`
+通过 wheel 的 `.pth` 文件就能找到 `src/kernlens`，不依赖 `PYTHONPATH`；
+`pyproject.toml` 另外设置了 `pythonpath = ["src"]`，裸 `pytest`
+也能直接在 checkout 中运行。
 
 公共 API 地图、模块职责、SLUB 检查模型与 gdb 加载方式见
 [`docs/en/architecture.md`](docs/en/architecture.md)；命令与 Python 命名
@@ -136,14 +162,16 @@ merge 提交唯一的代价是：`git bisect` 可能落到一个有两个父提�
 3. **兜底注册表** `kernlens/gdb/layouts.py`——仅当前两者都不可用时。
 
 每个注册表条目都记录结构体的定义位置、验证时使用的内核
-（`layouts.VERIFIED_KERNEL`，当前为 Linux 7.0），并按版本与
-`CONFIG_*` 选择变体。由于这些值只对一个构建成立，一旦用到兜底层，
-命令会打印一次性告警：
+（`layouts.VERIFIED_KERNEL` 写明两个：6.1.134 测试虚机经 DWARF、
+7.0.0-38 宿主机经 BTF），并按版本与 `CONFIG_*` 选择变体。由于一个值
+只对它被测量时的那套配置成立，一旦用到兜底层，命令层会按结构体类型
+各打印一次性告警。该告警**不带命令名前缀**——它由共享的命令层发出，
+而不是由恰好触发它的那条命令：
 
 ```console
-kl-kbpf: struct bpf_map, struct dma_buf: no debug info; using built-in
-fallback layouts that may not match this kernel. Load a matching vmlinux
-for exact struct offsets.
+struct bpf_map, struct dma_buf: no debug info; using built-in fallback
+layouts that may not match this kernel. Load a matching vmlinux for
+exact struct offsets.
 ```
 
 对于没有可用 `.BTF` 节的远程目标，也可显式指定 BTF：把
@@ -171,8 +199,9 @@ uv run python tools/gen_layouts.py --btf /sys/kernel/btf/vmlinux \
 
 `tools/abi_ranges.py` 负责决定**哪些内核版本需要单独一行**。
 这些结构体跨版本发生过变化，所以「用某一个内核验证过的一行」
-对另一个内核是**静默错误**的：注册表里的 `struct slab.slab_cache`
-取自 7.0 内核，在所有版本上都报 `0x8`，而 5.17–6.1 实际是 `0x18`。
+对另一个内核是**静默错误**的。这不是假设：`struct slab.slab_cache`
+曾经只有一行、取自 7.0 内核，于是在所有版本上都报 `0x8`，而 5.17–6.1
+实际是 `0x18`——修法正是现在那条按版本分段的记录，而不是改一个常数。
 该工具读取本地 `linux-stable` 仓库，把每个版本的
 结构体体按一组 `CONFIG_*` 求值成**扁平成员序**，
 然后报告成员序不变的区间：
