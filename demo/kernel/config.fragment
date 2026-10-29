@@ -1,0 +1,47 @@
+# Kernel configuration for the demo container.
+#
+# It starts from `x86_64_defconfig` and changes only what the demo needs:
+# a serial console and an initramfs under QEMU's microvm machine, SLUB
+# with the freelist hardening the slab commands decode, KASLR so the base
+# is not trivially the link address, `/proc/config.gz` for `kl-kconfig`,
+# and debug info for exact struct layouts.
+#
+# BTF is generated from DWARF during the build; the Dockerfile then strips
+# the DWARF sections and keeps `.BTF` and the symbol table.  That is the
+# configuration `docs/compatibility.md` calls "BTF only", and it keeps the
+# image small enough to be useful.
+
+# Boot: serial console, initramfs, no modules to load.
+CONFIG_64BIT=y
+CONFIG_SMP=y
+CONFIG_NR_CPUS=8
+CONFIG_PRINTK=y
+CONFIG_TTY=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_RD_GZIP=y
+CONFIG_DEVTMPFS=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+CONFIG_TMPFS=y
+CONFIG_BINFMT_ELF=y
+CONFIG_MODULES=n
+
+# What the commands read.
+CONFIG_SLUB=y
+CONFIG_SLAB_FREELIST_RANDOM=y
+CONFIG_SLAB_FREELIST_HARDENED=y
+CONFIG_KALLSYMS=y
+CONFIG_KALLSYMS_ALL=y
+CONFIG_RANDOMIZE_BASE=y
+CONFIG_IKCONFIG=y
+CONFIG_IKCONFIG_PROC=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_SYSVIPC=y
+
+# Debug info: DWARF during the build, BTF for the shipped vmlinux.
+CONFIG_DEBUG_INFO=y
+CONFIG_DEBUG_INFO_DWARF5=y
+CONFIG_DEBUG_INFO_BTF=y
+CONFIG_DEBUG_INFO_REDUCED=n

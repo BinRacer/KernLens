@@ -604,6 +604,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `typing.get_type_hints` must succeed for every public class and
   function in the modules that import without GDB.  The static half reads
   the GDB-only modules too, which is where the original break lived.
+- **The demo container boots a kernel and attaches GDB in one image.**
+  `demo/Dockerfile` compiles 6.1.134 with `x86_64_defconfig` plus
+  `demo/kernel/config.fragment`, keeps `.BTF` and the symbol table, and
+  strips the DWARF that made up most of the 692 MB `vmlinux`; the runtime
+  stage carries GDB, QEMU, a 13 MB `bzImage`, a 74 MB `vmlinux`, and a
+  337 KB initramfs.  `demo/entrypoint.sh` boots a `microvm` under TCG (no
+  `/dev/kvm`), waits for the initramfs marker, then runs an address-free
+  tour that resolves `init_task` through the reader.  The workflow
+  `.github/workflows/demo-image.yml` builds and publishes the image on a
+  version tag; `docs/demo-container.md` covers the build, the mirror
+  argument, and the limits.
 
 ### Changed
 
