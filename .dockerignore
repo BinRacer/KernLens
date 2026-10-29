@@ -1,0 +1,17 @@
+# The build context is the repository root (`docker build -f
+# demo/Dockerfile .`), but the image only needs the startup file, the
+# package, and the demo directory.
+.git
+.github
+.tmp
+.venv
+build
+dist
+site
+docs
+examples
+tests
+tools
+**/__pycache__
+**/*.py[cod]
+*.egg-info
