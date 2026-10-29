@@ -1,0 +1,31 @@
+{#-
+  Override of mkdocs-material's `partials/content.html`.
+
+  The theme adds `<h1>{{ page.title }}</h1>` whenever the page content
+  contains no `<h1>` of its own:
+
+      {% if "<h1" not in page.content %}
+        <h1>{{ page.title }}</h1>
+      {% endif %}
+
+  For the two front pages that is the wrong title.  Both open with the
+  banner, which already says "KernLens" in full width, so the heading the
+  theme inserts is the *nav entry* -- "Overview" / "首页" -- sitting above
+  a logo, reading as a caption for the wrong thing.
+
+  `hide: [title]` is the documented way to ask for no heading, and the
+  theme applies it to the navigation and the table of contents but not
+  here.  Honouring it turns "this page has no title of its own" into
+  something the page can say, instead of something it has to fake by
+  emitting an invisible `<h1>`.
+-#}
+{% include "partials/tags.html" %}
+{% include "partials/actions.html" %}
+{% set hide_title = page.meta and page.meta.hide and "title" in page.meta.hide %}
+{% if not hide_title and "\u003ch1" not in page.content %}
+  <h1>{{ page.title | d(config.site_name, true)}}</h1>
+{% endif %}
+{{ page.content }}
+{% include "partials/source-file.html" %}
+{% include "partials/feedback.html" %}
+{% include "partials/comments.html" %}

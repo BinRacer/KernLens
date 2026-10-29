@@ -77,7 +77,7 @@ uv run --group docs mkdocs build --strict
 ```
 
 `--strict` 就是 CI 用的闸门：内部链接坏掉、或有页面没进 nav，构建直接
-失败。`docs/index.md` 与 `docs/zh-CN.md` 由两份 README 生成，
+失败。`docs/index.md` 与 `docs/zh-CN/index.md` 由两份 README 生成，
 `docs/llms.txt` 由 `mkdocs.yml` 的 nav 生成——改源文件，然后运行
 `uv run python tools/gen_docs_site.py`。新增页面必须同时有 nav 条目和
 `PAGE_NOTES` 里的一行说明，否则 `--check` 会失败。

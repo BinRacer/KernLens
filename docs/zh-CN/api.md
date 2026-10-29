@@ -3,7 +3,7 @@
 本文件收录 `kernlens` 导出的名字。这部分内容原在 README 中；首页改为
 先讲命令能做什么之后，它移到了这里，正文未改（原本是准确的）。
 
-命令行参考见 [`tutorial/`](tutorial/README.md) —— 每个命令一页，附真实运行输出。
+命令行参考见 [`tutorial/`](../tutorial/README.md) —— 每个命令一页，附真实运行输出。
 
 以下名字均可从包根导入：
 
@@ -292,7 +292,7 @@ print(sty.bar(4, 8, width=8))           # [████░░░░] 4/8
 
 ## gdb/（gdb 侧）
 
-不在包级导入。gdb 内用正常 import（见[安装](zh-CN.md#安装)）
+不在包级导入。gdb 内用正常 import（见[安装](index.md#安装)）
 加载；模块导出 `DebugConfig`、`KernelStyler`、`MemoryReader`、
 `SymbolResolver`、`Kaslr`、`Kbase`、`IdtEntry`、`IdtInfo`、
 `KbaseResult`、`CpuInfo`、`PageTableWalker`、`PageWalk`、
@@ -337,4 +337,4 @@ kdbg.disable_color()           # 同时关闭 logger 与 styler
 - `KAddr` / `KPageTable` 把输入 mask 到 64 位；负 Python int 等同无符号值。
 - `Logger.once` / `throttle` / `counter` 状态保存在实例里；`reset()` 一次清空三者。
 - GDB 命令保持简短（`kernlens-walk` / `kl-walk`）；Python 命名遵循
-  [`naming.md`](naming.md)：可读、不过长，一个概念只用一种拼写。
+  [`naming.md`](../naming.md)：可读、不过长，一个概念只用一种拼写。

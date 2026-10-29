@@ -22,21 +22,34 @@ site_dir: site
 
 theme:
   name: material
+  # `overrides/` carries the language switcher; the theme has no slot for
+  # a control that is not search, palette, or repo.
+  custom_dir: overrides
+  language: en
   features:
     - navigation.sections
     - navigation.top
     - navigation.tracking
+    - navigation.indexes
     - content.code.copy
+    - content.code.select
     - search.highlight
     - search.suggest
+    - toc.follow
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-night
         name: Switch to dark mode
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
       toggle:
-        icon: material/brightness-4
+        icon: material/weather-sunny
         name: Switch to light mode
 
 markdown_extensions:
@@ -65,18 +78,27 @@ validation:
     unrecognized_links: warn
   anchors: warn
 
+hooks:
+  # `theme.language` is one value for the whole site, so the Chinese pages
+  # would be served as `lang="en"` -- which also gives them an English
+  # search stemmer.  The hook rewrites the attribute per page.
+  - hooks/language.py
+
 nav:
   - Overview: index.md
-  - 首页 (中文): zh-CN.md
   - Commands: commands.md
   - Tutorial: tutorial/README.md
   - Demo container: demo-container.md
   - Python API: api.md
-  - Python API (中文): api.zh-CN.md
   - Architecture: architecture.md
   - Compatibility: compatibility.md
   - Releasing: releasing.md
   - Naming: naming.md
+  # 中文页面各自成目录，与英文分开；只翻译了这两页，其余页面没有中文版，
+  # 语言按钮落在中文首页而不是一个 404。
+  - 简体中文:
+      - 首页: zh-CN/index.md
+      - Python API: zh-CN/api.md
   # Outside the site directory, so these stay on GitHub rather than
   # becoming a second copy that drifts.
   - Contributing: https://github.com/BinRacer/KernLens/blob/main/CONTRIBUTING.md

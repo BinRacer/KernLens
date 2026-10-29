@@ -89,8 +89,8 @@ uv run --group docs mkdocs build --strict
 ```
 
 `--strict` is the gate CI uses: a broken internal link or a page missing
-from the nav fails the build.  `docs/index.md` and `docs/zh-CN.md` are
-generated from the two READMEs, and `docs/llms.txt` from the nav in
+from the nav fails the build.  `docs/index.md` and `docs/zh-CN/index.md`
+are generated from the two READMEs, and `docs/llms.txt` from the nav in
 `mkdocs.yml` -- edit those sources, then run
 `uv run python tools/gen_docs_site.py`.  A new page needs a nav entry and
 a one-line description in `PAGE_NOTES`, or `--check` fails.

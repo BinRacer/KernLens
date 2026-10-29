@@ -1,3 +1,8 @@
+---
+hide:
+  - title
+---
+
 <!-- Generated from README.md by tools/gen_docs_site.py. Edit the source, not this file. -->
 
 <div align="center">
@@ -5,9 +10,7 @@
     <img src="https://raw.githubusercontent.com/BinRacer/KernLens/main/images/banner.svg" alt="KernLens" style="width:100%; max-width:100%; margin-top:0; margin-bottom:-0.5rem">
   </a>
 
-  <p>
-    <a href="https://binracer.github.io/KernLens/">English</a> | <a href="https://binracer.github.io/KernLens/zh-CN/">简体中文</a>
-  </p>
+  
 
   <p>
     Read a live Linux kernel from GDB: page tables at every level, SLUB
