@@ -66,7 +66,7 @@ def _section(title: str) -> None:
 
 #: The config flags that change how *data* is interpreted, as opposed to
 #: where it lives.  This is the subset worth one line each; the full
-#: `kl-kchecksec` checklist appears at the end for completeness.
+#: `kl-kconfig --check` checklist appears at the end for completeness.
 DATA_CONFIGS: tuple[str, ...] = (
     "SLAB_FREELIST_HARDENED",
     "SLAB_FREELIST_RANDOM",
@@ -109,7 +109,7 @@ def data_semantics() -> None:
 def hardening_checklist() -> None:
     """The same facts in exploitation vocabulary, as one long checklist."""
     _section("hardening checklist")
-    gdb.execute("kl-kchecksec")
+    gdb.execute("kl-kconfig --check")
 
 
 def runtime_objects() -> None:
@@ -122,7 +122,7 @@ def symbol_views(symbol: str) -> None:
     """Three independent views of the text region.
 
     `kl-ksyscalls <name>` filters rather than printing 451 rows, and
-    `kl-klookup` resolves the requested symbol, so the output stays
+    `kl-sym --find` resolves the requested symbol, so the output stays
     readable.  A disagreement between the syscall table, the symbol
     lookup and the boot log is the signature of a wrong KASLR slide.
     """
@@ -130,7 +130,7 @@ def symbol_views(symbol: str) -> None:
     gdb.execute("kl-ksyscalls read")
 
     _section(f"symbol lookup: {symbol}")
-    gdb.execute(f"kl-klookup {symbol}")
+    gdb.execute(f"kl-sym --find {symbol}")
 
     # The boot log is long by nature; `-T` at least renders the
     # timestamps as wall-clock so the lines can be read as a sequence.

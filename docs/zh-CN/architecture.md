@@ -62,11 +62,11 @@ Python API 用一套可读、中等长度的风格 —— `snake_case` 函数、
 │   │   ├── formatting.py # 共用的输出/解析辅助
 │   │   ├── help.py       # GROUP_ORDER + kl-help 概览/详情渲染
 │   │   ├── overview.py   # kl-status
-│   │   ├── kernel_base.py# kl-base / kl-kbase / kl-kaslr(-offset)
+│   │   ├── kernel_base.py# kl-base（show/text/offset/idt/rebase）
 │   │   ├── memory.py     # kl-slab（list/info/contains/details）/ kl-sym / kl-bt / ...
 │   │   ├── metadata.py   # kl-kcmdline / kl-kversion / kl-kconfig / ...
 │   │   ├── misc.py       # kl-cpu / kl-percpu / kl-msr / kl-color
-│   │   ├── paging.py     # kl-addr / kl-page / kl-pt(e) / kl-walk / ...
+│   │   ├── paging.py     # kl-addr / kl-pt / kl-walk / kl-p2v / ...
 │   │   └── primitives.py # kl-bits / kl-int
 │   ├── gdb/
 │   │   ├── __init__.py   # 惰性组件导出
@@ -568,8 +568,8 @@ slab 的 freelist 链。
   已经带着重定位的调试器（`add-symbol-file vmlinux <runtime>`）仍然可用。
   每当偏移变化，读取器就触发 `on_change` 钩子，丢弃 `KernelInspector` 中由
   地址推导出的缓存 —— 这正是每个移植过来的命令都能跟随 KASLR 变化、无需
-  手工执行 `kl-base` 的原因。`kl-base` 与 `kl-kbase --set` 仍是用户侧显式
-  固定偏移的方式；`kl-kaslr` / `kl-kaslr-offset` 则手工覆盖它。
+  手工执行 `kl-base` 的原因。`kl-base` 仍是用户侧显式固定偏移的方式：
+  它的 `offset` 与 `text` 子命令就是手工覆盖。
 
 ## 测试策略
 

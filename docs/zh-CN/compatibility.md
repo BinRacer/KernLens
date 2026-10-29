@@ -40,7 +40,7 @@ Python 的 GDB 而言，这是物理事实。
 | Ubuntu 24.04.5 宿主，x86_64 QEMU 客户机 | 15.1（Ubuntu 15.1-1ubuntu1~24.04.1） | 3.12.3 | 3.12.11 | 6.1.134，4 级页表，KASLR 开，SLUB，4 CPU | 实测 | `tools/tutorial_capture.json`；`kernlens doctor` |
 | Ubuntu 24.04.5，干净 venv 里的 wheel，仅加载 | 15.1 | 3.12.3 | 3.12 | 无（无调试目标） | 实测 | `source $(kernlens path)` 打印 `KernLens 0.3.0 loaded` |
 | Ubuntu 24.04.5，无 `vmlinux` 且无目标 | 15.1 | 3.12.3 | 3.12.11 | 宿主 7.0.0-38-generic，BTF 可读 | 实测 | `kernlens doctor` 报告 `btf ok`；`kl-status` 打印 `?` 而不是猜测 |
-| 4 级页表含 2 MiB 大页叶项 | 15.1 | 3.12.3 | 3.12.11 | 6.1.134 | 实测 | 捕获中的 `kl-walk` 与 `kl-pagewalk` |
+| 4 级页表含 2 MiB 大页叶项 | 15.1 | 3.12.3 | 3.12.11 | 6.1.134 | 实测 | 捕获中的 `kl-walk`（两种风格） |
 | 5 级页表 | 无（假 `gdb`） | 不适用 | 3.10 – 3.13 | 合成页表 | 测试中实测 | `tests/integration/test_gdb_facade.py` 走完整的 4 级与 5 级页表；捕获只在 4 级内核上尝试 5 级，并报告 `p4d entry is not present` |
 | 无 DWARF 也无 BTF 时的兜底布局 | 无（假 `gdb`） | 不适用 | 3.10 – 3.13 | 6.1.134 的布局数值 | 测试中实测 | `tests/integration/test_gdb_facade.py`；命令层在使用兜底时会警告 |
 | 任意 Linux，任意带 Python 3.10+ 的 GDB | 任意 | 3.10 – 3.13 | 3.10 – 3.13 | 任意带 DWARF 或 BTF 的 x86_64 | 预期 | 要求均满足；未运行 |

@@ -17,11 +17,11 @@ runs a short tour:
 | Command | What it shows |
 | --- | --- |
 | `kl-status` | the KASLR slide, `_text`, direct-map and vmemmap bases, topology |
-| `kl-kbase` | the runtime text base, and which evidence produced it |
+| `kl-base` | the runtime text base, and which evidence produced it |
 | `kl-kconfig RANDOMIZE_BASE` | the running kernel's config, read from IKCONFIG |
 | `kl-slab info kmalloc-1k` | a cache's geometry and the per-CPU freelists |
 | `kl-sym` | `init_task` resolved through the symbol table |
-| `kl-pagewalk` | the page-table levels behind `init_task` |
+| `kl-walk --style pwndbg` | the page-table levels behind `init_task` |
 
 Pass a command to run only that one instead of the tour:
 
@@ -89,7 +89,7 @@ it, which the image does not do.
 
 KASLR is enabled.  The tour never prints an address copied from a
 capture: it resolves `init_task` with `reader.kvar_addr("init_task")` and
-passes that number to `kl-sym` and `kl-pagewalk`.  A number from one run
+passes that number to `kl-sym` and `kl-walk`.  A number from one run
 is wrong in the next, which is exactly what the demo is meant to teach.
 
 ## Changing the kernel

@@ -26,9 +26,9 @@ Load the tracer from GDB after ``gdbinit.py``::
 
 ``trace-start`` invokes the registered ``kl-base`` command, so a running
 kernel is detected automatically.  For a manually selected base, run
-``kl-kaslr`` / ``kl-kaslr-offset`` first and then ``trace-start manual``;
-the compatibility commands ``kaslr-text`` / ``kaslr-offset`` delegate to
-the same registered ``kl-kaslr`` / ``kl-kaslr-offset`` implementation.
+``kl-base text <runtime _text>`` / ``kl-base offset <slide>`` first and
+then ``trace-start manual``; the compatibility commands ``kaslr-text`` /
+``kaslr-offset`` delegate to the same ``kl-base`` subcommands.
 A zero manual slide is rejected so breakpoints cannot silently use
 link-time (nokaslr) addresses.
 """
@@ -756,16 +756,16 @@ class FreeHeadBp(gdb.Breakpoint):
 # =========================================================================
 
 def _delegate_kaslr(command: str, argument: str) -> None:
-    """Run a registered KernLens KASLR command, then install breakpoints."""
-    label = "kaslr-text" if command == "kaslr" else command
+    """Run a ``kl-base`` subcommand, then install breakpoints."""
+    label = "kaslr-text" if command == "text" else command
     if not argument:
         placeholder = (
-            "runtime-text-address" if command == "kaslr" else "offset"
+            "runtime-text-address" if command == "text" else "offset"
         )
         _echo(f"usage: {label} <{placeholder}>")
         return
     try:
-        gdb.execute(f"kl-{command} {argument}", to_string=True)
+        gdb.execute(f"kl-base {command} {argument}", to_string=True)
     except gdb.error as exc:
         _echo(f"{_hdr('[-]')}{label}: {exc}")
         return
@@ -773,28 +773,28 @@ def _delegate_kaslr(command: str, argument: str) -> None:
 
 
 def set_runtime_text(runtime_text: int) -> None:
-    """Compatibility entry point for ``kaslr-text``; uses ``kl-kaslr``."""
-    _delegate_kaslr("kaslr", f"{runtime_text:#x}")
+    """Compatibility entry point for ``kaslr-text``; uses ``kl-base text``."""
+    _delegate_kaslr("text", f"{runtime_text:#x}")
 
 
 class KaslrTextCmd(gdb.Command):
-    """kaslr-text <runtime-text-address> — wrapper for ``kl-kaslr``."""
+    """kaslr-text <runtime-text-address> — wrapper for ``kl-base text``."""
 
     def __init__(self) -> None:
         super().__init__("kaslr-text", gdb.COMMAND_USER)
 
     def invoke(self, arg: str, from_tty: bool) -> None:
-        _delegate_kaslr("kaslr", arg.strip())
+        _delegate_kaslr("text", arg.strip())
 
 
 class KaslrOffsetCmd(gdb.Command):
-    """kaslr-offset <offset> — wrapper for ``kl-kaslr-offset``."""
+    """kaslr-offset <offset> — wrapper for ``kl-base offset``."""
 
     def __init__(self) -> None:
         super().__init__("kaslr-offset", gdb.COMMAND_USER)
 
     def invoke(self, arg: str, from_tty: bool) -> None:
-        _delegate_kaslr("kaslr-offset", arg.strip())
+        _delegate_kaslr("offset", arg.strip())
 
 
 class TraceStartCmd(gdb.Command):
@@ -802,8 +802,8 @@ class TraceStartCmd(gdb.Command):
 
     ``auto`` (the default) runs the registered ``kl-base`` command, which
     detects a live kernel's runtime base and applies its KASLR slide.
-    ``manual`` keeps whatever slide was set by the registered
-    ``kl-kaslr`` / ``kl-kaslr-offset`` commands.  A zero slide is rejected
+    ``manual`` keeps whatever slide was set by ``kl-base text`` /
+    ``kl-base offset``.  A zero slide is rejected
     for ``manual`` because breakpoints would be installed at their
     link-time (nokaslr) addresses; use ``trace-start`` for nokaslr.
     """
@@ -831,8 +831,8 @@ class TraceStartCmd(gdb.Command):
                 + "nokaslr addresses"
             )
             _echo(
-                f"{kdbg.indent_str}run kl-base (auto), or kl-kaslr / "
-                + "kl-kaslr-offset first"
+                f"{kdbg.indent_str}run kl-base (auto), or kl-base text / "
+                + "kl-base offset first"
             )
             return
         _apply_kaslr_offset(kdbg.kaslr_offset)
@@ -988,10 +988,8 @@ def _register() -> None:
         + "                         (show/apply runtime base)"
     )
     _echo(
-        f"{kdbg.indent_str}{kdbg.style('kl-kaslr', Palette.CYAN)} "
-        + " | "
-        + f"{kdbg.style('kl-kaslr-offset', Palette.CYAN)}"
-        + "  (manual base/slide)"
+        f"{kdbg.indent_str}{kdbg.style('kl-base text|offset', Palette.CYAN)} "
+        + "        (manual base/slide)"
     )
     _echo(
         f"{kdbg.indent_str}{kdbg.style('kaslr-text', Palette.CYAN)} "

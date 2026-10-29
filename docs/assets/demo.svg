@@ -46,28 +46,28 @@
   <circle cx="46" cy="21" r="6" fill="#ffbd2e"/>
   <circle cx="68" cy="21" r="6" fill="#27c93f"/>
   <text x="500" y="26" text-anchor="middle" class="meta">gdb — KernLens</text>
-  <text x="30" y="92"><tspan class="prompt">(gdb) </tspan><tspan class="cmd">kl-walk 0xffff975280400000</tspan></text>
-  <text x="30" y="114" class="out">VA: 0xffff975280400000</text>
+  <text x="30" y="92"><tspan class="prompt">(gdb) </tspan><tspan class="cmd">kl-walk 0xffff8c3640400000</tspan></text>
+  <text x="30" y="114" class="out">VA: 0xffff8c3640400000</text>
   <text x="30" y="136" class="out">Paging: 4-level  root=0x3010000</text>
-  <text x="30" y="158" class="out" style="animation: k3 7.00s linear infinite both">pgd      : idx=0x12e entry=0x3010970 value=0x4a01067 -&gt; 0x4a01000</text>
-  <text x="30" y="180" class="out" style="animation: k4 7.00s linear infinite both">pud      : idx=0x14a entry=0x4a01a50 value=0x4a02067 -&gt; 0x4a02000</text>
+  <text x="30" y="158" class="out" style="animation: k3 7.00s linear infinite both">pgd      : idx=0x118 entry=0x30108c0 value=0x4a01067 -&gt; 0x4a01000</text>
+  <text x="30" y="180" class="out" style="animation: k4 7.00s linear infinite both">pud      : idx=0xd9 entry=0x4a016c8 value=0x4a02067 -&gt; 0x4a02000</text>
   <text x="30" y="202" class="hl" style="animation: k5 7.00s linear infinite both">pmd      : idx=0x2 entry=0x4a02010 value=0x80000000004000e3 (huge leaf)</text>
   <text x="30" y="224" class="hl" style="animation: k6 7.00s linear infinite both">Leaf: 2 MiB huge pa=0x400000 offset=0x0</text>
   <text x="30" y="246" class="flags" style="animation: k7 7.00s linear infinite both">Flags: P RW A D PAT PS NX</text>
-  <text x="30" y="290" style="animation: k9 7.00s linear infinite both"><tspan class="prompt">(gdb) </tspan><tspan class="cmd">kl-slab details 0xffff975286c57840</tspan></text>
-  <text x="30" y="312" class="out" style="animation: k10 7.00s linear infinite both">Slab @ 0xffff975286c57840 page: 0xffffee5d001b15c0</text>
-  <text x="30" y="334" class="out" style="animation: k11 7.00s linear infinite both">    cache: 0xffff975284e1bc00 dentry  page_bytes=64</text>
-  <text x="30" y="356" class="accent" style="animation: k12 7.00s linear infinite both">    freeptr: offset=96 random=0xae939aafdb096690</text>
-  <text x="30" y="378" class="accent" style="animation: k13 7.00s linear infinite both">    freelist: 0xffff975286c57c00</text>
-  <text x="30" y="400" class="out" style="animation: k14 7.00s linear infinite both">    objects: 21  inuse=19  frozen=1</text>
-  <text x="30" y="422" class="out" style="animation: k15 7.00s linear infinite both">    state: frozen</text>
+  <text x="30" y="290" style="animation: k9 7.00s linear infinite both"><tspan class="prompt">(gdb) </tspan><tspan class="cmd">kl-slab details 0xffff8c3646cc6b40</tspan></text>
+  <text x="30" y="312" class="out" style="animation: k10 7.00s linear infinite both">Slab @ 0xffff8c3646cc6b40 page: 0xffffd66f001b3180</text>
+  <text x="30" y="334" class="out" style="animation: k11 7.00s linear infinite both">    cache: 0xffff8c3644e1b300 dentry  page_bytes=64</text>
+  <text x="30" y="356" class="accent" style="animation: k12 7.00s linear infinite both">    freeptr: offset=96 random=0xbfc79e010872401f</text>
+  <text x="30" y="378" class="accent" style="animation: k13 7.00s linear infinite both">    freelist: 0xffff8c3646cc6b40</text>
+  <text x="30" y="400" class="out" style="animation: k14 7.00s linear infinite both">    objects: 21  inuse=4  frozen=0</text>
+  <text x="30" y="422" class="out" style="animation: k15 7.00s linear infinite both">    state: partial</text>
   <text x="30" y="444" class="out" style="animation: k16 7.00s linear infinite both">    slab_size: 0x1000</text>
-  <text x="30" y="466" class="accent" style="animation: k17 7.00s linear infinite both">    next: 0x3110c87b0f5be96f decoded=0xffff975286c57000</text>
-  <text x="30" y="488" class="out" style="animation: k18 7.00s linear infinite both">    cpu 0: active=0xffffee5d001b15c0 freelist=0xffff975286c57840</text>
-  <text x="30" y="510" class="out" style="animation: k19 7.00s linear infinite both">    cpu 1: active=0xffffee5d001b1740 freelist=0xffff975286c5de40</text>
-  <text x="30" y="532" class="out" style="animation: k20 7.00s linear infinite both">    cpu 2: active=0xffffee5d001b06c0 freelist=0xffff975286c1b9c0</text>
-  <text x="30" y="554" class="out" style="animation: k21 7.00s linear infinite both">    cpu 3: active=0xffffee5d001b2940 freelist=0xffff975286ca5540</text>
-  <text x="30" y="576" class="out" style="animation: k22 7.00s linear infinite both">    node 0: partial=8 head=0xffffee5d001b1500 in_partial=False</text>
+  <text x="30" y="466" class="accent" style="animation: k17 7.00s linear infinite both">    next: 0xe053de717832df20 decoded=0xffff8c3646cc60c0</text>
+  <text x="30" y="488" class="out" style="animation: k18 7.00s linear infinite both">    cpu 0: active=0xffffd66f001b1900 freelist=0xffff8c3646c64240</text>
+  <text x="30" y="510" class="out" style="animation: k19 7.00s linear infinite both">    cpu 1: active=0xffffd66f001b1b00 freelist=0xffff8c3646c6c600</text>
+  <text x="30" y="532" class="out" style="animation: k20 7.00s linear infinite both">    cpu 2: active=0xffffd66f001b33c0 freelist=0xffff8c3646ccfd80</text>
+  <text x="30" y="554" class="out" style="animation: k21 7.00s linear infinite both">    cpu 3: active=0xffffd66f001b19c0 freelist=0xffff8c3646c67f00</text>
+  <text x="30" y="576" class="out" style="animation: k22 7.00s linear infinite both">    node 0: partial=18 head=0xffffd66f001b3180 in_partial=True</text>
   <rect x="30" y="587" width="8" height="14" class="cursor"/>
   <text x="30" y="622" class="meta">replay of the 6.1.134 capture — docs/tutorial/</text>
 </svg>

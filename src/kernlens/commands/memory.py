@@ -27,12 +27,10 @@ from ..gdb.inspectors import BpfMap, BpfProg, SlabCache
 from ..output import message
 from ..output.tree import IndentContextManager
 from .framework import Command, CommandCategory, hide, parse_int_arg
-from .misc import cpu_limitcheck
 
 _MASK64 = 0xFFFFFFFFFFFFFFFF
 
 #: pg_free_list / dma-buf result caps, matching pwndbg.
-MAX_PG_FREE_LIST_STR_RESULT_CNT = 0x10
 MAX_SG_RESULT_CNT = 0x10
 
 
@@ -614,28 +612,99 @@ def indent_addr(value: int) -> str:
 
 
 # =========================================================================
-# sym / bt / chain
+# sym (was: sym + klookup) / bt
 # =========================================================================
 
 _sym_parser = argparse.ArgumentParser(
-    description="Resolves an address to a symbol and source location."
+    description="Resolves an address to a symbol, or finds symbols by name."
 )
-_sym_parser.add_argument("address", type=parse_int_arg, help="address to resolve")
+# One positional: an address resolves through the loaded symbols, a name
+# searches the kernel's own kallsyms table.  The two used to be separate
+# commands (``kl-sym`` / ``kl-klookup``) even though both answer "which
+# symbol is this?" from the two tables the same session already has.
+_sym_parser.add_argument(
+    "query", nargs="?", default=None,
+    help="address to resolve, or a name (or address) to search for",
+)
+_sym_parser.add_argument(
+    "-f", "--find", action="store_true",
+    help="search the kernel's kallsyms table instead of resolving",
+)
+_sym_parser.add_argument(
+    "-a", "--apply", action="store_true",
+    help="accepted for pwndbg parity; kernlens reads kallsyms live",
+)
 
 
 @Command(
     _sym_parser,
     category=CommandCategory.MEMORY,
     aliases=["kl-sym"],
-    examples="kl-sym $pc\nkl-sym 0xffffffff81000000",
+    examples=(
+        "kl-sym $pc\n"
+        "kl-sym 0xffffffff81000000\n"
+        "kl-sym --find commit_creds\n"
+        "kl-sym --find 0xffffffff81000000"
+    ),
+    notes=(
+        "Without ``--find`` the argument is an address and is resolved\n"
+        "against the loaded symbol file - the same lookup ``print``/``info\n"
+        "symbol`` do.  ``-f/--find`` searches the kernel's *embedded*\n"
+        "kallsyms table by name or by address, which also works when no\n"
+        "vmlinux is loaded.  It replaces ``kl-klookup``."
+    ),
 )
-def kernlens_sym(address: int) -> None:
+def kernlens_sym(
+    query: str | None = None, find: bool = False, apply: bool = False,
+) -> None:
+    if find:
+        _sym_find(query or "", apply)
+        return
+    if not query:
+        _sym_parser.print_usage()
+        return
+    try:
+        address = parse_int_arg(query)
+    except argparse.ArgumentTypeError:
+        print(
+            message.error(
+                f"{query!r} is not an address; use --find to search by name"
+            )
+        )
+        return
     name = kdbg.sym(address)
     line = kdbg.line(address)
     print(
         indent_addr(address) + "  "
         + message.notice(kdbg.fn(name)) + " at " + kdbg.loc(line)
     )
+
+
+def _sym_find(query: str, apply: bool) -> None:
+    """Search the kernel kallsyms table (the former ``kl-klookup``)."""
+    symbols = kdbg.lookup(query)
+    if not symbols:
+        if not query:
+            print(
+                message.warn(
+                    "kallsyms is unavailable or empty (load a vmlinux that "
+                    "carries the kallsyms_* symbols)"
+                )
+            )
+        else:
+            print(message.warn(f"no symbol matches {query!r}"))
+        return
+    for entry in symbols:
+        print(f"{entry.address:#x} {entry.type or '?'} {entry.name}")
+    print(message.notice(f"{len(symbols)} symbol(s) found"))
+    if apply:
+        print(
+            message.warn(
+                "--apply is a pwndbg-only symbol-table rebuild; kernlens "
+                "reads kallsyms live, so the loaded symbols are already "
+                "current"
+            )
+        )
 
 
 def _valid_depth(depth: int) -> bool:
@@ -669,8 +738,9 @@ _bt_parser.add_argument(
     aliases=["kl-bt"],
     examples="kl-bt\nkl-bt 24\nkl-bt 24 --chain",
     notes=(
-        "``--chain`` selects the ``kl-chain`` presentation, so the compact\n"
-        "view is reachable from the backtrace command itself."
+        "``--chain`` prints the compact caller <- callee chain instead of\n"
+        "the formatted frames.  It was ``kl-chain``, which was this same\n"
+        "branch behind a second command name."
     ),
 )
 def kernlens_bt(depth: int = 8, chain: bool = False) -> None:
@@ -687,27 +757,6 @@ def kernlens_bt(depth: int = 8, chain: bool = False) -> None:
         print(message.warn("no stack frames"))
         return
     kdbg.backtrace(depth)
-
-
-_chain_parser = argparse.ArgumentParser(
-    description="Prints a compact caller <- callee call chain."
-)
-_chain_parser.add_argument(
-    "depth", nargs="?", type=int, default=8,
-    help="maximum frames, 1-128 (default 8)",
-)
-
-
-@Command(
-    _chain_parser,
-    category=CommandCategory.MEMORY,
-    aliases=["kl-chain"],
-    examples="kl-chain\nkl-chain 12",
-)
-def kernlens_chain(depth: int = 8) -> None:
-    if not _valid_depth(depth):
-        return
-    print(kdbg.color_chain(kdbg.chain(depth)))
 
 
 # =========================================================================
@@ -1004,104 +1053,6 @@ def _kbpf_values(indent: IndentContextManager, bpf_map: BpfMap) -> None:
 
 
 # =========================================================================
-# buddydump
-# =========================================================================
-
-_buddy_parser = argparse.ArgumentParser(
-    description="Displays metadata and freelists of the buddy allocator."
-)
-_buddy_parser.add_argument(
-    "-z", "--zone", type=str, dest="zone", default=None,
-    help="Displays/searches lists only in the specified zone.",
-)
-_buddy_parser.add_argument(
-    "-o", "--order", type=int, dest="order", default=None,
-    help="Displays/searches lists only with the specified order.",
-)
-_buddy_parser.add_argument(
-    "-m", "--mtype", type=str, dest="mtype", default=None,
-    help="Displays/searches lists only with the specified mtype.",
-)
-_buddy_parser.add_argument(
-    "-p", "--pcp-only", action="store_true", dest="pcp_only",
-    default=False, help="Displays/searches only PCP lists.",
-)
-_buddy_parser.add_argument(
-    "-c", "--cpu", type=cpu_limitcheck, dest="cpu", default=None,
-    help="CPU nr for searching PCP.",
-)
-_buddy_parser.add_argument(
-    "-n", "--node", type=int, dest="node", default=None,
-)
-_buddy_parser.add_argument(
-    "-f", "--find", type=parse_int_arg, dest="find", default=None,
-    help="The address to find in page free lists.",
-)
-_buddy_parser.add_argument(
-    "--MIGRATE_TYPES", type=int, default=3,
-    help="Use the specified MIGRATE_TYPES value",
-)
-
-
-@Command(
-    _buddy_parser,
-    category=CommandCategory.MEMORY,
-    aliases=["kl-buddydump"],
-    examples="kl-buddydump\nkl-buddydump -z Normal -o 0",
-)
-def kernlens_buddydump(
-    zone: str | None = None,
-    order: int | None = None,
-    mtype: str | None = None,
-    pcp_only: bool = False,
-    cpu: int | None = None,
-    node: int | None = None,
-    find: int | None = None,
-    MIGRATE_TYPES: int = 3,  # noqa: N803 - pwndbg's option name
-) -> None:
-    del MIGRATE_TYPES
-    if pcp_only or cpu is not None:
-        print(
-            message.warn(
-                "PCP (per-CPU page) lists are not modelled; showing the "
-                "buddy free lists instead"
-            )
-        )
-    pages = kdbg.buddy_zones(zone=zone, order=order, mtype=mtype, node=node)
-    if find is not None:
-        pages = tuple(p for p in pages if find in (p.phys, p.virt, p.page))
-    if not pages:
-        print(
-            message.warn(
-                "no free pages matched (needs node_data and a readable "
-                "vmemmap; refine --zone/--order/--mtype/--node)"
-            )
-        )
-        return
-    indent = IndentContextManager()
-    indent.print(
-        indent.prefix("zone") + f": {zone or 'all'} order={order} "
-        f"mtype={mtype or 'all'}"
-    )
-    shown = pages[:MAX_PG_FREE_LIST_STR_RESULT_CNT]
-    with indent:
-        for page in shown:
-            indent.print(
-                "- " + indent.prefix(f"[0x{page.index:02x}]")
-                + " " + indent.addr_hex(page.virt)
-                + " [page: " + indent.aux_hex(page.page)
-                + ", phys: " + indent.aux_hex(page.phys) + "]"
-            )
-    if len(pages) > len(shown):
-        indent.print(
-            message.warn(
-                f"... (truncated, {len(pages)} page(s) total)"
-            )
-        )
-    print(f"{len(pages)} free page(s)")
-
-
-# =========================================================================
 # kdmabuf
 # =========================================================================
 
@@ -1158,8 +1109,6 @@ def kernlens_kdmabuf() -> None:
 
 __all__ = [
     "kernlens_bt",
-    "kernlens_buddydump",
-    "kernlens_chain",
     "kernlens_kbpf",
     "kernlens_kdmabuf",
     "kernlens_kvar",

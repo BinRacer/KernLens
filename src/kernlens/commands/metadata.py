@@ -109,6 +109,10 @@ _kconfig_parser.add_argument(
     "-l", "--load", type=str, dest="file_path", default=None,
     help="merge CONFIG_* lines from a kernel config file",
 )
+_kconfig_parser.add_argument(
+    "-c", "--check", action="store_true", dest="check",
+    help="audit the hardening options instead of printing the config",
+)
 
 
 @Command(
@@ -120,12 +124,25 @@ _kconfig_parser.add_argument(
         "  dump every CONFIG_* option\n"
         "kl-kconfig RANDOMIZE_BASE\n"
         "  look up one option\n"
+        "kl-kconfig --check\n"
+        "  audit the hardening options\n"
         "kl-kconfig --load /boot/config-$(uname -r)\n"
         "  merge a config file"
     ),
+    notes=(
+        "``-c/--check`` reads the same ``CONFIG_*`` image and reports only\n"
+        "the hardening options, marking each one good or bad against the\n"
+        "state a hardened build is expected to have.  It replaces\n"
+        "``kl-kchecksec``, which was this lookup run over a fixed list."
+    ),
 )
 @OnlyWithKernelSymbols
-def kernlens_kconfig(config_name: str | None, file_path: str | None) -> None:
+def kernlens_kconfig(
+    config_name: str | None, file_path: str | None, check: bool = False,
+) -> None:
+    if check:
+        _kconfig_hardening_audit()
+        return
     if file_path is not None:
         try:
             merged = kdbg.kconfig_update(file_path)
@@ -229,19 +246,9 @@ _X86_HARDENING_OPTIONS: tuple[Option, ...] = (
     Option("X86_X32", False),
 )
 
-_kchecksec_parser = argparse.ArgumentParser(
-    description="Checks for kernel hardening configuration options."
-)
 
-
-@Command(
-    _kchecksec_parser,
-    category=CommandCategory.KERNEL_METADATA,
-    aliases=["kl-kchecksec"],
-    examples="kl-kchecksec\n  audit the hardening CONFIG_* options",
-)
-@OnlyWithKernelSymbols
-def kernlens_kchecksec() -> None:
+def _kconfig_hardening_audit() -> None:
+    """Audit the hardening options (the former ``kl-kchecksec``)."""
     if not kdbg.kconfig():
         print(
             message.error(
@@ -433,69 +440,6 @@ def kernlens_kdmesg(ctime: bool = False) -> None:
         )
         for line in (record.text or "").splitlines() or [""]:
             print(f"[{label}] {line}")
-
-
-# =========================================================================
-# klookup
-# =========================================================================
-
-_klookup_parser = argparse.ArgumentParser(
-    description="Lookup kernel symbols"
-)
-_klookup_parser.add_argument(
-    "symbol", nargs="?", type=str, default="",
-    help="Address or symbol name to lookup",
-)
-_klookup_parser.add_argument(
-    "-a", "--apply", action="store_true",
-    help="applies all the symbols that satisfy the filter",
-)
-# Legacy alias: earlier kernlens documented ``query`` for the same
-# positional; the dest stays ``symbol`` to match pwndbg.
-
-
-@Command(
-    _klookup_parser,
-    category=CommandCategory.KERNEL_METADATA,
-    aliases=["kl-klookup", "kl-kallsyms", "kl-ks"],
-    examples="kl-klookup commit_creds\nkl-klookup 0xffffffff81000000",
-)
-@OnlyWithKernelSymbols
-def kernlens_klookup(symbol: str = "", apply: bool = False) -> None:  # noqa: A002
-    query = symbol
-    symbols = kdbg.lookup(query)
-    if not symbols:
-        if not query:
-            print(
-                message.warn(
-                    "kallsyms is unavailable or empty (load a vmlinux that "
-                    "carries the kallsyms_* symbols)"
-                )
-            )
-        else:
-            print(message.warn(f"no symbol matches {query!r}"))
-        return
-    for entry in symbols:
-        print(f"{entry.address:#x} {entry.type or '?'} {entry.name}")
-    print(message.notice(f"{len(symbols)} symbol(s) found"))
-    if apply:
-        _kallsyms_apply()
-
-
-def _kallsyms_apply() -> None:
-    """Report that ``--apply`` needs an ELF symbol table (pwndbg parity).
-
-    pwndbg reconstructs a symbol table from the kallsyms and loads it into
-    the debugger; kernlens reads symbols live, so there is nothing to
-    apply.  The option is accepted so scripts written for pwndbg keep
-    working, and the limitation is reported instead of failing silently.
-    """
-    print(
-        message.warn(
-            "--apply is a pwndbg-only symbol-table rebuild; kernlens reads "
-            "kallsyms live, so the loaded symbols are already current"
-        )
-    )
 
 
 __all__ = ["Option"]

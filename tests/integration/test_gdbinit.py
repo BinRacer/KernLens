@@ -1180,20 +1180,23 @@ class RegistrationTests(GdbinitTestBase):
         self.assertIn("usage:", out)
         self.assertIn("--help", out)
 
-    def test_kbase_help_keeps_the_pwndbg_surface(self) -> None:
-        # ``kbase`` is a pwndbg port, so every KernLens-only flag has to
-        # stay hidden: the help must show exactly pwndbg's options.  The
-        # extras are advertised in the Notes instead.
-        out = self.invoke("kl-kbase", "--help")
-        for option in ("-r, --rebase", "-v, --verbose"):
-            self.assertIn(option, out)
-        for option in ("--text", "--offset", "--set", "--phys", "--idt"):
-            self.assertNotIn(option, out.split("Examples:")[0])
+    def test_base_help_lists_the_subcommands(self) -> None:
+        """The four KASLR commands are now four words of one command.
 
-    def test_kbase_notes_advertise_the_hidden_extras(self) -> None:
-        out = self.invoke("kl-kbase", "--help")
-        self.assertIn("--text", out)
-        self.assertIn("--offset", out)
+        ``kbase`` used to hide its KernLens-only flags so its ``--help``
+        matched pwndbg's.  With one command and no hidden extras there is
+        nothing to hide, so the help has to name every subcommand -- a
+        subcommand a reader cannot discover is the same as a removed one.
+        """
+        out = self.invoke("kl-base", "--help")
+        for word in ("show", "text", "offset", "idt", "rebase"):
+            self.assertIn(word, out)
+        for option in ("-v, --verbose", "-r, --rebase"):
+            self.assertIn(option, out)
+
+    def test_base_notes_explain_the_bare_address_form(self) -> None:
+        out = self.invoke("kl-base", "--help")
+        self.assertIn("runtime ``_text``", out)
 
     def test_walk_and_bt_help_show_their_new_flags(self) -> None:
         # ``walk`` and ``bt`` are not pwndbg commands, so their new flags
@@ -1237,8 +1240,10 @@ class StatusTests(GdbinitTestBase):
 
 
 class PagingTests(GdbinitTestBase):
-    def test_pte_decode_and_all_leaf_views(self) -> None:
-        out = self.invoke("kl-pte", f"0x8000000000123067 {DIRECT_VIRT:#x}")
+    def test_pt_entry_decodes_and_shows_every_leaf_view(self) -> None:
+        out = self.invoke(
+            "kl-pt", f"--entry 0x8000000000123067 {DIRECT_VIRT:#x}",
+        )
         self.assertIn("present", out)
         self.assertIn("bit7=PS/PAT", out)
         self.assertIn("P RW US A D NX", out)
@@ -1254,15 +1259,38 @@ class PagingTests(GdbinitTestBase):
         self.assertIn("5-level", out)
         self.assertIn(f"2m_base={PAGE_OFFSET_BASE:#x}", out)
 
-    def test_page_direct_map(self) -> None:
-        out = self.invoke("kl-page", DIRECT_VIRT)
+    def test_addr_brief_translates_a_direct_map_address(self) -> None:
+        out = self.invoke("kl-addr", f"{DIRECT_VIRT} --brief")
         self.assertIn("direct=True", out)
         self.assertIn("0x1000", out)
         self.assertIn("pfn=1", out)
         self.assertIn(f"{STRUCT_PAGE:#x}", out)
 
-    def test_page_user_address(self) -> None:
-        self.assertIn("user=True", self.invoke("kl-page", "0x1000"))
+    def test_addr_brief_classifies_a_user_address(self) -> None:
+        self.assertIn("user=True", self.invoke("kl-addr", "0x1000 --brief"))
+
+    def test_pt_rejects_two_addresses_without_entry(self) -> None:
+        """Ambiguity is refused, not guessed.
+
+        ``kl-pt a b`` has no meaning: one argument is an address, and a
+        second only makes sense when the first is a table entry.
+        """
+        out = self.invoke("kl-pt", f"{DIRECT_VIRT:#x} {DIRECT_VIRT:#x}")
+        self.assertIn("--entry", out)
+
+    def test_pt_without_arguments_prints_usage(self) -> None:
+        self.assertIn("usage", self.invoke("kl-pt"))
+
+    def test_pt_paging_flag_hides_the_other_geometry(self) -> None:
+        # The ``canonical`` row names both geometries either way, so the
+        # assertion is on the index rows, which are what ``--paging``
+        # selects.
+        four = self.invoke("kl-pt", f"{DIRECT_VIRT:#x} --paging 4")
+        self.assertIn("4-level: pgd=", four)
+        self.assertNotIn("5-level: pgd=", four)
+        five = self.invoke("kl-pt", f"{DIRECT_VIRT:#x} --paging 5")
+        self.assertIn("5-level: pgd=", five)
+        self.assertNotIn("4-level: pgd=", five)
 
     def test_addr_analysis_with_tags(self) -> None:
         out = self.invoke("kl-addr", f"{DIRECT_VIRT} 0xfff")
@@ -1299,21 +1327,33 @@ class PagingTests(GdbinitTestBase):
         fake_kdbg.walk_value = self.walk()
         self.assertIn("root=0x10000", self.invoke("kl-walk", f"{DIRECT_VIRT:#x}"))
 
-    def test_page_verbose_delegates_to_addr(self) -> None:
-        out = self.invoke("kl-page", f"{DIRECT_VIRT:#x} --verbose")
+    def test_addr_default_is_the_full_analysis(self) -> None:
+        """``--brief`` is the short form; the default stays the long one.
+
+        The old ``kl-page`` printed the compact block, and ``kl-page -v``
+        delegated to ``kl-addr``.  Sweeping the delegation into a flag
+        means the default has to be the *full* report, or the two names
+        would still disagree about which one shows more.
+        """
+        out = self.invoke("kl-addr", f"{DIRECT_VIRT:#x}")
         self.assertIn("Canonical", out)
         self.assertIn("Alignment", out)
 
-    def test_page_without_verbose_stays_compact(self) -> None:
-        # The default must not change: no Canonical/Alignment rows.
-        out = self.invoke("kl-page", f"{DIRECT_VIRT:#x}")
+    def test_addr_brief_stays_compact(self) -> None:
+        out = self.invoke("kl-addr", f"{DIRECT_VIRT:#x} --brief")
         self.assertIn("Class", out)
         self.assertNotIn("Canonical", out)
 
-    def test_pagewalk(self) -> None:
+    def test_walk_pwndbg_style_prints_the_deepest_level_first(self) -> None:
         fake_kdbg.walk_value = self.walk()
-        out = self.invoke("kl-pagewalk", f"{DIRECT_VIRT:#x}")
+        out = self.invoke("kl-walk", f"{DIRECT_VIRT:#x} --style pwndbg")
         self.assertIn("pagewalk result", out)
+
+    def test_walk_default_style_is_the_level_table(self) -> None:
+        fake_kdbg.walk_value = self.walk()
+        out = self.invoke("kl-walk", f"{DIRECT_VIRT:#x}")
+        self.assertIn("Leaf", out)
+        self.assertNotIn("pagewalk result", out)
 
     def test_p2v_and_v2p(self) -> None:
         fake_kdbg.walk_value = self.walk(phys=0x1000)
@@ -1638,8 +1678,8 @@ class MemoryTests(GdbinitTestBase):
         self.assertIn("active=", out)
         self.assertNotIn("nr_partial", out)
 
-    def test_lookup(self) -> None:
-        out = self.invoke("kl-klookup", "commit_creds")
+    def test_sym_find_searches_kallsyms(self) -> None:
+        out = self.invoke("kl-sym", "--find commit_creds")
         self.assertIn("commit_creds", out)
         self.assertIn("symbol(s) found", out)
 
@@ -1655,8 +1695,8 @@ class MemoryTests(GdbinitTestBase):
         out = self.invoke("kl-kbpf", "-m --values")
         self.assertIn("BPF_MAP_TYPE_ARRAY", out)
 
-    def test_buddydump(self) -> None:
-        out = self.invoke("kl-buddydump")
+    def test_buddy_dump_subcommand(self) -> None:
+        out = self.invoke("kl-buddy", "dump")
         self.assertIn("free page(s)", out)
         self.assertIn(f"{BUDDY_VIRT:#x}", out)
 
@@ -1783,7 +1823,7 @@ class MemoryTests(GdbinitTestBase):
 
     def test_bt_and_chain(self) -> None:
         self.assertIn("bt: 5 frames", self.invoke("kl-bt", "5"))
-        self.assertIn("func_a <- func_b", self.invoke("kl-chain"))
+        self.assertIn("func_a <- func_b", self.invoke("kl-bt", "--chain"))
 
     def test_bt_defaults_to_eight_frames(self) -> None:
         self.assertIn("bt: 8 frames", self.invoke("kl-bt"))
@@ -1794,8 +1834,8 @@ class MemoryTests(GdbinitTestBase):
         out = self.invoke("kl-bt", "129")
         self.assertIn("depth must be between 1 and 128", out)
 
-    def test_chain_defaults_to_eight_frames(self) -> None:
-        self.assertIn("func_a <- func_b", self.invoke("kl-chain"))
+    def test_bt_chain_defaults_to_eight_frames(self) -> None:
+        self.assertIn("func_a <- func_b", self.invoke("kl-bt", "--chain"))
 
     def test_bt_chain_selects_the_compact_view(self) -> None:
         out = self.invoke("kl-bt", "5 --chain")
@@ -1847,35 +1887,35 @@ class MemoryTests(GdbinitTestBase):
         out = self.invoke("kl-slab", "0x1000 --detail")
         self.assertIn("0x1000", out)
 
-    def test_klookup_reports_no_match(self) -> None:
-        out = self.invoke("kl-klookup", "definitely_not_a_symbol")
+    def test_sym_find_reports_no_match(self) -> None:
+        out = self.invoke("kl-sym", "--find definitely_not_a_symbol")
         self.assertIn("no symbol matches", out)
 
-    def test_klookup_apply_explains_the_pwndbg_only_path(self) -> None:
-        out = self.invoke("kl-klookup", "commit_creds --apply")
+    def test_sym_find_apply_explains_the_pwndbg_only_path(self) -> None:
+        out = self.invoke("kl-sym", "--find commit_creds --apply")
         self.assertIn("commit_creds", out)
         self.assertIn("already current", out)
 
-    def test_klookup_short_apply_alias(self) -> None:
-        out = self.invoke("kl-klookup", "commit_creds -a")
+    def test_sym_find_short_apply_alias(self) -> None:
+        out = self.invoke("kl-sym", "--find commit_creds -a")
         self.assertIn("already current", out)
 
-    def test_klookup_by_address(self) -> None:
-        out = self.invoke("kl-klookup", f"{RUNTIME_COMMIT_CREDS:#x}")
+    def test_sym_find_by_address(self) -> None:
+        out = self.invoke("kl-sym", f"--find {RUNTIME_COMMIT_CREDS:#x}")
         self.assertIn("commit_creds", out)
 
     def test_kbpf_defaults_to_programs(self) -> None:
         out = self.invoke("kl-kbpf")
         self.assertIn("prog", out.lower())
 
-    def test_buddydump_empty_zone(self) -> None:
-        out = self.invoke("kl-buddydump", "--zone none")
+    def test_buddy_dump_empty_zone(self) -> None:
+        out = self.invoke("kl-buddy", "dump --zone none")
         self.assertIn("no free pages matched", out)
 
-    def test_buddydump_find_accepts_hex(self) -> None:
+    def test_buddy_dump_find_accepts_hex(self) -> None:
         # ``-f/--find`` is an address, so it must parse ``0x...`` (pwndbg
         # uses ``type=int`` so it only accepts decimal).
-        out = self.invoke("kl-buddydump", f"-f {BUDDY_PHYS:#x}")
+        out = self.invoke("kl-buddy", f"dump -f {BUDDY_PHYS:#x}")
         self.assertNotIn("invalid int value", out)
         self.assertIn(f"{BUDDY_VIRT:#x}", out)
 
@@ -2009,74 +2049,31 @@ class CpuTests(GdbinitTestBase):
 
 
 class KernelBaseTests(GdbinitTestBase):
-    def test_base_runtime(self) -> None:
+    """One command owns the KASLR slide.
+
+    ``kl-base`` / ``kl-kbase`` / ``kl-kaslr`` / ``kl-kaslr-offset`` all
+    ended in the same assignment, and ``kbase`` even forwarded two of its
+    options to the other two.  They are now one command with subcommands,
+    so these tests are one class over one entry point.
+    """
+
+    def test_reports_the_runtime_base(self) -> None:
         out = self.invoke("kl-base")
         self.assertIn("kernel base", out)
         self.assertIn(f"{RUNTIME_TEXT:#x}", out)
         self.assertIn("runtime", out)
 
-    def test_base_default_when_not_running(self) -> None:
+    def test_reports_the_link_text_and_slide(self) -> None:
+        out = self.invoke("kl-base")
+        self.assertIn("KASLR offset", out)
+        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+
+    def test_reports_when_the_base_cannot_be_detected(self) -> None:
         fake_kdbg.kbase_result = None
         out = self.invoke("kl-base")
         self.assertIn("could not be detected", out)
 
-    def test_kbase(self) -> None:
-        out = self.invoke("kl-kbase")
-        self.assertIn("text base", out)
-        self.assertIn(f"{LINK_TEXT:#x}", out)
-
-    def test_kbase_set(self) -> None:
-        out = self.invoke("kl-kbase", "--set")
-        self.assertIn("KASLR", out)
-        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
-
-    def test_kaslr(self) -> None:
-        out = self.invoke("kl-kaslr", f"{RUNTIME_TEXT:#x}")
-        self.assertIn("KASLR offset", out)
-
-    def test_kaslr_offset(self) -> None:
-        out = self.invoke("kl-kaslr-offset", f"{KASLR_SLIDE:#x}")
-        self.assertIn("KASLR offset", out)
-        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
-
-    def test_kbase_idt(self) -> None:
-        fake_kdbg.idt_info = SimpleNamespace(
-            base=0xFFFFFE0000000000, limit=0xFFF, count=2, source="monitor",
-        )
-        fake_kdbg.idt_entries[0] = SimpleNamespace(
-            offset=0xFFFFFFFF81000000, selector=0x10, gate_type=0xE,
-            ist=0, dpl=0, present=True, is_kernel_gate=True,
-        )
-        out = self.invoke("kl-kbase", "--idt 1")
-        self.assertIn("idt", out)
-        self.assertIn("kernel", out)
-
-    def test_kbase_idt_marks_present_and_absent_gates(self) -> None:
-        fake_kdbg.idt_info = SimpleNamespace(
-            base=0xFFFFFE0000000000, limit=0xFFF, count=3, source="monitor",
-        )
-        fake_kdbg.idt_entries[0] = SimpleNamespace(
-            offset=0xFFFFFFFF81000000, selector=0x10, gate_type=0xE,
-            ist=0, dpl=0, present=True, is_kernel_gate=True,
-        )
-        fake_kdbg.idt_entries[1] = SimpleNamespace(
-            offset=0xFFFFFFFF81000100, selector=0x10, gate_type=0xE,
-            ist=0, dpl=0, present=True, is_kernel_gate=False,
-        )
-        fake_kdbg.idt_entries[2] = SimpleNamespace(
-            offset=0, selector=0, gate_type=0,
-            ist=0, dpl=0, present=False, is_kernel_gate=False,
-        )
-        out = self.invoke("kl-kbase", "--idt 0")
-        self.assertIn("idt[0]", out)
-        self.assertIn("absent", out)
-
-    def test_kbase_idt_without_tables(self) -> None:
-        fake_kdbg.idt_info = None
-        out = self.invoke("kl-kbase", "--idt 4")
-        self.assertIn("cannot locate the IDT", out)
-
-    def test_base_without_link_text_uses_the_kaslr_guess(self) -> None:
+    def test_the_derived_slide_is_applied(self) -> None:
         # No ``kaslr_offset`` on the result forces the derived fallback.
         fake_kdbg.kbase_result = SimpleNamespace(
             base=RUNTIME_TEXT, handler=None, handler_symbol=None,
@@ -2086,73 +2083,102 @@ class KernelBaseTests(GdbinitTestBase):
         self.assertIn("runtime", out)
         self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
 
-    def test_kaslr_without_link_text_reports_an_error(self) -> None:
-        fake_kdbg.link_text_value = None
-        out = self.invoke("kl-kaslr", f"{RUNTIME_TEXT:#x}")
-        self.assertIn("cannot resolve &_text", out)
-
-    def test_kbase_phys_translates_the_base(self) -> None:
+    def test_verbose_reports_the_physical_address(self) -> None:
         fake_kdbg.walk_value = self.walk(phys=0x1000)
-        out = self.invoke("kl-kbase", "--verbose")
+        out = self.invoke("kl-base", "--verbose")
+        self.assertIn("Physical", out)
         self.assertIn("0x1000", out)
 
-    def test_kbase_legacy_phys_alias_still_works(self) -> None:
-        # ``--phys`` was renamed to pwndbg's ``--verbose``; it stays as a
-        # hidden alias so older scripts keep working.
+    def test_short_verbose_is_accepted(self) -> None:
         fake_kdbg.walk_value = self.walk(phys=0x1000)
-        out = self.invoke("kl-kbase", "--phys")
-        self.assertIn("0x1000", out)
+        out = self.invoke("kl-base", "-v")
+        self.assertIn("Physical", out)
 
-    def test_kbase_rebase_without_a_symbol_file(self) -> None:
+    def test_rebase_without_a_symbol_file(self) -> None:
         # The fake progspace reports no filename.
-        out = self.invoke("kl-kbase", "--rebase")
+        out = self.invoke("kl-base", "--rebase")
         self.assertIn("no symbol file is loaded", out)
 
-    def test_kbase_verbose_reports_the_physical_address(self) -> None:
-        fake_kdbg.walk_value = self.walk(phys=0x1000)
-        out = self.invoke("kl-kbase", "--verbose")
-        self.assertIn("Physical", out)
-        self.assertIn("0x1000", out)
+    def test_rebase_subcommand_does_the_same(self) -> None:
+        out = self.invoke("kl-base", "rebase")
+        self.assertIn("no symbol file is loaded", out)
 
-    def test_kbase_short_verbose_alias(self) -> None:
-        fake_kdbg.walk_value = self.walk(phys=0x1000)
-        out = self.invoke("kl-kbase", "-v")
-        self.assertIn("Physical", out)
+    # -- text: the slide from a runtime _text ---------------------------
 
-    def test_kbase_set_without_a_derived_offset(self) -> None:
-        fake_kdbg.kbase_result = SimpleNamespace(
-            base=RUNTIME_TEXT, handler=None, handler_symbol=None,
-            idt=None, method="symbol", link_text=None, kaslr_offset=None,
-        )
-        # Give ``kl-base`` nothing to derive from, then ask ``--set``.
+    def test_text_sets_the_slide(self) -> None:
+        out = self.invoke("kl-base", f"text {RUNTIME_TEXT:#x}")
+        self.assertIn("KASLR offset", out)
+        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+
+    def test_a_bare_address_is_read_as_runtime_text(self) -> None:
+        """The commonest correction needs no keyword.
+
+        A breakpoint or a symbol listing gives a runtime ``_text``; a raw
+        slide is the rarer of the two, which is why that one is spelled
+        ``offset``.
+        """
+        out = self.invoke("kl-base", f"{RUNTIME_TEXT:#x}")
+        self.assertIn("KASLR offset", out)
+        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+
+    def test_text_without_link_text_reports_an_error(self) -> None:
         fake_kdbg.link_text_value = None
-        out = self.invoke("kl-kbase", "--set")
-        self.assertIn("cannot derive", out)
+        out = self.invoke("kl-base", f"text {RUNTIME_TEXT:#x}")
+        self.assertIn("cannot resolve &_text", out)
 
-    def test_kaslr_offset_masks_to_64_bits(self) -> None:
-        self.invoke("kl-kaslr-offset", "0xffffffffffffffff")
+    def test_text_without_an_address_prints_usage(self) -> None:
+        out = self.invoke("kl-base", "text")
+        self.assertIn("usage", out)
+
+    # -- offset: the slide directly -------------------------------------
+
+    def test_offset_sets_the_slide(self) -> None:
+        out = self.invoke("kl-base", f"offset {KASLR_SLIDE:#x}")
+        self.assertIn("KASLR offset", out)
+        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+
+    def test_offset_masks_to_64_bits(self) -> None:
+        self.invoke("kl-base", "offset 0xffffffffffffffff")
         self.assertEqual(fake_kdbg.kaslr_offset, 0xFFFFFFFFFFFFFFFF)
 
-    def test_kbase_text_sets_the_slide(self) -> None:
-        # ``--text`` is the folded-in ``kl-kaslr``: the slide can be
-        # corrected where kbase reports it.
-        out = self.invoke("kl-kbase", f"--text {RUNTIME_TEXT:#x}")
-        self.assertIn("KASLR offset", out)
-        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+    def test_offset_without_a_value_prints_usage(self) -> None:
+        out = self.invoke("kl-base", "offset")
+        self.assertIn("usage", out)
 
-    def test_kbase_offset_sets_the_slide(self) -> None:
-        out = self.invoke("kl-kbase", f"--offset {KASLR_SLIDE:#x}")
-        self.assertIn("KASLR offset", out)
-        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
+    # -- idt ------------------------------------------------------------
 
-    def test_kbase_text_and_offset_are_mutually_exclusive(self) -> None:
-        fake_gdb.output.clear()
-        out = self.invoke("kl-kbase", "--text 0x1 --offset 0x2")
-        self.assertIn("not allowed with argument", out)
+    def test_idt_dumps_the_requested_number_of_gates(self) -> None:
+        fake_kdbg.idt_info = SimpleNamespace(
+            base=0xFFFFFE0000000000, limit=0xFFF, count=2, source="monitor",
+        )
+        fake_kdbg.idt_entries[0] = SimpleNamespace(
+            offset=0xFFFFFFFF81000000, selector=0x10, gate_type=0xE,
+            ist=0, dpl=0, present=True, is_kernel_gate=True,
+        )
+        out = self.invoke("kl-base", "idt 1")
+        self.assertIn("idt", out)
+        self.assertIn("kernel", out)
 
-    def test_kaslr_reports_a_hint_when_a_slide_exists(self) -> None:
-        out = self.invoke("kl-kbase")
-        self.assertIn("--set", out)
+    def test_idt_marks_present_and_absent_gates(self) -> None:
+        fake_kdbg.idt_info = SimpleNamespace(
+            base=0xFFFFFE0000000000, limit=0xFFF, count=3, source="monitor",
+        )
+        fake_kdbg.idt_entries[0] = SimpleNamespace(
+            offset=0xFFFFFFFF81000000, selector=0x10, gate_type=0xE,
+            ist=0, dpl=0, present=True, is_kernel_gate=True,
+        )
+        fake_kdbg.idt_entries[2] = SimpleNamespace(
+            offset=0, selector=0, gate_type=0,
+            ist=0, dpl=0, present=False, is_kernel_gate=False,
+        )
+        out = self.invoke("kl-base", "idt 0")
+        self.assertIn("idt[0]", out)
+        self.assertIn("absent", out)
+
+    def test_idt_without_tables(self) -> None:
+        fake_kdbg.idt_info = None
+        out = self.invoke("kl-base", "idt 4")
+        self.assertIn("cannot locate the IDT", out)
 
 
 class MetadataTests(GdbinitTestBase):
@@ -2231,8 +2257,15 @@ class MetadataTests(GdbinitTestBase):
         out = self.invoke("kl-kdmesg")
         self.assertIn("no printk records", out)
 
-    def test_kchecksec(self) -> None:
-        out = self.invoke("kl-kchecksec")
+    def test_kconfig_check_audits_the_hardening_options(self) -> None:
+        """The audit is a mode of the config reader, not a second reader.
+
+        ``kl-kchecksec`` parsed the same ``CONFIG_*`` image that
+        ``kl-kconfig`` prints; it now reports the subset that the audit
+        cares about, and the two cannot disagree because there is one
+        lookup.
+        """
+        out = self.invoke("kl-kconfig", "--check")
         self.assertIn("CONFIG_STACKPROTECTOR", out)
 
     def test_kmod(self) -> None:
@@ -2555,7 +2588,7 @@ class HelpRenderingTests(unittest.TestCase):
     def test_notes_block_is_separated_from_examples(self) -> None:
         # A blank line before `Notes:` is what makes the two sections
         # distinguishable; without it the label reads as one more example.
-        for name in ("kl-buddy", "kl-kbase", "kl-help"):
+        for name in ("kl-buddy", "kl-base", "kl-help"):
             with self.subTest(command=name):
                 definition = help_module.resolve_command(name)
                 lines = self._rendered(definition)

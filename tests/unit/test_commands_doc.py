@@ -14,6 +14,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import gen_commands
+from contract_spec import CANONICAL_COMMANDS
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -38,7 +39,12 @@ class CommandReferenceTests(unittest.TestCase):
     def test_every_command_has_a_row(self) -> None:
         meta = json.loads(gen_commands.DEFAULT_META.read_text(encoding="utf-8"))
         text = gen_commands.DEFAULT_OUTPUT.read_text(encoding="utf-8")
-        self.assertEqual(len(meta), 40)
+        self.assertEqual(len(meta), len(CANONICAL_COMMANDS))
+        self.assertEqual(
+            sorted(entry["name"] for entry in meta),
+            sorted(CANONICAL_COMMANDS),
+            "the metadata must describe exactly the contract surface",
+        )
         for entry in meta:
             with self.subTest(command=entry["name"]):
                 self.assertIn(f"| `{entry['name']}` |", text)
@@ -62,7 +68,7 @@ class CommandReferenceTests(unittest.TestCase):
             line for line in english.splitlines()
             if line.startswith("| `kernlens-")
         ]
-        self.assertEqual(len(rows), 40)
+        self.assertEqual(len(rows), len(CANONICAL_COMMANDS))
         for row in rows:
             with self.subTest(row=row.split("|")[1].strip()):
                 self.assertIn(row, chinese)

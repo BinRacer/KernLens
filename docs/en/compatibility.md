@@ -46,7 +46,7 @@ this is the thing to check before adding one, not a problem to solve now.
 | Ubuntu 24.04.5 host, x86_64 QEMU guest | 15.1 (Ubuntu 15.1-1ubuntu1~24.04.1) | 3.12.3 | 3.12.11 | 6.1.134, 4-level, KASLR on, SLUB, 4 CPUs | `measured` | `tools/tutorial_capture.json`; `kernlens doctor` |
 | Ubuntu 24.04.5, wheel in a clean venv, load only | 15.1 | 3.12.3 | 3.12 | none (no debuggee) | `measured` | `source $(kernlens path)` prints `KernLens 0.3.0 loaded` |
 | Ubuntu 24.04.5, no `vmlinux` and no target | 15.1 | 3.12.3 | 3.12.11 | host 7.0.0-38-generic, BTF readable | `measured` | `kernlens doctor` reports `btf ok`; `kl-status` prints `?` instead of a guess |
-| 4-level paging with a 2 MiB huge leaf | 15.1 | 3.12.3 | 3.12.11 | 6.1.134 | `measured` | `kl-walk` and `kl-pagewalk` in the capture |
+| 4-level paging with a 2 MiB huge leaf | 15.1 | 3.12.3 | 3.12.11 | 6.1.134 | `measured` | `kl-walk` in both styles, in the capture |
 | 5-level paging | none (fake `gdb`) | n/a | 3.10 -- 3.13 | synthetic tables | `measured in tests` | `tests/integration/test_gdb_facade.py` walks complete 4- and 5-level tables; the capture only attempts 5-level on a 4-level kernel and reports `p4d entry is not present` |
 | Fallback layouts without DWARF or BTF | none (fake `gdb`) | n/a | 3.10 -- 3.13 | 6.1.134 layout values | `measured in tests` | `tests/integration/test_gdb_facade.py`; the command layer warns when a fallback is used |
 | Any Linux, any GDB built with Python 3.10+ | any | 3.10 -- 3.13 | 3.10 -- 3.13 | any x86_64 with DWARF or BTF | `expected` | requirements met; not run |

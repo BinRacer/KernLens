@@ -5,6 +5,67 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The command surface is 30 commands instead of 40.**  Ten commands were
+  not ten ideas; they were seven ideas spelled several ways, and the
+  duplicates were costing more in `kl-help` scan time than they returned.
+  Each merge keeps the behaviour and turns the second spelling into a
+  flag or a subcommand, so nothing became unreachable:
+
+  | Removed | Now |
+  | --- | --- |
+  | `kl-kbase` | `kl-base [--verbose] [--rebase]` |
+  | `kl-kaslr` | `kl-base text <runtime _text>` (a bare address works too) |
+  | `kl-kaslr-offset` | `kl-base offset <slide>` |
+  | `kl-kchecksec` | `kl-kconfig --check` |
+  | `kl-klookup` | `kl-sym --find <name>` |
+  | `kl-chain` | `kl-bt --chain` |
+  | `kl-page` | `kl-addr --brief` |
+  | `kl-pte` | `kl-pt --entry <entry>` |
+  | `kl-pagewalk` | `kl-walk --style pwndbg` |
+  | `kl-buddydump` | `kl-buddy dump` |
+
+  The four base/KASLR commands were one assignment read four ways -- five
+  call sites wrote `kdbg.kaslr_offset`, and `kl-kbase`'s two options were
+  already aliases for the other two commands.  `kl-chain`'s body was two
+  lines identical to what `kl-bt --chain` printed.  Merging them also
+  removes the state disagreement they allowed: `kl-base` always reports
+  the slide that is now in effect, which is the one thing the four
+  commands answered differently.
+
+- **`kl-base` takes a subcommand, and the old positional forms are
+  gone.**  `kl-base show|text|offset|idt|rebase`, plus a bare number that
+  is read as a runtime `_text` because that is the value a breakpoint or
+  a symbol listing hands you.  `kl-base idt` absorbed the interrupt-table
+  dump.
+
+- **`kl-buddy` takes a subcommand.**  `kl-buddy list|info|freelist|dump`,
+  with `-p/--pcp-only`, `-c/--cpu`, and `-f/--find` on the parser.
+
+### Removed
+
+- Removed the ten command names in the table above.  Aliases were reduced
+  from 43 to 31 for the same reason: a name that exists only to be an
+  alias is another line in `kl-help` for a reader to skip.
+- Removed the `kl-kaslr` / `kl-kaslr-offset` forwarding path in
+  `examples/tracing/cve_2025_38616_tracer.py`; the `kaslr-text` and
+  `kaslr-offset` compatibility commands it registers now delegate to
+  `kl-base text` and `kl-base offset`, so the tracer keeps working on the
+  merged surface.
+
+### Fixed
+
+- **The tutorial capture could pick a slab page with nothing to decode.**
+  `_slab_object()` used a per-CPU freelist, and a per-CPU slab is
+  frequently drained -- the allocator hands its last object to the caller
+  and `slab->freelist` becomes `NULL`.  A capture from such a boot made
+  the demo claim it decoded a freelist pointer while showing a page with
+  none.  The chooser now prefers a node's partial list (an object on a
+  partially-free page), which always has a chain to decode.
+
 ## [0.3.0] - 2026-10-28
 
 ### Added

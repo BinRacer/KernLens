@@ -36,7 +36,7 @@ by a linter.
   `-b/--break`, `-r/--range`) -- and pwndbg's metavars (`<vaddr>`,
   `<paddr>`), so a line copied from a pwndbg workflow keeps working.
   KernLens-only options are added in the same style, and options that
-  pwndbg does not have (`kl-kbase --set`, `kl-slab --detail`) stay
+  pwndbg does not have (`kl-base --rebase`, `kl-slab --detail`) stay
   functional but are registered through `framework.hide()` so `--help`
   shows only the pwndbg surface.
 

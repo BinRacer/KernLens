@@ -39,8 +39,8 @@ except NameError:  # pragma: no cover - the GDB path never runs this
 
 
 #: A page-table entry with PS (bit 7) and NX (bit 63) set: the 2 MiB huge
-#: leaf the tutorial walks to.  `kl-pte` decodes it; `kl-bits` shows the
-#: raw bit positions underneath.
+#: leaf the tutorial walks to.  `kl-pt --entry` decodes it; `kl-bits` shows
+#: the raw bit positions underneath.
 HUGE_PTE = 0x80000000004000E3
 
 #: The packed slab counters from the test kernel, laid out as the kernel

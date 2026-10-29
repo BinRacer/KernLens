@@ -31,10 +31,16 @@ from ..output import message
 from ..output.tree import IndentContextManager
 from .framework import Command, CommandCategory, parse_int_arg
 
-_BUDDY_SUBCOMMANDS = ("list", "info", "freelist")
+#: ``dump`` is the former ``kl-buddydump``: the same zone walk with the
+#: pwndbg option spellings, which is why it is a subcommand rather than a
+#: second command name.
+_BUDDY_SUBCOMMANDS = ("list", "info", "freelist", "dump")
 
 #: How many blocks ``freelist -v`` prints before truncating.
 FREELIST_SHOW_LIMIT = 64
+
+#: How many free pages ``dump`` prints before truncating its list.
+MAX_PG_FREE_LIST_STR_RESULT_CNT = 0x10
 
 
 def _size_text(size_pages: int) -> str:
@@ -146,7 +152,9 @@ def _buddy_parser() -> argparse.ArgumentParser:
         "command", nargs="*", metavar="command",
         help=(
             "list [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] | "
-            "info <addr> | freelist -o ORDER [-m MTYPE] | <addr>"
+            "info <addr> | freelist -o ORDER [-m MTYPE] | "
+            "dump [-z ZONE] [-o ORDER] [-m MTYPE] [-n NODE] [-f ADDR] | "
+            "<addr>"
         ),
     )
     parser.add_argument(
@@ -172,6 +180,27 @@ def _buddy_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--limit", type=int, dest="limit", default=FREELIST_SHOW_LIMIT,
         help=f"max blocks to expand with freelist -v (default {FREELIST_SHOW_LIMIT}).",
+    )
+    # ``dump`` options, kept with pwndbg's own spellings so a line copied
+    # from a pwndbg workflow still works.
+    parser.add_argument(
+        "-p", "--pcp-only", action="store_true", dest="pcp_only",
+        default=False, help="displays/searches only PCP lists.",
+    )
+    parser.add_argument(
+        "-c", "--cpu", type=int, dest="cpu", default=None,
+        help="CPU number for searching PCP.",
+    )
+    parser.add_argument(
+        "-f", "--find", type=parse_int_arg, dest="find", default=None,
+        help="an address to search for in the page free lists.",
+    )
+    # Accepted for pwndbg parity and reported as unused: the migratetype
+    # count is read from the image's ``migratetype_names`` symbol, so
+    # overriding it could only ever make the walk wrong.
+    parser.add_argument(
+        "--MIGRATE_TYPES", type=int, default=None, metavar="COUNT",
+        help="ignored; the migratetype count is read from the image",
     )
     return parser
 
@@ -205,10 +234,18 @@ def kernlens_buddy(
     node: int | None = None,
     verbose: bool = False,
     limit: int = FREELIST_SHOW_LIMIT,
+    pcp_only: bool = False,
+    cpu: int | None = None,
+    find: int | None = None,
+    MIGRATE_TYPES: int | None = None,  # noqa: N803 - pwndbg's option name
 ) -> None:
+    del MIGRATE_TYPES
     tokens = list(command or [])
     sub = tokens[0] if tokens and tokens[0] in _BUDDY_SUBCOMMANDS else "info"
     rest = tokens[1:] if tokens and tokens[0] in _BUDDY_SUBCOMMANDS else tokens
+    if sub == "dump":
+        _buddy_dump(zone, order, mtype, node, pcp_only, cpu, find)
+        return
     if sub == "list":
         _buddy_list(zone, order, mtype, node)
         return
@@ -459,3 +496,60 @@ def _buddy_freelist(
                     f"... (truncated, {len(blocks)} of {total} block(s))"
                 )
             )
+
+
+def _buddy_dump(
+    zone: str | None,
+    order: int | None,
+    mtype: str | None,
+    node: int | None,
+    pcp_only: bool,
+    cpu: int | None,
+    find: int | None,
+) -> None:
+    """Print the zone/free-list census (the former ``kl-buddydump``).
+
+    Same data ``kl-buddy list`` reports, with pwndbg's ``buddydump``
+    option names and its ``-f/--find`` search.  It is a subcommand of
+    ``kl-buddy`` because both commands walked the same ``free_area``
+    arrays; the split was historical rather than conceptual.
+    """
+    if pcp_only or cpu is not None:
+        print(
+            message.warn(
+                "PCP (per-CPU page) lists are not modelled; showing the "
+                "buddy free lists instead"
+            )
+        )
+    pages = kdbg.buddy_zones(zone=zone, order=order, mtype=mtype, node=node)
+    if find is not None:
+        pages = tuple(p for p in pages if find in (p.phys, p.virt, p.page))
+    if not pages:
+        print(
+            message.warn(
+                "no free pages matched (needs node_data and a readable "
+                "vmemmap; refine --zone/--order/--mtype/--node)"
+            )
+        )
+        return
+    indent = IndentContextManager()
+    indent.print(
+        indent.prefix("zone") + f": {zone or 'all'} order={order} "
+        f"mtype={mtype or 'all'}"
+    )
+    shown = pages[:MAX_PG_FREE_LIST_STR_RESULT_CNT]
+    with indent:
+        for page in shown:
+            indent.print(
+                "- " + indent.prefix(f"[0x{page.index:02x}]")
+                + " " + indent.addr_hex(page.virt)
+                + " [page: " + indent.aux_hex(page.page)
+                + ", phys: " + indent.aux_hex(page.phys) + "]"
+            )
+    if len(pages) > len(shown):
+        indent.print(
+            message.warn(
+                f"... (truncated, {len(pages)} page(s) total)"
+            )
+        )
+    print(f"{len(pages)} free page(s)")

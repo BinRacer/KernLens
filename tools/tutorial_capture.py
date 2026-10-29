@@ -96,17 +96,31 @@ def _slab_object() -> int:
 
     ``dentry`` is preferred because it exists on every SLUB kernel and
     has a non-trivial usercopy window, so its ``info`` page has something
-    worth showing.  A per-CPU freelist is used because any object in it
-    is reachable and known-free.
+    worth showing.
+
+    A node's partial list is preferred over a per-CPU freelist because an
+    object is only useful for ``kl-slab details`` if its *page* still
+    holds a ``slab->freelist`` chain: that is what shows a decoded free
+    pointer.  A per-CPU slab is frequently drained (``freelist: NULL``)
+    because the allocator hands its last object to the caller, which
+    would render a page with nothing to decode.  The order therefore goes
+    partial list first, per-CPU second, active slab last.
     """
     cache = kdbg.slab_cache("dentry")
     if cache is None:
         cache = kdbg.slab_caches()[0]
+    address = cache.address
+    for node in range(max(kdbg.nr_nodes(), 1)):
+        count, _node, _head_slab, head_freelist = kdbg.partial_info(
+            address, node,
+        )
+        if count and head_freelist:
+            return head_freelist
     for cpu in range(kdbg.nr_cpus()):
-        freelist = kdbg.cpu_freelist(cache.address, cpu)
+        freelist = kdbg.cpu_freelist(address, cpu)
         if freelist:
             return freelist
-    return kdbg.cpu_active_slab(cache.address, 0) or 0
+    return kdbg.cpu_active_slab(address, 0) or 0
 
 
 def _cases(ctx: dict) -> list[tuple[str, list[str]]]:
@@ -128,31 +142,25 @@ def _cases(ctx: dict) -> list[tuple[str, list[str]]]:
             "kernlens-color", "kernlens-color toggle",
             "kernlens-color on", "kernlens-color off",
         ]),
-        ("kernlens-base", ["kernlens-base"]),
-        ("kernlens-kbase", [
-            "kernlens-kbase", "kernlens-kbase -r", "kernlens-kbase -v",
-            f"kernlens-kbase --text {ctx['link_text']:#x}",
-            f"kernlens-kbase --offset {slide}", "kernlens-kbase -i 4",
-            "kernlens-kbase -p",
+        ("kernlens-base", [
+            "kernlens-base", "kernlens-base show", "kernlens-base -v",
+            "kernlens-base idt 4", "kernlens-base rebase",
+            f"kernlens-base text {ctx['text']:#x}",
+            f"kernlens-base {ctx['text']:#x}",
+            f"kernlens-base offset {slide}",
         ]),
-        ("kernlens-kaslr", [f"kernlens-kaslr {ctx['text']:#x}"]),
-        ("kernlens-kaslr-offset", [f"kernlens-kaslr-offset {slide}"]),
         ("kernlens-kcmdline", ["kernlens-kcmdline"]),
         ("kernlens-kversion", ["kernlens-kversion"]),
         ("kernlens-kconfig", [
             "kernlens-kconfig RANDOMIZE_BASE", "kernlens-kconfig",
+            "kernlens-kconfig --check",
         ]),
-        ("kernlens-kchecksec", ["kernlens-kchecksec"]),
         ("kernlens-kmod", ["kernlens-kmod", "kernlens-kmod nonexistent"]),
         ("kernlens-ksyscalls", [
             "kernlens-ksyscalls", "kernlens-ksyscalls read",
             "kernlens-ksyscalls 0",
         ]),
         ("kernlens-kdmesg", ["kernlens-kdmesg", "kernlens-kdmesg --ctime"]),
-        ("kernlens-klookup", [
-            "kernlens-klookup commit_creds",
-            "kernlens-klookup page_offset_base",
-        ]),
         ("kernlens-cpu", ["kernlens-cpu", "kernlens-cpu 0"]),
         ("kernlens-percpu", [
             "kernlens-percpu current_task", "kernlens-percpu current_task 1",
@@ -166,22 +174,18 @@ def _cases(ctx: dict) -> list[tuple[str, list[str]]]:
             f"kernlens-addr {direct}", f"kernlens-addr {text_addr}",
             "kernlens-addr 0xffff888000001234", "kernlens-addr 0x5",
             f"kernlens-addr {direct} 0xfff",
+            f"kernlens-addr {direct} --brief",
+            f"kernlens-addr {vmemmap_page} --brief",
         ]),
         ("kernlens-pt", [
             f"kernlens-pt {direct}", f"kernlens-pt {text_addr}",
             "kernlens-pt 0xffff888000001234",
+            "kernlens-pt --entry 0x8000000000120063",
+            f"kernlens-pt --entry 0x8000000000120063 {direct}",
         ]),
         ("kernlens-walk", [
             f"kernlens-walk {direct}", f"kernlens-walk {direct} 5",
-        ]),
-        ("kernlens-pagewalk", [f"kernlens-pagewalk {direct}"]),
-        ("kernlens-pte", [
-            "kernlens-pte 0x8000000000120063",
-            f"kernlens-pte 0x8000000000120063 {direct}",
-        ]),
-        ("kernlens-page", [
-            f"kernlens-page {direct}", f"kernlens-page {direct} -v",
-            f"kernlens-page {vmemmap_page}",
+            f"kernlens-walk {direct} --style pwndbg",
         ]),
         ("kernlens-pageinfo", [f"kernlens-pageinfo {vmemmap_page}"]),
         ("kernlens-p2v", [f"kernlens-p2v {FREE_PHYS:#x}"]),
@@ -189,9 +193,13 @@ def _cases(ctx: dict) -> list[tuple[str, list[str]]]:
         ("kernlens-sym", [
             f"kernlens-sym {ctx['text_sym']:#x}",
             f"kernlens-sym {direct}",
+            "kernlens-sym --find commit_creds",
+            "kernlens-sym --find page_offset_base",
         ]),
-        ("kernlens-bt", ["kernlens-bt", "kernlens-bt 4"]),
-        ("kernlens-chain", ["kernlens-chain", "kernlens-chain 12"]),
+        ("kernlens-bt", [
+            "kernlens-bt", "kernlens-bt 4",
+            "kernlens-bt --chain", "kernlens-bt 12 --chain",
+        ]),
         ("kernlens-read", [
             f"kernlens-read {direct}", f"kernlens-read {direct} 16 -m ascii",
         ]),
@@ -218,12 +226,10 @@ def _cases(ctx: dict) -> list[tuple[str, list[str]]]:
             "kernlens-buddy freelist -z DMA -o 10 -m Movable",
             "kernlens-buddy freelist -z DMA -o 10 -m Movable -v",
             "kernlens-buddy freelist -z DMA -o 10 -m Unmovable -v",
-        ]),
-        ("kernlens-buddydump", [
-            "kernlens-buddydump", "kernlens-buddydump -z DMA",
-            "kernlens-buddydump -z DMA -o 10",
-            f"kernlens-buddydump -f {direct}",
-            "kernlens-buddydump --MIGRATE_TYPES 5",
+            "kernlens-buddy dump", "kernlens-buddy dump -z DMA",
+            "kernlens-buddy dump -z DMA -o 10",
+            f"kernlens-buddy dump -f {direct}",
+            "kernlens-buddy dump --MIGRATE_TYPES 5",
         ]),
         ("kernlens-kbpf", [
             "kernlens-kbpf", "kernlens-kbpf -p", "kernlens-kbpf -m",

@@ -25,7 +25,7 @@ KernLens 有两个命名面：
 - 从 pwndbg 移植的命令保留 pwndbg 的选项拼写——长名和短名都保留
   （`-p/--progs`、`-p/--pcp-only`、`-b/--break`、`-r/--range`）——也保留 pwndbg 的
   metavar（`<vaddr>`、`<paddr>`），这样从 pwndbg 工作流里抄来的命令行继续可用。
-  KernLens 独有的选项按同样风格添加；pwndbg 没有的选项（`kl-kbase --set`、
+  KernLens 独有的选项按同样风格添加；pwndbg 没有的选项（`kl-base --rebase`、
   `kl-slab --detail`）保持可用，但通过 `framework.hide()` 注册，让 `--help` 只显示
   pwndbg 那部分界面。
 

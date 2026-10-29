@@ -135,10 +135,13 @@ class GdbTests(unittest.TestCase):
 
     def test_the_tour_covers_more_than_one_subsystem(self) -> None:
         text = _text(DEMO / "demo-commands.gdb")
-        for command in ("kl-status", "kl-kbase", "kl-kconfig", "kl-slab"):
+        for command in ("kl-status", "kl-base", "kl-kconfig", "kl-slab"):
             with self.subTest(command=command):
                 self.assertIn(command, text)
-        self.assertIn("kl-pagewalk", text)
+        # Paging and symbols used to be three commands apiece; the tour
+        # now proves the merged ones keep their modes reachable.
+        self.assertIn("kl-sym", text)
+        self.assertIn("kl-walk --style pwndbg", text)
 
 
 class EntrypointTests(unittest.TestCase):

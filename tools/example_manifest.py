@@ -57,14 +57,16 @@ EXAMPLE_ROOTS: tuple[str, ...] = ("api", "tracing", "breakpoints")
 #: to 40, IntFmt from 4/26 to 25 -- without adding a command, because the
 #: primitives are reachable from Python and have no command of their own.
 #: Raising this number without adding a command would be a lie; the
-#: surface totals are what Phase 3 moved.
-REQUIRED_COMMAND_COVERAGE: int = 37
+#: surface totals are what Phase 3 moved.  Merging commands lowers the
+#: count because the surviving command inherits whatever the merged one
+#: had: ``kernlens-buddy`` stopped being uncovered when ``buddydump``
+#: became its ``dump`` subcommand.  Coverage itself did not drop.
+REQUIRED_COMMAND_COVERAGE: int = 28
 
-#: Commands no example executes yet, and why.  Recorded so that "37 of 40"
+#: Commands no example executes yet, and why.  Recorded so that "28 of 30"
 #: reads as a decision rather than an oversight -- and so that whoever
 #: closes the gap knows what the gap is.
 UNCOVERED_COMMANDS: dict[str, str] = {
-    "kernlens-buddydump": "needs a workload that leaves free blocks at a known order",
     "kernlens-kbpf": "needs BPF programs loaded in the target",
     "kernlens-kdmabuf": "needs a DMA-buf exporter; nothing exports on an idle VM",
 }
@@ -187,10 +189,10 @@ EXAMPLES: tuple[Example, ...] = (
             "kernlens-kversion",
             "kernlens-kcmdline",
             "kernlens-kconfig",
-            "kernlens-kchecksec",
+            "kernlens-kconfig",
             "kernlens-kmod",
             "kernlens-ksyscalls",
-            "kernlens-klookup",
+            "kernlens-sym",
             "kernlens-kdmesg",
         ),
     ),
@@ -206,11 +208,11 @@ EXAMPLES: tuple[Example, ...] = (
         commands=(
             "kernlens-base",
             "kernlens-addr",
-            "kernlens-page",
+            "kernlens-addr",
             "kernlens-pt",
             "kernlens-walk",
-            "kernlens-pagewalk",
-            "kernlens-pte",
+            "kernlens-walk",
+            "kernlens-pt",
             "kernlens-v2p",
             "kernlens-p2v",
             "kernlens-pageinfo",
@@ -261,13 +263,13 @@ EXAMPLES: tuple[Example, ...] = (
         surface=("kdbg.lookup",),
         commands=(
             "kernlens-base",
-            "kernlens-klookup",
+            "kernlens-sym",
             "kernlens-sym",
             "kernlens-read",
             "kernlens-kvar",
             "kernlens-read-field",
             "kernlens-bt",
-            "kernlens-chain",
+            "kernlens-bt",
         ),
     ),
     _example(
@@ -534,10 +536,10 @@ EXAMPLES: tuple[Example, ...] = (
         surface=("kdbg.link_text",),
         commands=(
             "kernlens-status",
-            "kernlens-kbase",
             "kernlens-base",
-            "kernlens-kaslr",
-            "kernlens-kaslr-offset",
+            "kernlens-base",
+            "kernlens-base",
+            "kernlens-base",
             "kernlens-color",
             "kernlens-help",
             "kernlens-sym",

@@ -13,22 +13,18 @@
 #   kl-help kl-<command>    # usage, options, and examples for one
 #   kl-status
 #   kl-slab <list|info|contains|details> [arg]
-#   kl-page <address>
-#   kl-pte <page-table-entry> [virtual-address]
-#   kl-sym <address>
-#   kl-bt [depth]
-#   kl-chain [depth]
+#   kl-addr <address> [tag-mask] [--brief]
+#   kl-pt <virtual-address> | kl-pt --entry <page-table-entry> [virtual-address]
+#   kl-sym <address> | kl-sym --find <name>
+#   kl-bt [depth] [--chain]
 #   kl-read <address> [count]
 #   kl-kvar <symbol>
-#   kl-addr <address> [tag-mask]
-#   kl-pt <virtual-address>
-#   kl-walk <virtual-address> [4|5]
+#   kl-walk <virtual-address> [4|5] [--style pwndbg]
 #   kl-bits <value> [bit-index]
 #   kl-int <value> [width]
 #   kl-cpu [cpu]
 #   kl-percpu <symbol> [cpu]
-#   kl-base
-#   kl-kbase [--rebase] [--verbose]
+#   kl-base [show|text|offset|idt|rebase]
 # The startup file also installs the public Python API into GDB's
 # __main__ namespace.  A script sourced later can use KAddr,
 # KPageTable, IntFmt, kdbg, read_kvar, walk, byte_swap64, ... without

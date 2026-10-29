@@ -1,36 +1,38 @@
 # `kernlens-pt`
 
-Page-table indices
+Page-table indices and entries
 
 **Alias:** `kl-pt`  
 **Category:** addresses & page tables  
-**Synopsis:** `kernlens-pt [-h] va`
+**Synopsis:** `kernlens-pt [-h] [-e] [--paging {4,5}] [VALUE ...]`
 
-Shows the index extracted at each level for a virtual address, in both 4-level and 5-level form, plus the huge-page bases it falls inside.  This is pure arithmetic -- nothing is read from the target.
+Address arithmetic in both directions: a virtual address split into its per-level indices, or a raw page-table entry decoded into flags and a physical address.  `--entry` selects the second, which is what `kl-pte` did.  Nothing is read from the target -- the value is the argument.
 
 ## Options
 
 | Option | Argument | Meaning |
 | --- | --- | --- |
-|  | — | virtual address to split |
+|  | VALUE | virtual address [leaf address used for the translations] |
+| `-e`, `--entry` | — | treat VALUE as a raw page-table entry instead of an address |
+| `--paging` | `4` \| `5` | force one geometry instead of printing both |
 
 ## A direct-map address
 
 ### Invocation
 
 ```gdb
-kernlens-pt 0xffff975280400000
+kernlens-pt 0xffff8c3640400000
 ```
 
 ### Output
 
 ```text
-VA: 0xffff975280400000
-4-level: pgd=302 pud=330 pmd=2 pte=0 off=0x0
-5-level: pgd=511 p4d=302 pud=330 pmd=2 pte=0 off=0x0
-huge: 2m_base=0xffff975280400000 1g_base=0xffff975280000000
+VA: 0xffff8c3640400000
+4-level: pgd=280 pud=217 pmd=2 pte=0 off=0x0
+5-level: pgd=511 p4d=280 pud=217 pmd=2 pte=0 off=0x0
+huge: 2m_base=0xffff8c3640400000 1g_base=0xffff8c3640000000
 aligned: 2m=True 1g=False page_offset=0x0
-canonical: 4-level=0xffff975280400000 5-level=0xffff975280400000
+canonical: 4-level=0xffff8c3640400000 5-level=0xffff8c3640400000
 ```
 
 ### Reading it
@@ -42,27 +44,71 @@ The 4-level row shows five entries (pgd/pud/pmd/pte/off) and the 5-level row six
 ### Invocation
 
 ```gdb
-kernlens-pt 0xffffffffadd00000
+kernlens-pt 0xffffffffa7700000
 ```
 
 ### Output
 
 ```text
-VA: 0xffffffffadd00000
-4-level: pgd=511 pud=510 pmd=366 pte=256 off=0x0
-5-level: pgd=511 p4d=511 pud=510 pmd=366 pte=256 off=0x0
-huge: 2m_base=0xffffffffadc00000 1g_base=0xffffffff80000000
+VA: 0xffffffffa7700000
+4-level: pgd=511 pud=510 pmd=315 pte=256 off=0x0
+5-level: pgd=511 p4d=511 pud=510 pmd=315 pte=256 off=0x0
+huge: 2m_base=0xffffffffa7600000 1g_base=0xffffffff80000000
 aligned: 2m=False 1g=False page_offset=0x0
-canonical: 4-level=0xffffffffadd00000 5-level=0xffffffffadd00000
+canonical: 4-level=0xffffffffa7700000 5-level=0xffffffffa7700000
 ```
 
 ### Reading it
 
 The upper-half indices are near their maximum (`pgd=511`, `pud=510`) because the kernel image sits at the very top of the address space.  This is also where the two modes disagree most visibly: 5-level paging widens `pgd` but the kernel still occupies the top.
 
+## Decoding an entry
+
+### Invocation
+
+```gdb
+kernlens-pt --entry 0x8000000000120063
+```
+
+### Output
+
+```text
+PTE: 0x8000000000120063 present=True bit7=PS/PAT
+Flags: P RW A D NX
+Physical: 0x120000  pfn=288
+```
+
+### Reading it
+
+`present=True` comes from bit 0.  The flag list names each set bit: `P` present, `RW` writable, `US` user, `A` accessed, `D` dirty, `PS` page-size (huge), `NX` no-execute.  `bit7=PS/PAT` is called out separately because bit 7 means page-size at the PMD level and PAT elsewhere; only the level resolves it, so the command reports the ambiguity rather than picking one.  Removing the low 12 bits gives the physical page frame, and `NX` is the top bit of the 64-bit value -- which is why the entry starts with `0x8`.
+
+## An entry with an address for context
+
+### Invocation
+
+```gdb
+kernlens-pt --entry 0x8000000000120063 0xffff8c3640400000
+```
+
+### Output
+
+```text
+PTE: 0x8000000000120063 present=True bit7=PS/PAT
+Flags: P RW A D NX
+Physical: 0x120000  pfn=288
+VA: 0xffff8c3640400000
+4k leaf: 0x120000
+2m leaf: 0x0
+1g leaf: 0x400000
+```
+
+### Reading it
+
+Giving the address lets the command label the three leaf interpretations of the same bits: what the value would mean as a 4 KiB, 2 MiB or 1 GiB leaf.  This is how a rounding mistake becomes obvious -- the same entry reads differently at each level.
+
 ## Notes
 
-Indices are computed from the address widths, so they do not depend on the live tables at all.  `kl-walk` is the command that then reads each level.
+Indices are computed from the address widths, so they do not depend on the live tables at all; `kl-walk` is the command that then reads each level.  `--paging 4` or `--paging 5` prints one geometry when you are looking at a specific one.
 
 ---
 

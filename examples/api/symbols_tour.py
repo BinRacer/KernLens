@@ -10,7 +10,7 @@
 The six commands here form a chain where each one depends on the answer
 to the previous, and the chain is the point:
 
-1. `kl-klookup <name>` -- a *substring* search over kallsyms.  Note it
+1. `kl-sym --find <name>` -- a *substring* search over kallsyms.  Note it
    returns several hits for `init_task`: `ftrace_graph_init_task`,
    `__start_init_task`, and the variable you probably wanted.  Picking
    the wrong one is the most common way a symbol-based tracer starts
@@ -28,8 +28,8 @@ to the previous, and the chain is the point:
 5. `kl-read-field <address> <type> <path>` -- the typed read, including
    nested paths.  This needs DWARF, which is why step 3 exists as a
    fallback.
-6. `kl-bt` / `kl-chain` -- the current stack, in two formats: `kl-bt`
-   is for reading, `kl-chain` is for pasting into a report.
+6. `kl-bt` / `kl-bt --chain` -- the current stack, in two formats: `kl-bt`
+   is for reading, `kl-bt --chain` is for pasting into a report.
 
 Source it after `gdbinit.py` and run `ytour`::
 
@@ -96,8 +96,8 @@ def tour(name: str, depth: int) -> None:
     """Chain the six commands so each one's output feeds the next."""
     _run("kl-base")
 
-    _section(f"1. substring search (kl-klookup {name})")
-    _run(f"kl-klookup {name}")
+    _section(f"1. substring search (kl-sym --find {name})")
+    _run(f"kl-sym --find {name}")
 
     address = _exact(name)
     if address is None:
@@ -124,9 +124,9 @@ def tour(name: str, depth: int) -> None:
     # step is allowed to fail loudly rather than silently printing zeros.
     _run(f"kl-read-field {address:#x} 'struct task_struct' pid")
 
-    _section("6. the current stack (kl-bt, kl-chain)")
+    _section("6. the current stack (kl-bt, kl-bt --chain)")
     _run(f"kl-bt {depth}")
-    _run(f"kl-chain {depth}")
+    _run(f"kl-bt --chain {depth}")
 
     _section("reading the result")
     gdb.write(

@@ -16,15 +16,15 @@ that gets you unstuck fastest.
 1. `kl-status` -- the cheapest check.  It prints the slide KernLens
    currently believes, and the runtime `_text`, so a disagreement with
    `nm vmlinux | grep ' _text'` is visible immediately.
-2. `kl-kbase` -- find the slide from the target rather than being told.
+2. `kl-base` -- find the slide from the target rather than being told.
    It uses three independent methods (`--verbose` names which one won);
    `symbol` reads an IDT handler through the target's own table, so it
    works with no symbols and no debug info.
 3. `kl-base` -- and this is the step people skip.  Finding the slide is
-   not the same as *applying* it; `kl-kbase` only reports.  `kl-base`
+   not the same as *applying* it -- `kl-base` reports and applies.
    installs it, which is what makes every later `kl-*` command resolve
    runtime addresses.
-4. `kl-kaslr` / `kl-kaslr-offset` -- the manual overrides, for when
+4. `kl-base text` / `kl-base offset` -- the manual overrides, for when
    discovery fails: give a runtime `_text` or the slide itself.
 
 There is a fifth command, `kl-color`, and it is last for a reason: it
@@ -120,8 +120,8 @@ def survey() -> None:
     _section("1. current state (kl-status)")
     _run("kl-status")
 
-    _section("2. discover the slide from the target (kl-kbase -v)")
-    _run("kl-kbase -v")
+    _section("2. discover the slide from the target (kl-base --verbose)")
+    _run("kl-base --verbose")
 
     _section("3. is it applied?")
     link = _link_text()
@@ -161,9 +161,9 @@ def manual(value: str) -> None:
     # Both commands are shown because they answer different questions: a
     # crash log gives you a runtime `_text`, a diff gives you the slide.
     if value.lower().startswith("0x") and int(value, 0) < 0x1000_0000:
-        _run(f"kl-kaslr-offset {value}")
+        _run(f"kl-base offset {value}")
     else:
-        _run(f"kl-kaslr {value}")
+        _run(f"kl-base text {value}")
     _run("kl-status")
 
 

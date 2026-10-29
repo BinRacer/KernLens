@@ -13,14 +13,14 @@
 | 内核 | `6.1.134` (x86_64, DWARF debug info) |
 | CPU 数 | 4 |
 | SLUB 缓存数 | 170 |
-| KASLR 偏移 | `0x2cc00000` |
+| KASLR 偏移 | `0x26600000` |
 | `_text`（链接时） | `0xffffffff81000000` |
-| `_text`（运行时） | `0xffffffffadc00000` |
-| `page_offset_base` | `0xffff975280000000` |
-| `vmemmap_base` | `0xffffee5d00000000` |
+| `_text`（运行时） | `0xffffffffa7600000` |
+| `page_offset_base` | `0xffff8c3640000000` |
+| `vmemmap_base` | `0xffffd66f00000000` |
 | 一个空闲页（物理） | `0x400000` |
-| 它的直接映射别名 | `0xffff975280400000` |
-| 它的 `struct page` | `0xffffee5d00010000` |
+| 它的直接映射别名 | `0xffff8c3640400000` |
+| 它的 `struct page` | `0xffffd66f00010000` |
 
 `page_offset_base` 与 `vmemmap_base` 是启动代码填进去的内核**变量**，所以每次启动都会变，偏移也随之变化。这里其余的（结构体偏移、zone 列表、缓存名、符号名）对本次构建是稳定的。凡是与启动相关的，KernLens 都在运行时重新推导而不是假定，这就是命令显示这些数字而不是某个常量的原因。
 
@@ -67,10 +67,7 @@
 
 | 命令 | 它回答什么 |
 | --- | --- |
-| [`kl-base`](../../en/tutorial/kl-base.md) | Selects the runtime kernel text base and KASLR slide. |
-| [`kl-kaslr`](../../en/tutorial/kl-kaslr.md) | Sets the KASLR slide from a runtime _text address. |
-| [`kl-kaslr-offset`](../../en/tutorial/kl-kaslr-offset.md) | Sets the KASLR slide directly. |
-| [`kl-kbase`](../../en/tutorial/kl-kbase.md) | Finds the kernel virtual base address. |
+| [`kl-base`](../../en/tutorial/kl-base.md) | Reports the runtime kernel text base and KASLR slide. |
 
 ### Kernel metadata
 
@@ -78,11 +75,9 @@
 
 | 命令 | 它回答什么 |
 | --- | --- |
-| [`kl-kchecksec`](../../en/tutorial/kl-kchecksec.md) | Checks for kernel hardening configuration options. |
 | [`kl-kcmdline`](../../en/tutorial/kl-kcmdline.md) | Return the kernel command line (/proc/cmdline). |
 | [`kl-kconfig`](../../en/tutorial/kl-kconfig.md) | Outputs the kernel config (/proc/config.gz). |
 | [`kl-kdmesg`](../../en/tutorial/kl-kdmesg.md) | Displays the kernel ring buffer (dmesg) contents. |
-| [`kl-klookup`](../../en/tutorial/kl-klookup.md) | Lookup kernel symbols |
 | [`kl-kmod`](../../en/tutorial/kl-kmod.md) | Displays the loaded Linux kernel modules. |
 | [`kl-ksyscalls`](../../en/tutorial/kl-ksyscalls.md) | Displays the Linux syscall table, including names and addresses of syscalls. |
 | [`kl-kversion`](../../en/tutorial/kl-kversion.md) | Outputs the kernel version (/proc/version). |
@@ -103,13 +98,10 @@
 
 | 命令 | 它回答什么 |
 | --- | --- |
-| [`kl-addr`](../../en/tutorial/kl-addr.md) | Prints a full KAddr analysis of an address. |
+| [`kl-addr`](../../en/tutorial/kl-addr.md) | Classifies an address and reports where it maps. |
 | [`kl-p2v`](../../en/tutorial/kl-p2v.md) | Translates a physical address to virtual + struct page. |
-| [`kl-page`](../../en/tutorial/kl-page.md) | Classifies an address and translates direct-map addresses. |
 | [`kl-pageinfo`](../../en/tutorial/kl-pageinfo.md) | Translates a struct page to virtual and physical addresses. |
-| [`kl-pagewalk`](../../en/tutorial/kl-pagewalk.md) | Walks the page tables in pwndbg's pagewalk format. |
-| [`kl-pt`](../../en/tutorial/kl-pt.md) | Shows 4-level/5-level page-table indices for an address. |
-| [`kl-pte`](../../en/tutorial/kl-pte.md) | Decodes page-table entry flags and leaf translations. |
+| [`kl-pt`](../../en/tutorial/kl-pt.md) | Splits a virtual address into page-table indices, or decodes a page-table entry. |
 | [`kl-v2p`](../../en/tutorial/kl-v2p.md) | Translates a virtual address (live page tables) to physical. |
 | [`kl-walk`](../../en/tutorial/kl-walk.md) | Walks the live page tables and decodes every level. |
 
@@ -121,15 +113,13 @@
 | --- | --- |
 | [`kl-bt`](../../en/tutorial/kl-bt.md) | Prints a formatted kernel backtrace. |
 | [`kl-buddy`](../../en/tutorial/kl-buddy.md) | Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block. |
-| [`kl-buddydump`](../../en/tutorial/kl-buddydump.md) | Displays metadata and freelists of the buddy allocator. |
-| [`kl-chain`](../../en/tutorial/kl-chain.md) | Prints a compact caller <- callee call chain. |
 | [`kl-kbpf`](../../en/tutorial/kl-kbpf.md) | Prints information about the linux kernel bpf progs and maps. |
 | [`kl-kdmabuf`](../../en/tutorial/kl-kdmabuf.md) | Prints DMA buf info. |
 | [`kl-kvar`](../../en/tutorial/kl-kvar.md) | Reads a KASLR-aware kernel global variable. |
 | [`kl-read`](../../en/tutorial/kl-read.md) | Dumps kernel memory as 64-bit words with symbol annotations. |
 | [`kl-read-field`](../../en/tutorial/kl-read-field.md) | Reads a struct field (including nested paths) as an integer. |
 | [`kl-slab`](../../en/tutorial/kl-slab.md) | Prints information about the linux kernel's slab allocator SLUB. |
-| [`kl-sym`](../../en/tutorial/kl-sym.md) | Resolves an address to a symbol and source location. |
+| [`kl-sym`](../../en/tutorial/kl-sym.md) | Resolves an address to a symbol, or finds symbols by name. |
 
 ### Bit & integer primitives
 

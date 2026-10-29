@@ -13,14 +13,14 @@ All output in this tutorial was captured from one boot of the project's test VM:
 | Kernel | `6.1.134` (x86_64, DWARF debug info) |
 | CPUs | 4 |
 | SLUB caches | 170 |
-| KASLR slide | `0x2cc00000` |
+| KASLR slide | `0x26600000` |
 | `_text` (link) | `0xffffffff81000000` |
-| `_text` (runtime) | `0xffffffffadc00000` |
-| `page_offset_base` | `0xffff975280000000` |
-| `vmemmap_base` | `0xffffee5d00000000` |
+| `_text` (runtime) | `0xffffffffa7600000` |
+| `page_offset_base` | `0xffff8c3640000000` |
+| `vmemmap_base` | `0xffffd66f00000000` |
 | A free page (phys) | `0x400000` |
-| Its direct-map alias | `0xffff975280400000` |
-| Its `struct page` | `0xffffee5d00010000` |
+| Its direct-map alias | `0xffff8c3640400000` |
+| Its `struct page` | `0xffffd66f00010000` |
 
 `page_offset_base` and `vmemmap_base` are kernel **variables** the boot code fills in, so they change on every boot, and the slide changes with them.  Everything else here (struct offsets, the zone list, cache names, symbol names) is stable for this build.  Anything boot-specific is re-derived by KernLens at run time rather than assumed, which is why the commands show these numbers instead of a constant.
 
@@ -67,10 +67,7 @@ Where the kernel is loaded, and how KernLens copes with a randomised base.
 
 | Command | What it answers |
 | --- | --- |
-| [`kl-base`](kl-base.md) | Selects the runtime kernel text base and KASLR slide. |
-| [`kl-kaslr`](kl-kaslr.md) | Sets the KASLR slide from a runtime _text address. |
-| [`kl-kaslr-offset`](kl-kaslr-offset.md) | Sets the KASLR slide directly. |
-| [`kl-kbase`](kl-kbase.md) | Finds the kernel virtual base address. |
+| [`kl-base`](kl-base.md) | Reports the runtime kernel text base and KASLR slide. |
 
 ### Kernel metadata
 
@@ -78,11 +75,9 @@ Configuration and build facts: the command line, the version, the options, the m
 
 | Command | What it answers |
 | --- | --- |
-| [`kl-kchecksec`](kl-kchecksec.md) | Checks for kernel hardening configuration options. |
 | [`kl-kcmdline`](kl-kcmdline.md) | Return the kernel command line (/proc/cmdline). |
 | [`kl-kconfig`](kl-kconfig.md) | Outputs the kernel config (/proc/config.gz). |
 | [`kl-kdmesg`](kl-kdmesg.md) | Displays the kernel ring buffer (dmesg) contents. |
-| [`kl-klookup`](kl-klookup.md) | Lookup kernel symbols |
 | [`kl-kmod`](kl-kmod.md) | Displays the loaded Linux kernel modules. |
 | [`kl-ksyscalls`](kl-ksyscalls.md) | Displays the Linux syscall table, including names and addresses of syscalls. |
 | [`kl-kversion`](kl-kversion.md) | Outputs the kernel version (/proc/version). |
@@ -103,13 +98,10 @@ From a raw 64-bit value to the physical page it refers to, in either direction.
 
 | Command | What it answers |
 | --- | --- |
-| [`kl-addr`](kl-addr.md) | Prints a full KAddr analysis of an address. |
+| [`kl-addr`](kl-addr.md) | Classifies an address and reports where it maps. |
 | [`kl-p2v`](kl-p2v.md) | Translates a physical address to virtual + struct page. |
-| [`kl-page`](kl-page.md) | Classifies an address and translates direct-map addresses. |
 | [`kl-pageinfo`](kl-pageinfo.md) | Translates a struct page to virtual and physical addresses. |
-| [`kl-pagewalk`](kl-pagewalk.md) | Walks the page tables in pwndbg's pagewalk format. |
-| [`kl-pt`](kl-pt.md) | Shows 4-level/5-level page-table indices for an address. |
-| [`kl-pte`](kl-pte.md) | Decodes page-table entry flags and leaf translations. |
+| [`kl-pt`](kl-pt.md) | Splits a virtual address into page-table indices, or decodes a page-table entry. |
 | [`kl-v2p`](kl-v2p.md) | Translates a virtual address (live page tables) to physical. |
 | [`kl-walk`](kl-walk.md) | Walks the live page tables and decodes every level. |
 
@@ -121,15 +113,13 @@ Reading the kernel's own memory: symbols, the stack, SLUB, the buddy allocator, 
 | --- | --- |
 | [`kl-bt`](kl-bt.md) | Prints a formatted kernel backtrace. |
 | [`kl-buddy`](kl-buddy.md) | Locates an address in the buddy allocator: its zone, its free block, and where it sits inside that block. |
-| [`kl-buddydump`](kl-buddydump.md) | Displays metadata and freelists of the buddy allocator. |
-| [`kl-chain`](kl-chain.md) | Prints a compact caller <- callee call chain. |
 | [`kl-kbpf`](kl-kbpf.md) | Prints information about the linux kernel bpf progs and maps. |
 | [`kl-kdmabuf`](kl-kdmabuf.md) | Prints DMA buf info. |
 | [`kl-kvar`](kl-kvar.md) | Reads a KASLR-aware kernel global variable. |
 | [`kl-read`](kl-read.md) | Dumps kernel memory as 64-bit words with symbol annotations. |
 | [`kl-read-field`](kl-read-field.md) | Reads a struct field (including nested paths) as an integer. |
 | [`kl-slab`](kl-slab.md) | Prints information about the linux kernel's slab allocator SLUB. |
-| [`kl-sym`](kl-sym.md) | Resolves an address to a symbol and source location. |
+| [`kl-sym`](kl-sym.md) | Resolves an address to a symbol, or finds symbols by name. |
 
 ### Bit & integer primitives
 
