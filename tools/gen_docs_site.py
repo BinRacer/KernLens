@@ -75,16 +75,6 @@ SITE_LINKS = {
     "README.zh-CN.md": SITE + "/zh-CN/",
 }
 
-#: Label for each language, and the absolute URL its switcher button
-#: points at.  The switcher is one link, not a per-page translation map:
-#: only two pages exist in Chinese, so "switch to 中文" from
-#: ``architecture/`` has to land somewhere honest -- the Chinese front
-#: page -- rather than 404.
-LANGUAGE_SWITCH = (
-    ("English", SITE + "/"),
-    ("简体中文", SITE + "/zh-CN/"),
-)
-
 #: One line per published page, keyed by the nav target.  A nav entry
 #: without a note fails the generator: ``llms.txt`` is a list of pages
 #: with a reason to open them, not a list of filenames.
