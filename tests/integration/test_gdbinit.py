@@ -178,6 +178,10 @@ KCONFIG = {
 }
 #: real syscall table entry count on this kernel (unfiltered table).
 SYSCALL_COUNT = 451
+#: the vmlinux the capture session loaded with ``file``.  A real path
+#: rather than a placeholder, because ``rebased`` echoes it verbatim and
+#: a test that asserts on the echo is asserting on what a user sees.
+SYMBOL_FILE = "/home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux"
 
 
 class FakeGdbError(Exception):
@@ -218,6 +222,15 @@ class FakeGdb(types.ModuleType):
         self.registry: dict[str, type[FakeCommand]] = {}
         self.instances: dict[str, FakeCommand] = {}
         self.executed: list[str] = []
+        #: The symbol file ``file`` / ``symbol-file`` loaded.  ``None``
+        #: until a test sets it, which is how a session with no debug
+        #: info looks.
+        self.symbol_file: str | None = None
+        #: Every ``add-symbol-file`` copy, in load order.  Rebasing adds
+        #: to this; removing drains it.  Modelling the list rather than a
+        #: counter is what lets a test assert that a rebase leaves
+        #: *exactly* one copy instead of merely that it did not crash.
+        self.relocated: list[tuple[str, int]] = []
         FakeCommand.current = self
 
     def write(self, text: str) -> None:
@@ -255,6 +268,16 @@ class FakeGdb(types.ModuleType):
             self.expressions[name.strip()] = int(value, 0)
             return ""
         if command.startswith("add-symbol-file "):
+            path, _, address = command[len("add-symbol-file "):].rpartition(" ")
+            self.relocated.append((path, int(address, 0)))
+            return ""
+        if command.startswith("remove-symbol-file "):
+            # Measured on GDB 15.1: one call drops one *added* copy and
+            # raises once none is left, rather than dropping the primary
+            # symbol file.  The tests rely on both halves of that.
+            if not self.relocated:
+                raise FakeGdbError("No symbol file found")
+            self.relocated.pop(0)
             return ""
         raise FakeGdbError(f"unsupported command {command!r}")
 
@@ -262,7 +285,7 @@ class FakeGdb(types.ModuleType):
         return SimpleNamespace(pc=lambda: 0)
 
     def current_progspace(self) -> object:
-        return SimpleNamespace(filename=None)
+        return SimpleNamespace(filename=self.symbol_file)
 
     def selected_inferior(self) -> object:
         return SimpleNamespace(pid=1)
@@ -1048,6 +1071,9 @@ class GdbinitTestBase(unittest.TestCase):
         fake_gdb.expressions.clear()
         fake_gdb.registry.clear()
         fake_gdb.instances.clear()
+        fake_gdb.executed.clear()
+        fake_gdb.symbol_file = None
+        fake_gdb.relocated.clear()
         # Drop the session owner map too: it lives on the ``gdb`` module
         # by design, so it would otherwise leak between tests.
         setattr(fake_gdb, framework._OWNERS_ATTR, {})
@@ -2124,6 +2150,80 @@ class KernelBaseTests(GdbinitTestBase):
     def test_rebase_subcommand_does_the_same(self) -> None:
         out = self.invoke("kl-base", "rebase")
         self.assertIn("no symbol file is loaded", out)
+
+    def test_rebase_loads_the_symbol_file_at_the_detected_base(self) -> None:
+        fake_gdb.symbol_file = SYMBOL_FILE
+        self.invoke("kl-base", "rebase")
+        self.assertEqual(
+            fake_gdb.executed[-1],
+            f"add-symbol-file {SYMBOL_FILE} {RUNTIME_TEXT:#x}",
+        )
+        self.assertEqual(fake_gdb.relocated, [(SYMBOL_FILE, RUNTIME_TEXT)])
+
+    def test_a_second_rebase_does_not_stack_a_second_copy(self) -> None:
+        """``add-symbol-file`` only adds, so the old copy has to go.
+
+        A measured session made the cost concrete: two rebases left two
+        relocated copies, and ``info symbol`` at the newer base answered
+        with the *stale* copy's nearest symbol.  Wrong symbol names are a
+        worse failure than the leaked DWARF, and both come from the same
+        missing removal.
+        """
+        fake_gdb.symbol_file = SYMBOL_FILE
+        self.invoke("kl-base", "rebase")
+        fake_gdb.executed.clear()
+        out = self.invoke("kl-base", "rebase")
+        self.assertEqual(len(fake_gdb.relocated), 1)
+        self.assertEqual(fake_gdb.relocated[0][0], SYMBOL_FILE)
+        self.assertIn("dropped 1 stale copy", out)
+
+    def test_rebase_drops_every_stale_copy(self) -> None:
+        # Three leftovers from before this fix, not one.
+        fake_gdb.symbol_file = SYMBOL_FILE
+        for base in (0xFFFFFFFFA0600000, 0xFFFFFFFFA5000000, RUNTIME_TEXT):
+            fake_gdb.relocated.append((SYMBOL_FILE, base))
+        out = self.invoke("kl-base", "rebase")
+        self.assertEqual(fake_gdb.relocated, [(SYMBOL_FILE, RUNTIME_TEXT)])
+        self.assertIn("dropped 3 stale copy", out)
+
+    def test_the_first_rebase_reports_no_dropped_copy(self) -> None:
+        """Nothing stale is not the same as nothing done.
+
+        The message has to stay quiet about dropping when there was
+        nothing to drop, or a first rebase reads like it destroyed
+        something.
+        """
+        fake_gdb.symbol_file = SYMBOL_FILE
+        out = self.invoke("kl-base", "rebase")
+        self.assertNotIn("dropped", out)
+        self.assertIn("rebased", out)
+
+    def test_rebase_reopens_the_kaslr_latch(self) -> None:
+        """``rebase`` is a ``kl-base`` spelling, so it is also a retry.
+
+        It called ``find_kbase()`` directly, so a session whose first
+        alignment had already given up kept the latch closed and
+        ``rebase`` reported "cannot locate the kernel text base" even
+        after the user fixed the thing that stopped detection -- a retry
+        that cannot retry.
+        """
+        fake_gdb.symbol_file = SYMBOL_FILE
+        fake_kdbg.reopen_alignment_calls = 0
+        self.invoke("kl-base", "rebase")
+        self.assertEqual(fake_kdbg.reopen_alignment_calls, 1)
+
+    def test_rebase_applies_the_slide_it_detected(self) -> None:
+        """Relocating the symbols is not the same as applying the slide.
+
+        The live session made the difference visible: ``rebase`` printed
+        the right base and left ``kaslr_offset`` at zero, so every later
+        command read at the link-time address -- a command that looks
+        like it worked and did not.
+        """
+        fake_gdb.symbol_file = SYMBOL_FILE
+        fake_kdbg.kaslr_offset = 0
+        self.invoke("kl-base", "rebase")
+        self.assertEqual(fake_kdbg.kaslr_offset, KASLR_SLIDE)
 
     # -- text: the slide from a runtime _text ---------------------------
 

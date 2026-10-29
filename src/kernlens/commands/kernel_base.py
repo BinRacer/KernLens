@@ -31,7 +31,7 @@ from typing import cast
 import gdb
 
 from ..gdb.facade import kdbg
-from ..gdb.kbase import IdtInfo
+from ..gdb.kbase import IdtInfo, KbaseResult
 from ..output import message
 from ..output.tree import IndentContextManager
 from .formatting import default_base, kernel_running
@@ -45,6 +45,16 @@ _MASK64 = 0xFFFFFFFFFFFFFFFF
 
 #: Subcommands, in the order ``kl-help`` mentions them.
 _BASE_SUBCOMMANDS = ("show", "text", "offset", "idt", "rebase")
+
+#: Ceiling on the stale symbol files one ``rebase`` will drop.
+#:
+#: ``remove-symbol-file`` raises once nothing is left to remove, so the
+#: loop ends there on every GDB that was measured.  The ceiling exists
+#: because an unbounded loop over a GDB command is not something to
+#: leave to that assumption: a build that silently succeeded instead of
+#: raising would spin forever, and a user who typed ``rebase`` would
+#: have to interrupt GDB.
+_MAX_DROP = 16
 
 _base_parser = argparse.ArgumentParser(
     description="Reports the runtime kernel text base and KASLR slide.",
@@ -95,7 +105,16 @@ _base_parser.add_argument(
         "\n"
         "``show`` is the default.  It prints the base, the slide in effect,\n"
         "the link-time ``_text``, and how the base was found -- the union of\n"
-        "what ``kl-base`` and ``kl-kbase`` used to report separately."
+        "what ``kl-base`` and ``kl-kbase`` used to report separately.\n"
+        "\n"
+        "Every spelling that detects a base also re-opens the once-per-\n"
+        "session KASLR alignment and applies the slide it found, so this is\n"
+        "the command to run after fixing whatever stopped detection.\n"
+        "\n"
+        "``rebase`` reloads the symbol file ``file`` loaded, at a running\n"
+        "address, and first drops the relocated copy the previous rebase\n"
+        "added -- ``add-symbol-file`` only ever adds, and a stale copy wins\n"
+        "the lookups at the addresses it covers."
     ),
 )
 def kernlens_base(
@@ -133,18 +152,53 @@ def kernlens_base(
     _show(verbose, rebase)
 
 
-def _show(verbose: bool, rebase: bool) -> None:
-    """Report the base and slide, applying what was detected.
+def _detect_base() -> KbaseResult | None:
+    """Re-open the session's KASLR latch, detect the base, apply the slide.
 
-    ``kl-base`` is the manual retry for the framework's once-per-session
-    alignment: it drops the latch and spends a fresh set of probes.  The
-    user runs it after fixing whatever stopped detection -- loading the
-    matching vmlinux, attaching the target, resuming a VM -- and it has to
-    be the command that re-opens the question, because it is the one a
-    user reaches for when they believe the base is now knowable.
+    Every spelling of ``kl-base`` that detects a base goes through here,
+    because every one of them is the manual retry for the framework's
+    once-per-session alignment.  A user runs ``kl-base`` -- or
+    ``kl-base rebase`` -- after fixing whatever stopped detection:
+    loading the matching vmlinux, attaching the target, resuming a VM.
+    It has to be the command that re-opens the question, because it is
+    the one a user reaches for when they believe the base is now
+    knowable.
+
+    Applying the slide belongs here rather than in each caller for the
+    same reason.  ``rebase`` used to detect the base and reload the
+    symbols *without* setting ``kaslr_offset``, so it printed a correct
+    base and left every later command reading at the wrong slide -- a
+    command that looks like it worked and did not.
     """
     kdbg.reader.reopen_alignment()
     result = kdbg.find_kbase()
+    if result is not None:
+        kdbg.kaslr_offset = _slide_of(result)
+        # The relocation the rebase adds is a second way to reach the
+        # same addresses, and the reader's detection hook is what decides
+        # which one a read uses.  Resetting the derived caches keeps them
+        # from outliving the symbol table they were read through.
+        reset = getattr(getattr(kdbg, "kernel", None), "reset", None)
+        if callable(reset):
+            reset()
+    return result
+
+
+def _slide_of(result: KbaseResult) -> int:
+    """The KASLR slide implied by a base-recovery result."""
+    offset = result.kaslr_offset
+    if offset is not None:
+        return offset
+    link = result.link_text
+    if link is None:
+        link = kdbg.link_text()
+    reference = link if link is not None else default_base()
+    return (result.base - reference) & _MASK64
+
+
+def _show(verbose: bool, rebase: bool) -> None:
+    """Report the base and slide, applying what was detected."""
+    result = _detect_base()
     indent = IndentContextManager()
     if result is None:
         if kernel_running():
@@ -167,11 +221,7 @@ def _show(verbose: bool, rebase: bool) -> None:
     link = getattr(result, "link_text", None)
     if link is None:
         link = kdbg.link_text()
-    offset = getattr(result, "kaslr_offset", None)
-    if offset is None:
-        reference = link if link is not None else default_base()
-        offset = (result.base - reference) & _MASK64
-    kdbg.kaslr_offset = offset
+    offset = kdbg.kaslr_offset
     indent.print(
         indent.prefix("kernel base") + ": "
         + indent.addr_hex(result.base) + " " + message.success("(runtime)")
@@ -230,7 +280,7 @@ def _set_offset(offset: int) -> None:
 
 def _rebase_detected() -> None:
     """``kl-base rebase``: detect the base, then reload the symbols there."""
-    result = kdbg.find_kbase()
+    result = _detect_base()
     if result is None:
         print(
             message.error(
@@ -241,22 +291,66 @@ def _rebase_detected() -> None:
     _rebase(result.base)
 
 
-def _rebase(base: int) -> None:
-    """Reload the loaded symbol file at *base* (``rebase``)."""
+def _symbol_file() -> str | None:
+    """The symbol file ``file`` / ``symbol-file`` loaded, if any.
+
+    ``add-symbol-file`` does not set this, so it stays the *primary*
+    symbol file -- the one a previous ``rebase`` started from -- which is
+    what makes it usable as the identity to reload.
+    """
     try:
         progspace = gdb.current_progspace()
         objfile = progspace.filename if progspace is not None else None
     except (gdb.error, AttributeError):
-        objfile = None
-    if not objfile:
+        return None
+    return objfile or None
+
+
+def _drop_relocated(objfile: str) -> int:
+    """Remove the copies an earlier ``rebase`` added; return how many.
+
+    ``add-symbol-file`` only ever adds.  Two rebases left two relocated
+    copies of the same file in the progspace, and a measured session made
+    the cost concrete: after rebasing to ``0xffffffffa7600000`` and then
+    to ``0xffffffffa8000000``, ``info symbol 0xffffffffa8000000``
+    answered ``pnp_disable_dev + 112`` -- the *stale* copy's idea of that
+    address, resolved before the current one.  So this is not only the
+    hundreds of megabytes of DWARF a rebase leaked, it is wrong symbol
+    names, which is worse.
+
+    ``remove-symbol-file`` deletes one added copy and leaves the primary
+    alone, which was verified on GDB 15.1: with a primary plus two added
+    copies it dropped the added ones one call at a time and then raised
+    ``No symbol file found`` rather than touching the primary.  That is
+    what makes the address-agnostic form safe here -- and the reason it
+    is used instead of ``-a <base>``, which would need to know the old
+    base that is precisely the thing being corrected.
+    """
+    quoted = f'"{objfile}"'
+    dropped = 0
+    while dropped < _MAX_DROP:
+        try:
+            gdb.execute(f"remove-symbol-file {quoted}")
+        except (gdb.error, gdb.MemoryError):
+            break
+        dropped += 1
+    return dropped
+
+
+def _rebase(base: int) -> None:
+    """Reload the loaded symbol file at *base* (``rebase``)."""
+    objfile = _symbol_file()
+    if objfile is None:
         print(message.error("no symbol file is loaded; load a vmlinux first"))
         return
+    dropped = _drop_relocated(objfile)
     try:
         gdb.execute(f"add-symbol-file {objfile} {base:#x}")
     except (gdb.error, gdb.MemoryError) as exc:
         print(message.error(f"cannot rebase {objfile!r} at {base:#x}: {exc}"))
         return
-    print(message.success(f"rebased {objfile} @ {base:#x}"))
+    freed = f" (dropped {dropped} stale copy)" if dropped else ""
+    print(message.success(f"rebased {objfile} @ {base:#x}{freed}"))
 
 
 def _dump_idt(count: int) -> None:

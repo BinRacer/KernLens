@@ -58,6 +58,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`kl-base rebase` now drops the copy the previous rebase added.**
+  `add-symbol-file` only ever adds, so every `rebase` stacked another
+  relocated copy of the same vmlinux in the progspace.  The leaked DWARF
+  was the visible cost; the real one was wrong answers -- after rebasing
+  to `0xffffffffa7600000` and then to `0xffffffffa8000000`, `info symbol
+  0xffffffffa8000000` reported `pnp_disable_dev + 112`, the stale copy's
+  nearest symbol.  The command now removes the previous copies first and
+  reports `(dropped N stale copy)` when there were any.  Removal stops
+  at the primary symbol file, so `file`'s own table is never touched.
+
+- **`kl-base rebase` re-opens the KASLR latch, like every other
+  `kl-base` spelling.**  It called `find_kbase()` directly, so a session
+  whose first alignment had already given up kept the latch closed and
+  `rebase` reported "cannot locate the kernel text base" even after the
+  user fixed what had stopped detection.  A retry that cannot retry is
+  worse than no retry, because it says the thing was tried.
+
 - **The tutorial capture could pick a slab page with nothing to decode.**
   `_slab_object()` used a per-CPU freelist, and a per-CPU slab is
   frequently drained -- the allocator hands its last object to the caller

@@ -125,6 +125,8 @@ rebased /home/bogon/workSpaces/pwn4kernel/kernels/6.1.134/01/vmlinux @ 0xfffffff
 
 `rebase` runs `add-symbol-file` for the loaded object at the recovered base, so GDB's own symbol lookups (and `info symbol`, and pwndbg's disassembly) start working at runtime addresses.  Without it GDB's symbol table remains link-time.  `--rebase` does the same after the report.
 
+The path is whatever `file` loaded -- `rebase` never guesses one -- and a session with no symbol file is told so instead of being handed a default.  Each rebase first drops the relocated copy the previous one added, because `add-symbol-file` only ever adds: two rebases used to leave two copies, and `info symbol` at the newer base then answered with the *older* copy's nearest symbol.  The `(dropped N stale copy)` suffix counts what went; a first rebase prints none, because there was nothing stale to drop.
+
 ## Setting the slide directly
 
 ### Invocation
